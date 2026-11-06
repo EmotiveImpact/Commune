@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
 import { X } from "lucide-react-native";
 import { activeMembers } from "../src/lib/derive";
 import { addDays, equalShares, firstName, money, parseAmount, shortDate } from "../src/lib/format";
 import { failure, useApp } from "../src/state";
-import { Button, ErrorText, T, tap } from "../src/ui/kit";
+import { Button, ErrorText, T, tap, useSheetFill } from "../src/ui/kit";
 import { useToast } from "../src/ui/toast";
 import { radius, useTheme } from "../src/ui/theme";
 
@@ -14,6 +14,7 @@ const CATEGORIES = ["Bills", "Groceries", "Household", "Food", "Rent", "Travel",
 /** Add an expense to the commune in view, split equally between the people chosen. */
 export default function AddExpense() {
   const { c } = useTheme();
+  const fill = useSheetFill();
   const router = useRouter();
   const toast = useToast();
   const { current, user, today, addExpense } = useApp();
@@ -53,8 +54,10 @@ export default function AddExpense() {
   const input = { height: 46, borderRadius: radius.control, borderWidth: 1, borderColor: c.outline, backgroundColor: c.surface, paddingHorizontal: 12, fontSize: 16, color: c.ink };
   const chip = (on: boolean) => ({ height: 36, paddingHorizontal: 14, borderRadius: 18, justifyContent: "center" as const, backgroundColor: on ? c.frame : c.surface, borderWidth: 1, borderColor: on ? c.frame : c.outline });
   const chipText = (on: boolean) => ({ fontSize: 13.5, fontWeight: "500" as const, color: on ? c.onFrame : c.ink });
-  return <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1, backgroundColor: c.canvas }}>
-    <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 22, gap: 18 }} keyboardShouldPersistTaps="handled">
+  // No KeyboardAvoidingView: inside an iOS form sheet it pads the top and pushes
+  // the content to the bottom. The scroll view moves fields above the keyboard.
+  return <View style={[fill, { backgroundColor: c.canvas }]}>
+    <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={{ padding: 20, paddingTop: 22, gap: 18 }} keyboardShouldPersistTaps="handled">
       <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
         <View style={{ flex: 1 }}>
           <T kind="title" accessibilityRole="header">Add an expense</T>
@@ -116,5 +119,5 @@ export default function AddExpense() {
       <Button size="lg" block label="Add expense" busy={busy} onPress={() => void save()} />
       <T kind="note" muted>Uneven splits, templates and receipts are on the web app for now.</T>
     </ScrollView>
-  </KeyboardAvoidingView>;
+  </View>;
 }

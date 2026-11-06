@@ -1,8 +1,9 @@
 # Commune phone app (Expo)
 
 The native iPhone and Android app, built from the approved phone design
-(Home Direction B, the five-tab bar with More, and the pay sheet with pay
-links). It is separate from `apps/mobile` and `apps/mobile-v2`, which are older
+(Home Direction B, the five-tab bar ending in Profile, the push menu behind
+the burger, the Hub with its tabs under the photo, and the pay sheet with pay
+links; prototype versions 5, 6 and 7). It is separate from `apps/mobile` and `apps/mobile-v2`, which are older
 experiments.
 
 ## What it does
@@ -10,9 +11,15 @@ experiments.
 - **Home**: your standing on the dark band, the next step raised over it, your
   communes, what needs you (grouped by when it is due), what you are waiting on,
   and what other people did.
-- **Hub, Expenses, Settle, More**: the commune in view, its expenses, who you
-  pay and who pays you (each currency kept separate), and the rest of the
-  commune (chores and tasks, notes, members, recurring bills, funds, templates).
+- **Hub**: the commune's photo with this week's pulse, then Overview, Money,
+  Chores and Notes. The tabs sit under the photo (sticky) or at the bottom, as
+  chosen in Settings under Layout; swiping sideways moves between them.
+- **Expenses, Settle, Profile**: the commune's expenses, who you pay and who
+  pays you, and you: where you stand in each currency (never added together)
+  and how people pay you, with a favourite.
+- **Menu** (the burger, top right): your communes, the rest of the commune in
+  view (chores and tasks, notes, members, recurring bills, funds, templates),
+  notifications, settings, help and sign out.
 - **"I’ve paid"**: opens a sheet with the bill payer's pay links first (Monzo
   and PayPal with the amount filled in, Revolut, or bank details to copy), then
   records the payment. It stays a claim until the bill payer confirms it.
@@ -20,8 +27,15 @@ experiments.
 - **Confirm or "Not received"**, **Nudge**, **Mark done**, **Add an expense**
   (split equally), **How people pay you** (add, change, remove), notifications.
 
-Uneven splits, receipts, corrections, invitations and settings stay on the web
+Uneven splits, receipts, corrections, invitations, new communes and adding chores or notes stay on the web
 app for now.
+
+## Motion
+
+`src/ui/motion.tsx` holds the three springs every screen uses (smooth, snappy
+and bouncy), the press scale and the rise-in with its stagger. It uses
+Reanimated and Gesture Handler at the versions Expo SDK 54 expects. With
+Reduce Motion on, moves become fades. Form sheets keep the native iOS drag.
 
 ## Where its data comes from
 

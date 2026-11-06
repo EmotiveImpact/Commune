@@ -2,9 +2,12 @@ import { useEffect, useRef } from "react";
 import { AppState, Platform } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { PrefsProvider } from "../src/prefs";
 import { AppProvider, useApp } from "../src/state";
 import { ToastProvider } from "../src/ui/toast";
 import { useTheme } from "../src/ui/theme";
+import { SHEET_DETENT } from "../src/ui/kit";
 
 /**
  * After a pay link opens another app, coming back asks whether the money
@@ -56,7 +59,7 @@ function Screens() {
     headerBackButtonDisplayMode: "minimal" as const,
     contentStyle: { backgroundColor: c.canvas },
   };
-  const sheet = { ...pushed, presentation: "formSheet" as const, sheetGrabberVisible: true, sheetAllowedDetents: [0.92], headerShown: false };
+  const sheet = { ...pushed, presentation: "formSheet" as const, sheetGrabberVisible: true, sheetAllowedDetents: [SHEET_DETENT], headerShown: false };
   return <>
     <StatusBar style="light" />
     <PayReturn />
@@ -65,7 +68,8 @@ function Screens() {
       <Stack.Screen name="sign-in" />
       <Stack.Screen name="expense/[id]" options={{ ...pushed, title: "Expense" }} />
       <Stack.Screen name="notifications" options={{ ...pushed, title: "Notifications" }} />
-      <Stack.Screen name="account" options={{ ...pushed, title: "Account" }} />
+      <Stack.Screen name="account" options={{ ...pushed, title: "Settings" }} />
+      <Stack.Screen name="help" options={{ ...pushed, title: "Help and feedback" }} />
       <Stack.Screen name="pay-links" options={{ ...pushed, title: "How people pay you" }} />
       <Stack.Screen name="tasks" options={{ ...pushed, title: "Chores and tasks" }} />
       <Stack.Screen name="notes" options={{ ...pushed, title: "Notes" }} />
@@ -83,5 +87,7 @@ function Screens() {
 }
 
 export default function Root() {
-  return <AppProvider><ToastProvider><Screens /></ToastProvider></AppProvider>;
+  return <GestureHandlerRootView style={{ flex: 1 }}>
+    <PrefsProvider><AppProvider><ToastProvider><Screens /></ToastProvider></AppProvider></PrefsProvider>
+  </GestureHandlerRootView>;
 }

@@ -2,35 +2,32 @@ import type { ReactNode } from "react";
 import { Image, Pressable, ScrollView, StyleSheet, Text, View, type ScrollViewProps } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { Bell, ChevronDown } from "lucide-react-native";
+import { ChevronDown, Menu } from "lucide-react-native";
+import { useMenu } from "./menu";
 import { useApp } from "../state";
 import { activeMembers } from "../lib/derive";
-import { Avatar, T } from "./kit";
+import { T } from "./kit";
 import { KIND_NAME, KIND_PHOTO, radius, useTheme } from "./theme";
 
 /**
- * The slim dark top bar from the approved phone mock: the wordmark on Home,
- * the screen's name elsewhere, then notifications and your account.
+ * The slim dark top bar from the approved phone prototype: the wordmark on
+ * every tab, and the burger that opens the menu. A dot on the burger means
+ * something new in Notifications. The title names the screen for screen readers.
  */
 export function TopBar({ title, children }: { title?: string; children?: ReactNode }) {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
-  const router = useRouter();
-  const { user, snapshots } = useApp();
+  const menu = useMenu();
+  const { snapshots } = useApp();
   const unread = snapshots.some((snapshot) => snapshot.notifications.some((item) => !item.readAt));
   return <View style={{ backgroundColor: c.frame, paddingTop: insets.top }}>
-    <View style={{ height: 50, flexDirection: "row", alignItems: "center", paddingLeft: 18, paddingRight: 10, gap: 4 }}>
-      {title
-        ? <Text accessibilityRole="header" style={{ color: c.onFrame, fontSize: 19, fontWeight: "600", letterSpacing: -0.3 }}>{title}</Text>
-        : <Text accessibilityRole="header" accessibilityLabel="Commune, Home" style={{ color: c.onFrame, fontSize: 25, fontWeight: "700", letterSpacing: -1.4 }}>commune.</Text>}
+    <View style={{ height: 52, flexDirection: "row", alignItems: "center", paddingLeft: 20, paddingRight: 8, gap: 4 }}>
+      <Text accessibilityRole="header" accessibilityLabel={title ? `Commune, ${title}` : "Commune, Home"} style={{ color: c.onFrame, fontSize: 25, fontWeight: "700", letterSpacing: -1.4 }}>commune.</Text>
       <View style={{ flex: 1 }} />
-      <Pressable accessibilityRole="button" accessibilityLabel={unread ? "Notifications, new" : "Notifications"} hitSlop={4}
-        onPress={() => router.push("/notifications")} style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}>
-        <Bell size={21} color={c.onFrame} strokeWidth={1.8} />
-        {unread ? <View style={{ position: "absolute", top: 11, right: 11, width: 8, height: 8, borderRadius: 4, backgroundColor: c.dot, borderWidth: 2, borderColor: c.frame }} /> : null}
-      </Pressable>
-      <Pressable accessibilityRole="button" accessibilityLabel="Your account" onPress={() => router.push("/account")} style={{ padding: 6 }}>
-        <Avatar name={user?.name ?? "You"} size={30} ring={c.frame} />
+      <Pressable accessibilityRole="button" accessibilityLabel={unread ? "Menu, something new in notifications" : "Menu"} accessibilityState={{ expanded: menu.isOpen }} hitSlop={4}
+        onPress={menu.open} style={({ pressed }) => ({ width: 46, height: 46, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}>
+        <Menu size={23} color={c.onFrame} strokeWidth={1.7} />
+        {unread ? <View style={{ position: "absolute", top: 10, right: 9, width: 9, height: 9, borderRadius: 5, backgroundColor: c.dot, borderWidth: 2, borderColor: c.frame }} /> : null}
       </Pressable>
     </View>
     {children}

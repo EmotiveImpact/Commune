@@ -1,65 +1,219 @@
-import { useState } from "react";
-import { ImageBackground, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useRouter } from "expo-router";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { ImageBackground, Linking, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { useRouter, type Href } from "expo-router";
 import * as Clipboard from "expo-clipboard";
-import { CalendarDays, Check, Copy, Eye, EyeOff, Phone, Plus, ReceiptText } from "lucide-react-native";
+import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming, type SharedValue } from "react-native-reanimated";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import { CalendarDays, Check, ChevronDown, ChevronRight, Copy, Eye, EyeOff, Files, Phone, Plus, ReceiptText, Repeat2, ShoppingBag, UsersRound } from "lucide-react-native";
 import {
   activeMembers, essentials, hubMoneyLine, oweTotals, owedTotals, people, week, weekSentence,
   type Essential, type WeekItem,
 } from "../../src/lib/derive";
-import { addDays, calParts, firstName, money } from "../../src/lib/format";
+import { addDays, calParts, firstName, joinAnd, money } from "../../src/lib/format";
+import { usePrefs } from "../../src/prefs";
 import { failure, useApp } from "../../src/state";
-import { Body, Pad, ScopeRow, TopBar, photoOf } from "../../src/ui/chrome";
-import { Avatar, Button, Cal, Empty, Faces, Panel, SectionHead, State, T, tap } from "../../src/ui/kit";
-import { TaskCheck } from "../../src/ui/parts";
+import { Body, Pad, TopBar, photoOf } from "../../src/ui/chrome";
+import { Avatar, Button, Cal, Empty, Faces, Panel, Row, SectionHead, State, T, tap } from "../../src/ui/kit";
+import { haptic, PressScale, Rise, springs, useCalm } from "../../src/ui/motion";
+import { NeedsList, TaskCheck, WaitingRow } from "../../src/ui/parts";
 import { PayPrimary } from "../../src/ui/pay";
 import { useToast } from "../../src/ui/toast";
 import { KIND_NAME, radius, useTheme } from "../../src/ui/theme";
 
+type HubTab = "overview" | "money" | "chores" | "notes";
+const HUB_TABS: Array<{ id: HubTab; label: string }> = [
+  { id: "overview", label: "Overview" }, { id: "money", label: "Money" }, { id: "chores", label: "Chores" }, { id: "notes", label: "Notes" },
+];
+
 /**
- * The Hub, the house at a glance: this week's pulse on the photo, your part
- * with the one payment to record next, the week day by day, the people you
- * share with, and the details everyone looks up.
+ * The Hub, the house at a glance: the commune's photo first with this week's
+ * pulse on it, then Overview, Money, Chores and Notes. The tabs sit under the
+ * photo and stick below the top bar, or at the bottom, as chosen in Settings.
+ * Swiping sideways moves between them; the pill follows the finger.
  */
 export default function Hub() {
   const { c } = useTheme();
-  const { current, user, today } = useApp();
-  if (!current) return <View style={{ flex: 1 }}><TopBar title="This Hub" /><Body><Pad><T kind="body" muted>You’re not in a commune yet.</T></Pad></Body></View>;
-  const { commune } = current;
-  const viewerId = user?.id ?? "";
-  const members = activeMembers(current);
-  const thisWeek = week(current, viewerId, today);
-  const place = commune.address || commune.destination || "";
+  const calm = useCalm();
+  const { width } = useWindowDimensions();
+  const { current } = useApp();
+  const { hubTabsAt } = usePrefs();
+  const [tab, setTab] = useState<HubTab>("overview");
+  const [entrance, setEntrance] = useState(0);
+  const [heights, setHeights] = useState<Partial<Record<HubTab, number>>>({});
+  const scroller = useRef<ScrollView>(null);
+  const index = HUB_TABS.findIndex((item) => item.id === tab);
+  const at = useSharedValue(index);
+  const pager = useSharedValue(-index * width);
+  const left = useSharedValue(index);
+  const right = useSharedValue(index);
+  const communeId = current?.commune.id;
+
+  // A new commune opens on its Overview.
+  useEffect(() => { setTab("overview"); at.value = 0; pager.value = 0; left.value = 0; right.value = 0; }, [communeId, at, pager, left, right]);
+
+  const movePill = useCallback((to: number) => {
+    "worklet";
+    const forward = to > left.value;
+    if (calm) { left.value = withTiming(to, { duration: 180 }); right.value = withTiming(to, { duration: 180 }); return; }
+    // The leading edge moves on the snappy spring and the trailing edge on the smooth one, so the pill stretches as it travels.
+    left.value = withSpring(to, forward ? springs.smooth : springs.snappy);
+    right.value = withSpring(to, forward ? springs.snappy : springs.smooth);
+  }, [calm, left, right]);
+
+  const choose = useCallback((next: HubTab, slid = false) => {
+    const to = HUB_TABS.findIndex((item) => item.id === next);
+    if (to === at.value && !slid) return;
+    at.value = to;
+    if (!slid) { pager.value = -to * width; movePill(to); setEntrance((value) => value + 1); }
+    setTab(next);
+    haptic.select();
+  }, [at, pager, width, movePill]);
+
+  const landed = useCallback((to: number) => choose(HUB_TABS[to].id, true), [choose]);
+  const swipe = Gesture.Pan().activeOffsetX([-16, 16]).failOffsetY([-12, 12]).onUpdate((event) => {
+    const i = at.value;
+    let f = Math.max(-1, Math.min(1, -event.translationX / width));
+    const j = i + Math.sign(f);
+    if (j < 0 || j >= HUB_TABS.length) f *= 0.25; // Past the first or last tab it only gives a little.
+    pager.value = -i * width - f * width;
+    if (j < 0 || j >= HUB_TABS.length || f === 0) return;
+    const amount = Math.abs(f), lead = Math.min(1, amount * 1.3), trail = Math.max(0, (amount - 0.3) / 0.7);
+    const forward = j > i;
+    left.value = i + (j - i) * (forward ? trail : lead);
+    right.value = i + (j - i) * (forward ? lead : trail);
+  }).onEnd((event) => {
+    const i = at.value;
+    const f = -event.translationX / width;
+    let to = i;
+    if (f > 0.22 || event.velocityX < -600) to = Math.min(HUB_TABS.length - 1, i + 1);
+    else if (f < -0.22 || event.velocityX > 600) to = Math.max(0, i - 1);
+    pager.value = calm ? withTiming(-to * width, { duration: 200 }) : withSpring(-to * width, { ...springs.smooth, velocity: event.velocityX });
+    movePill(to);
+    if (to !== i) { at.value = to; runOnJS(landed)(to); }
+  });
+  const track = useAnimatedStyle(() => ({ transform: [{ translateX: pager.value }] }));
+
+  if (!current) return <View style={{ flex: 1 }}><TopBar title="Hub" /><Body><Pad><T kind="body" muted>You’re not in a commune yet.</T></Pad></Body></View>;
+  const pills = <HubPills tab={tab} onPick={(next) => choose(next)} left={left} right={right} floating={hubTabsAt === "bottom"} />;
+  const pages: Record<HubTab, ReactNode[]> = {
+    overview: [<YourPart key="part" onMore={() => choose("money")} />, <WeekPanel key="week" onAll={() => choose("chores")} />, <PeoplePanel key="people" />],
+    money: moneySections(),
+    chores: [<ChoresPage key="chores" />],
+    notes: [<Essentials key="essentials" />, <NotesList key="notes" />],
+  };
   return <View style={{ flex: 1, backgroundColor: c.canvas }}>
-    <TopBar title="This Hub" />
-    <Body>
-      <Pad gap={22}>
-        <ScopeRow />
-        <ImageBackground source={{ uri: photoOf(commune.kind) }} imageStyle={{ borderRadius: 15 }} style={{ minHeight: 220, borderRadius: 15, overflow: "hidden", justifyContent: "flex-end", backgroundColor: c.frameRaised }}>
-          <View style={{ padding: 18, gap: 4, backgroundColor: "rgba(14,16,24,0.5)" }}>
-            <Text style={{ color: "rgba(255,255,255,0.8)", fontSize: 12, fontWeight: "600", letterSpacing: 0.6, textTransform: "uppercase" }}>{KIND_NAME[commune.kind]}</Text>
-            <Text accessibilityRole="header" style={{ color: "#fff", fontSize: 28, lineHeight: 34, fontWeight: "600", letterSpacing: -0.5 }}>{commune.name}</Text>
-            {place ? <Text style={{ color: "rgba(255,255,255,0.8)", fontSize: 13.5 }}>{place}</Text> : null}
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: 6 }}>
-              <Faces names={members.map((member) => member.name)} size={28} ring="rgba(255,255,255,0.9)" />
-              <Text style={{ color: "#fff", fontSize: 13 }}>{members.length} {members.length === 1 ? "person" : "people"}</Text>
-            </View>
-            <View style={{ alignSelf: "flex-start", marginTop: 8, backgroundColor: "#fff", borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 5 }}>
-              <Text style={{ color: "#1a1e2b", fontSize: 13, fontWeight: "500" }}>{weekSentence(thisWeek)}</Text>
-            </View>
-          </View>
-        </ImageBackground>
-        <YourPart />
-        <WeekPanel />
-        <PeoplePanel />
-        <Essentials />
-      </Pad>
-    </Body>
+    <TopBar title="Hub" />
+    <ScrollView ref={scroller} style={{ flex: 1 }} stickyHeaderIndices={hubTabsAt === "top" ? [1] : undefined}
+      contentContainerStyle={{ paddingBottom: hubTabsAt === "bottom" ? 96 : 32 }}>
+      <Hero />
+      {hubTabsAt === "top" ? pills : null}
+      <GestureDetector gesture={swipe}>
+        <View style={{ overflow: "hidden", height: heights[tab] }}>
+          <Animated.View style={[{ flexDirection: "row", width: width * HUB_TABS.length, alignItems: "flex-start" }, track]}>
+            {HUB_TABS.map((item) => <View key={item.id} accessibilityElementsHidden={item.id !== tab} importantForAccessibility={item.id === tab ? "auto" : "no-hide-descendants"}
+              onLayout={(event) => { const h = Math.ceil(event.nativeEvent.layout.height); setHeights((all) => (all[item.id] === h ? all : { ...all, [item.id]: h })); }}
+              style={{ width, padding: 16, gap: 22 }}>
+              {pages[item.id].map((section, n) => item.id === tab
+                ? <Rise key={`${entrance}-${n}`} index={n}>{section}</Rise>
+                : <View key={n}>{section}</View>)}
+            </View>)}
+          </Animated.View>
+        </View>
+      </GestureDetector>
+    </ScrollView>
+    {hubTabsAt === "bottom" ? pills : null}
+  </View>;
+}
+
+function moneySections(): ReactNode[] {
+  return [<OweHere key="owe" />, <OwedHere key="owed" />, <MoneyActions key="acts" />, <MoneyMore key="more" />];
+}
+
+/** The photo, its place and people, and the week's pulse, with Change and Invite on glass. */
+function Hero() {
+  const router = useRouter();
+  const { current, communes, user, today } = useApp();
+  if (!current) return null;
+  const { commune } = current;
+  const members = activeMembers(current);
+  const place = commune.address || commune.destination || "";
+  const sentence = weekSentence(week(current, user?.id ?? "", today));
+  const glass = { flexDirection: "row" as const, alignItems: "center" as const, gap: 6, height: 36, paddingHorizontal: 13, borderRadius: 18, backgroundColor: "rgba(20,22,30,0.42)", borderWidth: StyleSheet.hairlineWidth, borderColor: "rgba(255,255,255,0.35)" };
+  return <ImageBackground source={{ uri: photoOf(commune.kind) }} accessibilityIgnoresInvertColors style={{ height: 290, backgroundColor: "#262b3a" }}>
+    <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(14,16,24,0.18)" }]} />
+    <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 190, backgroundColor: "rgba(14,16,24,0.42)" }} />
+    <View style={{ flexDirection: "row", padding: 14, gap: 8 }}>
+      {communes.length > 1 ? <PressScale accessibilityRole="button" accessibilityLabel={`Commune: ${commune.name}. Change commune.`} onPress={() => router.push("/switch")} style={glass}>
+        <ChevronDown size={15} color="#fff" /><Text style={{ color: "#fff", fontSize: 14, fontWeight: "500" }}>Change</Text>
+      </PressScale> : null}
+      <View style={{ flex: 1 }} />
+      <PressScale accessibilityRole="button" accessibilityLabel={`Invite people to ${commune.name}`} onPress={() => router.push("/members")} style={glass}>
+        <UsersRound size={15} color="#fff" /><Text style={{ color: "#fff", fontSize: 14, fontWeight: "500" }}>Invite</Text>
+      </PressScale>
+    </View>
+    <View style={{ flex: 1 }} />
+    <View style={{ paddingHorizontal: 18, paddingBottom: 18, gap: 4 }}>
+      <Text style={{ color: "rgba(255,255,255,0.85)", fontSize: 13, fontWeight: "500" }}>{KIND_NAME[commune.kind]}{place ? ` · ${place}` : ""}</Text>
+      <Text accessibilityRole="header" style={{ color: "#fff", fontSize: 30, lineHeight: 36, fontWeight: "600", letterSpacing: -0.6 }}>{commune.name}</Text>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: 2 }}>
+        <Faces names={members.map((member) => member.name)} size={26} ring="rgba(255,255,255,0.9)" />
+        <Text style={{ color: "#fff", fontSize: 13.5 }}>{members.length} {members.length === 1 ? "person" : "people"}</Text>
+      </View>
+      <View style={{ alignSelf: "flex-start", marginTop: 8, backgroundColor: "rgba(255,255,255,0.92)", borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 6 }}>
+        <Text style={{ color: "#1a1e2b", fontSize: 13.5, fontWeight: "500" }}>{sentence}</Text>
+      </View>
+    </View>
+  </ImageBackground>;
+}
+
+/** Edge of the pill at a fractional tab position, between two measured buttons. */
+function edge(boxes: number[], at: number, side: "left" | "right"): number {
+  "worklet";
+  const count = boxes.length / 2;
+  if (!count) return 0;
+  const clamped = Math.max(0, Math.min(count - 1, at));
+  const a = Math.floor(clamped), b = Math.min(count - 1, a + 1), t = clamped - a;
+  const pick = (i: number) => (side === "left" ? boxes[i * 2] : boxes[i * 2] + boxes[i * 2 + 1]);
+  return pick(a) + (pick(b) - pick(a)) * t;
+}
+
+/** The four Hub tabs as pills, with one white pill that slides and stretches between them. */
+function HubPills({ tab, onPick, left, right, floating }: {
+  tab: HubTab; onPick(tab: HubTab): void; left: SharedValue<number>; right: SharedValue<number>; floating: boolean;
+}) {
+  const { c } = useTheme();
+  const boxes = useSharedValue<number[]>([]);
+  const [, setMeasured] = useState(0);
+  const sizes = useRef<number[]>([]);
+  const pill = useAnimatedStyle(() => {
+    const l = edge(boxes.value, left.value, "left");
+    const r = edge(boxes.value, right.value, "right");
+    return { opacity: boxes.value.length ? 1 : 0, width: Math.max(0, r - l), transform: [{ translateX: l }] };
+  });
+  return <View style={floating
+    ? { position: "absolute", left: 0, right: 0, bottom: 0, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 10, backgroundColor: c.canvas + "f2", borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.outline }
+    : { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 10, backgroundColor: c.canvas }}>
+    <View accessibilityRole="tablist" style={{ flexDirection: "row", backgroundColor: c.recessed, borderRadius: 999, padding: 4, borderWidth: StyleSheet.hairlineWidth, borderColor: c.outline }}>
+      <Animated.View pointerEvents="none" style={[{ position: "absolute", top: 4, bottom: 4, left: 0, borderRadius: 999, backgroundColor: c.surface, shadowColor: "#1a1e2b", shadowOpacity: 0.12, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 2 }, pill]} />
+      {HUB_TABS.map((item, i) => {
+        const on = item.id === tab;
+        return <Pressable key={item.id} accessibilityRole="tab" accessibilityState={{ selected: on }} accessibilityLabel={item.label}
+          onLayout={(event) => {
+            const { x, width } = event.nativeEvent.layout;
+            sizes.current[i * 2] = x; sizes.current[i * 2 + 1] = width;
+            if (sizes.current.filter((value) => value != null).length === HUB_TABS.length * 2) { boxes.value = [...sizes.current]; setMeasured((n) => n + 1); }
+          }}
+          onPress={() => onPick(item.id)}
+          style={{ flex: 1, height: 40, alignItems: "center", justifyContent: "center" }}>
+          <Text style={{ fontSize: 15, fontWeight: on ? "600" : "500", color: on ? c.ink : c.ink2 }}>{item.label}</Text>
+        </Pressable>;
+      })}
+    </View>
   </View>;
 }
 
 /** Where you stand here, and the one payment to record next. */
-function YourPart() {
+function YourPart({ onMore }: { onMore(): void }) {
   const { c } = useTheme();
   const router = useRouter();
   const { current, needs, waiting, resolveReport } = useApp();
@@ -106,7 +260,7 @@ function YourPart() {
         <T kind="amount" style={{ fontSize: 19, lineHeight: 24 }}>{money(first.amountMinor, first.currency)}</T>
       </Pressable>
       <PayPrimary size="md" target={{ shareId: first.shareId, communeId: first.communeId, payerId: first.payerId, payerName: first.payerName, amountMinor: first.amountMinor, currency: first.currency, title: first.title }} />
-      {shares.length > 1 ? <Button variant="quiet" size="sm" label={`${shares.length - 1} more to settle`} onPress={() => router.push("/settle")} /> : null}
+      {shares.length > 1 ? <Button variant="quiet" size="sm" label={`${shares.length - 1} more to settle`} onPress={onMore} /> : null}
     </View> : toConfirm?.debtor.pending ? <View style={{ backgroundColor: c.surface, borderRadius: 12, padding: 12, gap: 10 }}>
       <View style={{ flexDirection: "row", gap: 8 }}>
         <View style={{ flex: 1 }}>
@@ -127,9 +281,8 @@ function YourPart() {
 }
 
 /** Late jobs first, then each day of the week that has something on it. Free days are left out. */
-function WeekPanel() {
+function WeekPanel({ onAll }: { onAll(): void }) {
   const { c } = useTheme();
-  const router = useRouter();
   const { current, user, today } = useApp();
   if (!current) return null;
   const viewerId = user?.id ?? "";
@@ -137,7 +290,7 @@ function WeekPanel() {
   const days = value.days.filter((day, index) => index === 0 || day.items.length);
   const empty = !value.late.length && value.days.every((day) => !day.items.length);
   return <View style={{ gap: 12 }}>
-    <SectionHead title="This week" right={<Button variant="quiet" size="sm" label="All tasks" onPress={() => router.push("/tasks")} />} />
+    <SectionHead title="This week" right={<Button variant="quiet" size="sm" label="All chores" onPress={onAll} />} />
     <Panel>
       {empty ? <Empty icon={<Check size={18} color={c.onSettled} />} title="Nothing planned for this week" body="Tasks, events and bills due will show here." /> : <>
         {value.late.length ? <DayHead first label="Late" count={value.late.length} late /> : null}
@@ -215,16 +368,112 @@ function PeoplePanel() {
 
 /** The details people look up, with the facts in place. Passwords and codes stay hidden until asked for. */
 function Essentials() {
+  const { current } = useApp();
+  if (!current) return null;
+  const items = essentials(current, 8);
+  return <View style={{ gap: 12 }}>
+    <SectionHead title="Shared essentials" count={items.length} />
+    {items.length ? items.map((item) => <EssentialCard key={item.id} item={item} />)
+      : <Panel pad><T kind="body" muted>Nothing written down in {current.commune.name} yet.</T></Panel>}
+    <T kind="label" muted style={{ paddingHorizontal: 4 }}>Only people in {current.commune.name} can see these. Passwords and codes stay hidden until you tap Show.</T>
+  </View>;
+}
+
+/** Every note, in full, under the essentials. */
+function NotesList() {
+  const router = useRouter();
+  const { current } = useApp();
+  const notes = current?.notes ?? [];
+  if (!notes.length) return null;
+  return <View style={{ gap: 12 }}>
+    <SectionHead title="All notes" count={notes.length} right={<Button variant="quiet" size="sm" label="Open" onPress={() => router.push("/notes")} />} />
+    <Panel>{notes.map((note, index) => <Row key={note.id} first={index === 0} onPress={() => router.push("/notes")} title={note.title}
+      meta={note.lede || note.body ? <T kind="label" muted lines={1}>{note.lede || note.body}</T> : undefined} />)}</Panel>
+    <T kind="note" muted style={{ paddingHorizontal: 4 }}>Adding and editing notes is on the web app for now.</T>
+  </View>;
+}
+
+/** What you owe in this commune, oldest first, each with its way to pay. */
+function OweHere() {
+  const { c } = useTheme();
+  const { current, needs } = useApp();
+  if (!current) return null;
+  const mine = needs.filter((need) => need.communeId === current.commune.id && need.kind === "share");
+  const total = oweTotals(mine, current.commune.id)[current.commune.currency] ?? 0;
+  return <View style={{ gap: 12 }}>
+    <SectionHead title="You owe here" right={mine.length ? <T kind="label" muted>{mine.length} · {money(total, current.commune.currency)}</T> : undefined} />
+    <Panel>{mine.length ? <NeedsList items={mine} />
+      : <Empty icon={<Check size={18} color={c.onSettled} />} title="Nothing to pay here" body={`Every bill you share in ${current.commune.name} is recorded.`} />}</Panel>
+  </View>;
+}
+
+/** What people here owe you, with confirm and nudge in place. */
+function OwedHere() {
+  const { c } = useTheme();
+  const { current, waiting } = useApp();
+  if (!current) return null;
+  const mine = waiting.filter((entry) => entry.communeId === current.commune.id);
+  const total = owedTotals(mine, current.commune.id)[current.commune.currency] ?? 0;
+  return <View style={{ gap: 12 }}>
+    <SectionHead title="Owed to you here" right={mine.length ? <T kind="label" muted>{money(total, current.commune.currency)}</T> : undefined} />
+    <Panel>{mine.length ? mine.map((entry, index) => <WaitingRow key={entry.key} entry={entry} first={index === 0} />)
+      : <Empty icon={<Check size={18} color={c.onSettled} />} title="Nobody owes you here" />}</Panel>
+  </View>;
+}
+
+function MoneyActions() {
+  const { c } = useTheme();
+  const router = useRouter();
+  return <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+    <Button label="Add expense" icon={<Plus size={15} color={c.onAction} />} onPress={() => router.push("/add-expense")} />
+    <Button variant="quiet" size="sm" label="All expenses" onPress={() => router.navigate("/expenses")} />
+    <Button variant="quiet" size="sm" label="Settlement" onPress={() => router.navigate("/settle")} />
+  </View>;
+}
+
+/** Recurring bills, saved splits and shared pots, a tap away. */
+function MoneyMore() {
+  const { c } = useTheme();
   const router = useRouter();
   const { current } = useApp();
   if (!current) return null;
-  const items = essentials(current);
-  if (!items.length) return null;
+  const bills = current.recurringBills ?? [];
+  const templates = (current.splitTemplates ?? []).filter((item) => !item.archivedAt);
+  const funds = current.funds.filter((fund) => !fund.archivedAt);
+  const rows: Array<{ icon: typeof Repeat2; label: string; sub: string; href: Href }> = [
+    { icon: Repeat2, label: "Recurring", href: "/recurring", sub: bills.length ? joinAnd(bills.slice(0, 3).map((bill) => bill.title)) : "Nothing repeats here" },
+    { icon: Files, label: "Templates", href: "/templates", sub: templates.length ? `${templates.length} saved ${templates.length === 1 ? "split" : "splits"}` : "None saved yet" },
+    { icon: ShoppingBag, label: "Funds", href: "/funds", sub: funds.length ? `${funds.length} shared ${funds.length === 1 ? "pot" : "pots"}` : "No shared pots yet" },
+  ];
+  return <Panel>{rows.map((row, index) => <Row key={row.label} first={index === 0} onPress={() => router.push(row.href)}
+    left={<View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: c.recessed, alignItems: "center", justifyContent: "center" }}><row.icon size={17} color={c.ink} /></View>}
+    title={row.label} meta={<T kind="label" muted lines={1}>{row.sub}</T>} right={<ChevronRight size={17} color={c.ink2} />} />)}</Panel>;
+}
+
+/** This week's chores, late ones first, each with its tick. Free days are left out. */
+function ChoresPage() {
+  const { c } = useTheme();
+  const router = useRouter();
+  const { current, user, today } = useApp();
+  if (!current) return null;
+  const value = week(current, user?.id ?? "", today);
+  const late = value.late;
+  const days = value.days.map((day) => ({ ...day, items: day.items.filter((item) => item.kind === "task") })).filter((day) => day.items.length);
+  const count = late.length + days.reduce((sum, day) => sum + day.items.length, 0);
   return <View style={{ gap: 12 }}>
-    <SectionHead title="Shared essentials" right={<Button variant="quiet" size="sm" label="All notes" onPress={() => router.push("/notes")} />} />
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingRight: 16 }} style={{ marginRight: -16 }}>
-      {items.map((item) => <EssentialCard key={item.id} item={item} />)}
-    </ScrollView>
+    <SectionHead title="This week" count={count} right={<Button variant="quiet" size="sm" label="All tasks" onPress={() => router.push("/tasks")} />} />
+    <Panel>
+      {!count ? <Empty icon={<Check size={18} color={c.onSettled} />} title="No chores left this week" /> : <>
+        {late.length ? <DayHead first label="Late" count={late.length} late /> : null}
+        {late.map((item) => <WeekRow key={item.key} item={item} late />)}
+        {days.map((day, index) => <View key={day.date}>
+          <DayHead first={!late.length && index === 0} date={day.date} label={day.date === today ? "Today" : day.date === addDays(today, 1) ? "Tomorrow" : undefined} />
+          {day.items.map((item) => <WeekRow key={item.key} item={item} />)}
+        </View>)}
+      </>}
+    </Panel>
+    {count ? <T kind="label" muted style={{ textAlign: "center" }}>Free days are left out on the phone.</T> : null}
+    <T kind="note" muted style={{ paddingHorizontal: 4 }}>Adding chores and changing the rota is on the web app for now.</T>
   </View>;
 }
 
@@ -241,7 +490,7 @@ function EssentialCard({ item }: { item: Essential }) {
     tap();
     toast(`Copied ${(secrets[0] ?? item.facts[0])?.label.toLowerCase()}.`);
   }
-  return <View style={{ width: 270, backgroundColor: c.surface, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, borderColor: c.outline, padding: 14, gap: 8 }}>
+  return <View style={{ backgroundColor: c.surface, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, borderColor: c.outline, padding: 14, gap: 8 }}>
     {item.category ? <T kind="note" muted style={{ fontWeight: "600", letterSpacing: 0.6, textTransform: "uppercase" }}>{item.category}</T> : null}
     <T kind="strong">{item.title}</T>
     {item.facts.length ? <View style={{ gap: 3 }}>{item.facts.map((fact) => <View key={fact.label} style={{ flexDirection: "row", gap: 12 }}>

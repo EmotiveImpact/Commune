@@ -26,7 +26,7 @@ export default function Paid() {
   const close = () => (router.canGoBack() ? router.back() : router.replace("/"));
   const left = found ? outstanding(found.share) : 0;
   if (!found || !left || pendingReport(found.share)) {
-    return <View style={{ flex: 1, padding: 24, gap: 14, backgroundColor: c.canvas }}>
+    return <View style={{ width: "100%", padding: 24, gap: 14, backgroundColor: c.canvas }}>
       <T kind="title">{found && pendingReport(found.share) ? "Already recorded" : "Nothing left to pay"}</T>
       <Button label="Close" variant="secondary" onPress={close} />
     </View>;

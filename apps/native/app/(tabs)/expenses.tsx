@@ -8,6 +8,7 @@ import type { Expense } from "../../src/lib/types";
 import { useApp } from "../../src/state";
 import { Body, Pad, ScopeRow, TopBar } from "../../src/ui/chrome";
 import { Badge, Button, Cal, Panel, T } from "../../src/ui/kit";
+import { PressScale, Rise } from "../../src/ui/motion";
 import { radius, useTheme } from "../../src/ui/theme";
 
 type Filter = "all" | "open" | "settled";
@@ -43,10 +44,10 @@ export default function Expenses() {
           <Button label="Add" icon={<Plus size={16} color={c.onAction} />} onPress={() => router.push("/add-expense")} />
         </View>
         <T kind="label" muted style={{ paddingHorizontal: 4 }}>{list.length} {list.length === 1 ? "expense" : "expenses"} · {money(total, currency)} recorded in this view</T>
-        {list.map((expense) => {
+        {list.map((expense, index) => {
           const mine = expense.shares.find((share) => share.userId === user?.id);
           const open = isOpen(expense);
-          return <Pressable key={expense.id} accessibilityRole="button" onPress={() => router.push(`/expense/${expense.id}`)}>
+          return <Rise key={`${filter}-${current.commune.id}-${expense.id}`} index={index}><PressScale accessibilityRole="button" onPress={() => router.push(`/expense/${expense.id}`)}>
             <Panel style={{ padding: 16, gap: 14 }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                 <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: c.recessed, alignItems: "center", justifyContent: "center" }}><ReceiptText size={17} color={c.ink2} /></View>
@@ -65,7 +66,7 @@ export default function Expenses() {
                 </View>
               </View>
             </Panel>
-          </Pressable>;
+          </PressScale></Rise>;
         })}
         {!list.length ? <Panel pad><T kind="body" muted>{filter === "all" ? "Nothing recorded here yet. Add the first expense." : `No ${filter} expenses.`}</T></Panel> : null}
       </Pad>

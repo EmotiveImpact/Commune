@@ -1,14 +1,29 @@
 import type { ReactNode } from "react";
-import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View, type StyleProp, type TextStyle, type ViewStyle } from "react-native";
+import { ActivityIndicator, Image, Platform, StyleSheet, Text, View, useWindowDimensions, type StyleProp, type TextStyle, type ViewStyle } from "react-native";
 import * as Haptics from "expo-haptics";
 import { calParts, initials } from "../lib/format";
 import type { Tone } from "../lib/derive";
 import { radius, useTheme, type Palette } from "./theme";
+import { PressScale } from "./motion";
 
-export function tap(kind: "light" | "success" = "light") {
+/** How tall the money sheets open, as a share of the screen. */
+export const SHEET_DETENT = 0.92;
+
+/**
+ * Size for the root of a sheet screen. On iOS a fixed-detent form sheet does
+ * not stretch flex: 1 content (react-native-screens 4.16), which left the pay
+ * sheet blank with its form at the bottom, so it gets the sheet's height.
+ */
+export function useSheetFill(): ViewStyle {
+  const { height } = useWindowDimensions();
+  return Platform.OS === "ios" ? { height: height * SHEET_DETENT } : { flex: 1 };
+}
+
+export function tap(kind: "light" | "success" | "select" = "light") {
   // Haptics are a nicety; the web build and older phones simply skip them.
   const run = kind === "success"
     ? Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+    : kind === "select" ? Haptics.selectionAsync()
     : Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   run.catch(() => undefined);
 }
@@ -43,17 +58,18 @@ export function Button({ label, onPress, variant = "primary", size = "md", block
   const height = size === "lg" ? 48 : size === "sm" ? 34 : 42;
   const bg = variant === "primary" ? c.action : variant === "quiet" ? "transparent" : c.surface;
   const fg = variant === "primary" ? c.onAction : variant === "danger" ? c.late : onFrame ? c.onFrame : c.ink;
-  return <Pressable
+  return <PressScale
     accessibilityRole="button" accessibilityLabel={accessibilityLabel ?? label} accessibilityState={{ disabled: !!(disabled || busy), busy: !!busy }}
     disabled={disabled || busy}
     onPress={() => { tap(); onPress?.(); }}
-    style={({ pressed }) => [{
+    pressedStyle={{ opacity: 0.88 }}
+    style={[{
       height, paddingHorizontal: size === "sm" ? 14 : size === "lg" ? 22 : 18, borderRadius: radius.pill, backgroundColor: bg,
       flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, alignSelf: block ? "stretch" : "flex-start",
-      opacity: disabled ? 0.45 : pressed ? 0.85 : 1,
+      opacity: disabled ? 0.45 : 1,
     }, variant === "secondary" || variant === "danger" ? { borderWidth: 1, borderColor: variant === "danger" ? c.late : c.outline } : null]}>
     {busy ? <ActivityIndicator color={fg} /> : <>{icon}<Text style={{ color: fg, fontSize: size === "lg" ? 15.5 : size === "sm" ? 13 : 14, fontWeight: "500" }}>{label}</Text>{trailing}</>}
-  </Pressable>;
+  </PressScale>;
 }
 
 export function Panel({ children, pad, style }: { children: ReactNode; pad?: boolean; style?: StyleProp<ViewStyle> }) {
@@ -75,7 +91,7 @@ export function Row({ left, title, meta, right, onPress, first, accessibilityLab
   </>;
   const style = { flexDirection: "row" as const, alignItems: "center" as const, gap: 12, paddingVertical: 12, paddingHorizontal: 16, borderTopWidth: first ? 0 : StyleSheet.hairlineWidth, borderTopColor: c.outline };
   return onPress
-    ? <Pressable accessibilityRole="button" accessibilityLabel={accessibilityLabel} onPress={onPress} style={({ pressed }) => [style, pressed ? { backgroundColor: c.press } : null]}>{body}</Pressable>
+    ? <PressScale accessibilityRole="button" accessibilityLabel={accessibilityLabel} onPress={onPress} style={style} pressedStyle={{ backgroundColor: c.press }}>{body}</PressScale>
     : <View style={style}>{body}</View>;
 }
 
