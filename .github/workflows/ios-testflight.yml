@@ -1,0 +1,66 @@
+# Builds the phone app (apps/native) for iPhone on a GitHub macOS runner and
+# sends it to TestFlight. The build runs here with `eas build --local`, so it
+# does not use Expo's monthly cloud builds. Expo still holds the signing
+# certificate and the App Store Connect key; the EXPO_TOKEN repository secret
+# lets this job use them.
+#
+# It runs only when asked: from the Actions tab (Run workflow, once this file
+# is on main), on a push whose commit message contains [testflight], or by
+# re-running an earlier run. Ordinary pushes skip it. The repository is
+# public, so its macOS runner minutes are free.
+name: iPhone build to TestFlight
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - apps/native/**
+      - .github/workflows/ios-testflight.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-testflight
+  cancel-in-progress: false
+
+jobs:
+  testflight:
+    name: Build and send to TestFlight
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[testflight]')
+    # Xcode 26: App Store Connect takes uploads built with the iOS 26 SDK.
+    runs-on: macos-26
+    timeout-minutes: 75
+    defaults:
+      run:
+        working-directory: apps/native
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Installs the pnpm version named by packageManager in package.json.
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+      - name: Check the Expo token is set
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "::error::Add an Expo access token as the EXPO_TOKEN repository secret (expo.dev, Account settings, Access tokens)."
+            exit 1
+          fi
+      - name: Build tools
+        run: |
+          command -v fastlane >/dev/null || brew install fastlane
+          command -v pod >/dev/null || brew install cocoapods
+          xcodebuild -version
+      - name: Install
+        run: pnpm install --ignore-workspace --frozen-lockfile
+      - name: Typecheck and test
+        run: pnpm run typecheck && pnpm test
+      - name: Build for iPhone on this runner
+        run: npx --yes eas-cli@latest build --local --platform ios --profile testflight --non-interactive --output "$RUNNER_TEMP/commune.ipa"
+      - name: Send to TestFlight
+        run: npx --yes eas-cli@latest submit --platform ios --profile testflight --path "$RUNNER_TEMP/commune.ipa" --non-interactive
