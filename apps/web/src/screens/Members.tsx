@@ -141,7 +141,7 @@ export function MembersScreen() {
     <>
       <div className="a-toolbar">
         <p className="c-toolbar-context">
-          {hub.name} · {hub.members.length} active members
+          {hub.name} · {hub.members.length} active {hub.members.length === 1 ? "member" : "members"}
         </p>
         {isAdmin && (
           <Button onClick={() => go("member-invite")}>

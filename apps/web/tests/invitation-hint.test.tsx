@@ -123,4 +123,11 @@ describe("an invitation sent to another address", () => {
     expect(screen.getByRole("button", { name: "Sign in" })).toBeTruthy();
     expect(hintRequests()).toBe(0);
   });
+
+  it("offers a way back to sign in when a signed-out link has no invitation in it", async () => {
+    signedIn = null;
+    mount("/invite");
+    await screen.findByRole("heading", { name: "Invitation unavailable" });
+    expect(screen.getByRole("link", { name: "Back to sign in" }).getAttribute("href")).toBe("/login");
+  });
 });

@@ -1,11 +1,11 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { useSearch } from "wouter";
+import { Link, useSearch } from "wouter";
 import { AuthLayout } from "./AuthLayout";
 import { useApp } from "../state";
 import type { Hub } from "../data/household";
 import { LIMITS } from "../data/limits";
 import { CommuneLocationFields, EMPTY_COMMUNE_LOCATION } from "../ui/CommuneLocationFields";
-import { rememberReturn } from "../nav";
+import { keepSearch, rememberReturn } from "../nav";
 
 export function InvitePage() {
   const { go, session, authStatus, previewInvite, inviteAddressHint, acceptInvite, signOut } = useApp();
@@ -102,6 +102,8 @@ export function InvitePage() {
               </>
             )}
           </div>
+        ) : !session && !token && authStatus !== "loading" ? (
+          <p className="commune-auth-foot commune-auth-solo"><Link href={keepSearch("/login")} className="commune-auth-link">Back to sign in</Link></p>
         ) : null}
       </div>
     </AuthLayout>

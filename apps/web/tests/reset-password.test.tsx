@@ -71,4 +71,16 @@ describe("Reset password page", () => {
     visit("/reset-password");
     expect(screen.getByText("This reset link is missing a token. Request a new one.")).toBeTruthy();
   });
+
+  it("keeps one main button beside the form, with a quiet link back to sign in", () => {
+    visit("/reset-password?token=reset-token-4");
+    expect(screen.getByRole("button", { name: "Reset password" }).className).toBe("commune-auth-btn");
+    expect(screen.getByRole("link", { name: "Back to sign in" }).className).toBe("commune-auth-link");
+    cleanup();
+    sessionStorage.clear();
+    visit("/reset-password");
+    // With nothing else to do, going back is the main button.
+    expect(screen.getByRole("link", { name: "Back to sign in" }).className).toBe("commune-auth-btn");
+  });
 });
+
