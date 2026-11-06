@@ -53,7 +53,7 @@ function demoData(today: string): Snapshot[] {
     })));
   const links = {
     [id("maya")]: [{ provider: "monzo", handle: "mayachen" }, { provider: "paypal", handle: "mayachen" }],
-    [id("sam")]: [{ provider: "monzo", handle: "samokafor" }, { provider: "bank", accountName: "Sam Okafor", sortCode: "204577", accountNumber: "41029388" }],
+    [id("sam")]: [{ provider: "monzo", handle: "samokafor", preferred: true }, { provider: "bank", accountName: "Sam Okafor", sortCode: "204577", accountNumber: "41029388" }],
     [id("jordan")]: [{ provider: "paypal", handle: "jordanhale" }, { provider: "revolut", handle: "jordanhale" }],
     [id("alex")]: [{ provider: "bank", accountName: "Alex Rivera", sortCode: "040004", accountNumber: "17722610" }],
   };
@@ -85,9 +85,9 @@ function demoData(today: string): Snapshot[] {
       expenses: parkExpenses,
       funds: [], notifications: [], reminderTargets: nudges(parkExpenses),
       notes: [
-        { id: "note-bins", title: "Bin days", lede: "Black bin Thursday, recycling every other Monday." },
-        { id: "note-wifi", title: "Wi-Fi", lede: "ParkStreet-5G. The password is on the router." },
-        { id: "note-boiler", title: "Boiler", lede: "Reset button under the panel. Engineer: 020 7946 0182." },
+        { id: "note-bins", title: "Bin days", pill: "Bins", lede: "Black bin Thursday, recycling every other Monday.", facts: [["Black", "Thursday"], ["Recycling", "Every other Monday"]] },
+        { id: "note-wifi", title: "Wi-Fi", pill: "Wi-Fi", lede: "ParkStreet-5G. The password is on the router.", facts: [["Network", "ParkStreet-5G"], ["Password", "plantpot-42"]] },
+        { id: "note-boiler", title: "Boiler", pill: "Emergency", lede: "Reset button under the panel. Engineer: 020 7946 0182.", facts: [["Reset", "Button under the panel"], ["Engineer", "020 7946 0182"]] },
       ],
       operations: [
         op("op-bins", "Put the bins out", -1, "maya", ["maya", "jordan", "alex", "sam"]),
@@ -133,6 +133,8 @@ const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 export function demoBackend(now: () => string = todayIso): Backend {
   let signedIn = true;
   let data = demoData(now());
+  // What a completion changed, so Undo can put it back.
+  const undone = new Map<string, { snapshot: Snapshot; before: Operation; events: NonNullable<Snapshot["activityEvents"]> }>();
   const find = (shareId: string) => {
     for (const snapshot of data) for (const item of snapshot.expenses) {
       const share = item.shares.find((candidate) => candidate.id === shareId);
@@ -187,19 +189,35 @@ export function demoBackend(now: () => string = todayIso): Backend {
       const { report } = findReport(reportId);
       if (report.status === "pending") report.status = "withdrawn";
     },
-    async completeTask(operationId) {
+    async completeTask(operationId, input) {
       for (const snapshot of data) {
         const item = snapshot.operations?.find((candidate) => candidate.id === operationId);
         if (!item) continue;
+        if (item.status !== "open") throw new ApiError("This task is already done", 409);
+        if (input.expectedDate !== item.date) throw new ApiError("This task has already moved on. Refresh to see who has it now.", 409);
+        if (item.assigneeId && item.assigneeId !== MAYA.id && !input.doneBy) {
+          throw new ApiError("Say whether you did it or they did.", 400);
+        }
+        const occurrenceId = `occ-${newId()}`;
+        undone.set(occurrenceId, { snapshot, before: clone(item), events: snapshot.activityEvents ?? [] });
         const rota = item.rotationIds ?? [];
-        if (item.repeat === "none" || !rota.length) { item.status = "done"; return; }
-        const next = rota[(rota.indexOf(item.assigneeId ?? "") + 1) % rota.length];
-        item.assigneeId = next;
-        item.date = addDays(item.date, item.repeat === "weekly" ? 7 : 30);
+        if (item.repeat === "none" || !rota.length) item.status = "done";
+        else {
+          item.assigneeId = rota[(rota.indexOf(item.assigneeId ?? "") + 1) % rota.length];
+          item.date = addDays(item.date, item.repeat === "weekly" ? 7 : 30);
+        }
+        item.undoOccurrenceId = occurrenceId;
         snapshot.activityEvents = [{ id: newId(), actorId: MAYA.id, kind: "operations", entityId: item.id, title: item.title, description: "Task completed", createdAt: new Date().toISOString() }, ...(snapshot.activityEvents ?? [])];
-        return;
+        return occurrenceId;
       }
       throw new ApiError("That task is no longer here", 404);
+    },
+    async undoCompletion(occurrenceId) {
+      const saved = undone.get(occurrenceId);
+      if (!saved) throw new ApiError("That can no longer be undone", 409);
+      undone.delete(occurrenceId);
+      saved.snapshot.operations = (saved.snapshot.operations ?? []).map((item) => (item.id === saved.before.id ? saved.before : item));
+      saved.snapshot.activityEvents = saved.events;
     },
     async addExpense(communeId, input) {
       const snapshot = data.find((candidate) => candidate.commune.id === communeId);
@@ -236,11 +254,16 @@ export function demoBackend(now: () => string = todayIso): Backend {
       } else if (!/^[A-Za-z0-9._-]{1,40}$/.test(handle)) {
         throw new ApiError("Enter your username: letters, numbers, dots, dashes or underscores, up to 40", 400);
       }
+      const kept = myLinks().find((item) => item.provider === provider)?.preferred ?? false;
       const link: PayLink = provider === "bank"
-        ? { provider, handle: null, accountName: input.accountName!.trim(), sortCode, accountNumber }
-        : { provider, handle, accountName: null, sortCode: null, accountNumber: null };
+        ? { provider, handle: null, accountName: input.accountName!.trim(), sortCode, accountNumber, preferred: kept }
+        : { provider, handle, accountName: null, sortCode: null, accountNumber: null, preferred: kept };
       return setMyLinks(parsePayLinks([...myLinks().filter((item) => item.provider !== provider), link]));
     },
     async removePayLink(provider) { return setMyLinks(myLinks().filter((item) => item.provider !== provider)); },
+    async setPreferredPayLink(provider) {
+      if (provider && !myLinks().some((item) => item.provider === provider)) throw new ApiError("Add that way to be paid before making it your favourite", 400);
+      return setMyLinks(parsePayLinks(myLinks().map((item) => ({ ...item, preferred: item.provider === provider }))));
+    },
   };
 }

@@ -602,6 +602,14 @@ route("PUT", /^\/api\/pay-links\/(monzo|paypal|revolut|bank)$/, async (req, res,
   send(res, { links: result.rows[0].links });
 });
 
+// The favourite way to be paid, or none (provider null).
+route("PUT", /^\/api\/pay-links-preferred$/, async (req, res) => {
+  const input = await body(req);
+  const result = await userAction(req, async (client) => client.query(
+    "SELECT public.set_preferred_pay_link($1) AS links", [optionalText(input.provider, "provider", 20)]));
+  send(res, { links: result.rows[0].links });
+});
+
 route("DELETE", /^\/api\/pay-links\/(monzo|paypal|revolut|bank)$/, async (req, res, match) => {
   const result = await userAction(req, async (client) => client.query(
     "SELECT public.remove_pay_link($1) AS links", [match[1]]));

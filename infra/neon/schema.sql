@@ -708,8 +708,8 @@ CREATE FUNCTION commune_private.pay_links_for(p_user_id text) RETURNS jsonb
     AS $$
   SELECT coalesce(jsonb_agg(jsonb_build_object('provider', l.provider, 'handle', l.handle,
       'accountName', l.account_name, 'sortCode', l.sort_code, 'accountNumber', l.account_number,
-      'updatedAt', l.updated_at)
-    ORDER BY array_position(ARRAY['monzo', 'paypal', 'revolut', 'bank'], l.provider)), '[]'::jsonb)
+      'preferred', l.preferred, 'updatedAt', l.updated_at)
+    ORDER BY l.preferred DESC, array_position(ARRAY['monzo', 'paypal', 'revolut', 'bank'], l.provider)), '[]'::jsonb)
   FROM public.member_pay_links l WHERE l.user_id = p_user_id;
 $$;
 
@@ -3923,6 +3923,37 @@ $_$;
 
 
 --
+-- Name: set_preferred_pay_link(text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.set_preferred_pay_link(p_provider text) RETURNS jsonb
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public', 'pg_temp'
+    AS $$
+DECLARE
+  v_actor text := commune_private.data_api_user_id();
+  v_provider text := nullif(lower(btrim(coalesce(p_provider, ''))), '');
+BEGIN
+  IF v_actor IS NULL THEN
+    RAISE EXCEPTION 'Sign in to change how people pay you' USING ERRCODE = '42501';
+  END IF;
+  IF v_provider IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM public.member_pay_links WHERE user_id = v_actor AND provider = v_provider
+  ) THEN
+    RAISE EXCEPTION 'Add that way to be paid before making it your favourite' USING ERRCODE = '22023';
+  END IF;
+  UPDATE public.member_pay_links SET preferred = false
+    WHERE user_id = v_actor AND preferred AND provider IS DISTINCT FROM v_provider;
+  IF v_provider IS NOT NULL THEN
+    UPDATE public.member_pay_links SET preferred = true
+      WHERE user_id = v_actor AND provider = v_provider AND NOT preferred;
+  END IF;
+  RETURN commune_private.pay_links_for(v_actor);
+END;
+$$;
+
+
+--
 -- Name: set_recurring_bill_archived(uuid, boolean); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -5228,6 +5259,7 @@ CREATE TABLE public.member_pay_links (
     sort_code text,
     account_number text,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    preferred boolean DEFAULT false NOT NULL,
     CONSTRAINT member_pay_links_account_name_check CHECK (((length(btrim(account_name)) >= 1) AND (length(btrim(account_name)) <= 60))),
     CONSTRAINT member_pay_links_account_number_check CHECK ((account_number ~ '^[0-9]{8}$'::text)),
     CONSTRAINT member_pay_links_check CHECK (
@@ -6011,6 +6043,13 @@ CREATE INDEX invitation_email_recipient_idx ON public.invitation_email_deliverie
 --
 
 CREATE INDEX invitation_email_sender_idx ON public.invitation_email_deliveries USING btree (sender_id, created_at);
+
+
+--
+-- Name: member_pay_links_one_preferred; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX member_pay_links_one_preferred ON public.member_pay_links USING btree (user_id) WHERE preferred;
 
 
 --
@@ -8432,6 +8471,14 @@ REVOKE ALL ON FUNCTION public.set_limit(real) FROM PUBLIC;
 
 REVOKE ALL ON FUNCTION public.set_pay_link(p_provider text, p_handle text, p_account_name text, p_sort_code text, p_account_number text) FROM PUBLIC;
 GRANT ALL ON FUNCTION public.set_pay_link(p_provider text, p_handle text, p_account_name text, p_sort_code text, p_account_number text) TO authenticated;
+
+
+--
+-- Name: FUNCTION set_preferred_pay_link(p_provider text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.set_preferred_pay_link(p_provider text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.set_preferred_pay_link(p_provider text) TO authenticated;
 
 
 --

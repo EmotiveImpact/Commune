@@ -1,4 +1,4 @@
-import { useId, useRef, useState, type FormEvent } from "react";
+import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { useApp } from "../state";
 import { money, type CurrencyCode, type PaymentReport, type Receipt, type Share } from "../live/model";
 import { moneyInputError, parseMoneyInput } from "../data/moneyInput";
@@ -9,7 +9,8 @@ import { formatReminderDay, formatTimestampDay } from "../data/reminders";
 import { LIMITS } from "../data/limits";
 import { Button, Dialog, Feedback, Field, useFormError } from "./components";
 import { firstWord, showToast, type Toast } from "./Toast";
-import { PayeeLinks } from "./PayLinks";
+import { PayeeLinks, PaySheet } from "./PayLinks";
+import { PAY_PROVIDER_NAME, type PayLink } from "../data/payLinks";
 
 export const RECEIPT_REFERENCE_MAX = 80;
 // communeId names the commune the share is in, when that may not be the open
@@ -377,6 +378,51 @@ export function LatestReportAnswer({ share, currency, viewerId, names }: {
 }
 
 /**
+ * Back from paying in their app: did it go? Yes records the whole amount as
+ * sent today with the app's name as the reference; a different amount opens
+ * the full form; not yet changes nothing.
+ */
+export function DidItGoDialog({ target, provider, onClose, onDifferent, onReported }: {
+  target: PaymentReportTarget; provider: string; onClose: () => void; onDifferent: () => void; onReported: (toast: Toast) => void;
+}) {
+  const { reportSharePayment } = useApp();
+  const [pending, setPending] = useState(false);
+  const [uncertain, setUncertain] = useState(false);
+  const [error, setError] = useState("");
+  const requestId = useRef(newRequestId());
+  const amount = money(target.outstandingMinor, target.currency);
+  const first = firstWord(target.payerName);
+  async function yes() {
+    if (pending) return;
+    setPending(true); setError("");
+    try {
+      const result = await reportSharePayment(target.shareId,
+        { amountMinor: target.outstandingMinor, sentOn: todayIso(), reference: provider, requestId: requestId.current }, target.communeId);
+      onReported({ text: result.duplicate ? `Already recorded. ${first} will confirm your ${amount}.` : `Recorded. ${first} will confirm your ${amount}.` });
+    } catch (cause) {
+      const failure = commandFailure(cause, "Could not report the payment.");
+      if (!failure.rejected) setUncertain(true);
+      setError(!failure.rejected ? UNCERTAIN_RETRY_SAFE
+        : uncertain ? "An earlier attempt may already have been reported. Close this and check the expense before trying again."
+          : `${failure.message.replace(/\.$/, "")}. Nothing was reported.`);
+    } finally {
+      setPending(false);
+    }
+  }
+  return <Dialog title={`Did ${amount} go to ${first}?`} pending={pending} onClose={onClose} className="c-receipt-dialog c-pay-back">
+    <p className="c-receipt-context">{target.expenseName} · paid with {provider}, today</p>
+    <p className="c-pay-intro">You opened {provider} a moment ago. If it went through, tell {first} so they can confirm it.</p>
+    <Feedback error={error} />
+    <div className="a-field-row">
+      <Button busy={pending} onClick={() => void yes()}>{pending ? "Recording…" : `Yes, tell ${first}`}</Button>
+      <Button variant="secondary" disabled={pending} onClick={onDifferent}>Paid a different amount</Button>
+      <Button variant="secondary" disabled={pending} onClick={onClose}>Not yet</Button>
+    </div>
+    <p className="c-receipt-note">Your share stays open until {first} confirms they received it.</p>
+  </Dialog>;
+}
+
+/**
  * One place to open the receipt and report dialogs from any screen. What was
  * recorded is said in the toast; onError gets what could not be done, to show
  * beside the list it is about. View opens the expense, unless the dialogs
@@ -396,6 +442,34 @@ export function useReceiptActions(onError: (message: string) => void, options: {
   const [reporting, setReporting] = useState<PaymentReportTarget | null>(null);
   const [answering, setAnswering] = useState<ReportAnswerTarget | null>(null);
   const [withdrawing, setWithdrawing] = useState(false);
+  // Paying: the sheet of their ways to be paid, then, once the person has
+  // left for their app and come back, a question whether it went.
+  const [paying, setPaying] = useState<PaymentReportTarget | null>(null);
+  const [away, setAway] = useState<{ target: PaymentReportTarget; provider: string } | null>(null);
+  const [asking, setAsking] = useState<{ target: PaymentReportTarget; provider: string } | null>(null);
+  useEffect(() => {
+    if (!away) return undefined;
+    let left = false;
+    const leave = () => { left = true; };
+    const back = () => {
+      if (!left || document.visibilityState === "hidden") return;
+      setAsking(away);
+      setAway(null);
+    };
+    const visibility = () => (document.visibilityState === "hidden" ? leave() : back());
+    window.addEventListener("blur", leave);
+    window.addEventListener("focus", back);
+    document.addEventListener("visibilitychange", visibility);
+    return () => {
+      window.removeEventListener("blur", leave);
+      window.removeEventListener("focus", back);
+      document.removeEventListener("visibilitychange", visibility);
+    };
+  }, [away]);
+  function opened(target: PaymentReportTarget, link: PayLink) {
+    setPaying(null);
+    setAway({ target, provider: PAY_PROVIDER_NAME[link.provider] });
+  }
   async function withdraw(report: PaymentReport) {
     if (withdrawing) return;
     setWithdrawing(true);
@@ -411,6 +485,11 @@ export function useReceiptActions(onError: (message: string) => void, options: {
     }
   }
   const dialogs = <>
+    {paying && <PaySheet key={paying.shareId} target={paying} onClose={() => setPaying(null)}
+      onTell={() => { const target = paying; setPaying(null); setReporting(target); }} onOpened={(link) => opened(paying, link)} />}
+    {asking && <DidItGoDialog key={`${asking.target.shareId}-back`} target={asking.target} provider={asking.provider} onClose={() => setAsking(null)}
+      onDifferent={() => { const target = asking.target; setAsking(null); setReporting(target); }}
+      onReported={toast => { setAsking(null); done(toast); }} />}
     {reporting && <ReportPaymentDialog key={reporting.shareId} target={reporting} onClose={() => setReporting(null)}
       onReported={toast => { setReporting(null); done(toast); }} />}
     {answering && <AnswerReportDialog key={`${answering.report.id}-${answering.decision}`} target={answering} onClose={() => setAnswering(null)}
@@ -422,6 +501,10 @@ export function useReceiptActions(onError: (message: string) => void, options: {
   </>;
   return {
     record: setRecording, reverse: setReversing, report: setReporting, answer: setAnswering, withdraw, dialogs,
-    busy: recording !== null || reversing !== null || reporting !== null || answering !== null || withdrawing,
+    /** Opens "Pay Tom £5.90": every way they take money. */
+    pay: setPaying,
+    /** One of their apps was opened from the page itself: ask on the way back. */
+    opened,
+    busy: recording !== null || reversing !== null || reporting !== null || answering !== null || withdrawing || paying !== null || asking !== null,
   };
 }

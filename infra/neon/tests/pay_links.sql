@@ -1,5 +1,5 @@
 -- Run only in an empty disposable local DB after local_auth_stub.sql and
--- migrations 0001 through 0025 and 0042. Real Neon verification must use signed JWTs.
+-- migrations 0001 through 0025, 0042 and 0043. Real Neon verification must use signed JWTs.
 BEGIN;
 
 DO $$
@@ -124,8 +124,28 @@ BEGIN
   IF jsonb_array_length(v_links) <> 3 OR v_links->0->>'handle' <> 'alicehale' THEN
     RAISE EXCEPTION 'Bob changed Alice''s links: %', v_links;
   END IF;
+  -- A favourite comes first; marking another moves it, and nothing clears it.
+  v_links := public.set_preferred_pay_link('bank');
+  IF v_links->0->>'provider' <> 'bank' OR (v_links->0->>'preferred')::boolean IS NOT TRUE
+    OR (SELECT count(*) FROM jsonb_array_elements(v_links) e WHERE (e->>'preferred')::boolean) <> 1 THEN
+    RAISE EXCEPTION 'Bank was not made the favourite: %', v_links;
+  END IF;
+  v_links := public.set_preferred_pay_link('PayPal');
+  IF v_links->0->>'provider' <> 'paypal'
+    OR (SELECT count(*) FROM jsonb_array_elements(v_links) e WHERE (e->>'preferred')::boolean) <> 1 THEN
+    RAISE EXCEPTION 'The favourite did not move to PayPal: %', v_links;
+  END IF;
+  BEGIN PERFORM public.set_preferred_pay_link('revolut');
+    RAISE EXCEPTION 'A link Alice has not added became her favourite';
+  EXCEPTION WHEN SQLSTATE '22023' THEN NULL; END;
+  v_links := public.set_preferred_pay_link(NULL);
+  IF v_links->0->>'provider' <> 'monzo' OR v_links @> '[{"preferred":true}]' THEN
+    RAISE EXCEPTION 'Clearing the favourite did not restore the usual order: %', v_links;
+  END IF;
+  PERFORM public.set_preferred_pay_link('paypal');
+  -- Removing the favourite leaves none.
   v_links := public.remove_pay_link('paypal');
-  IF jsonb_array_length(v_links) <> 2 OR v_links @> '[{"provider":"paypal"}]' THEN
+  IF jsonb_array_length(v_links) <> 2 OR v_links @> '[{"provider":"paypal"}]' OR v_links @> '[{"preferred":true}]' THEN
     RAISE EXCEPTION 'PayPal was not removed: %', v_links;
   END IF;
   v_links := public.remove_pay_link('paypal');

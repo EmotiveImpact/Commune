@@ -229,4 +229,25 @@
   .c-pay-copy { flex: 1 1 calc(100% - 40px); }
   .c-pay-link .a-btn:first-of-type { margin-left: 40px; }
 }
+
+/* Ways to pay someone, beside a payment you owe them. */
+/* Paying: the main button (their favourite way, or "Pay Tom"), what else
+   there is, and the way to say it was already paid. */
+.c-pay-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 46px; padding: 0 20px; border: 0; border-radius: var(--radius-control); background: var(--action); color: var(--on-action); font: inherit; font-size: 15px; font-weight: 600; text-decoration: none; cursor: pointer; }
+.c-pay-primary:hover { background: var(--action-hover); }
+.c-pay-primary:focus-visible, .c-pay-secondary:focus-visible, .c-pay-tell:focus-visible { outline: 2px solid var(--action); outline-offset: 2px; }
+.c-pay-primary:disabled, .c-pay-primary[aria-disabled="true"], .c-pay-secondary:disabled, .c-pay-tell:disabled { opacity: .45; cursor: not-allowed; }
+.c-pay-more { display: inline-flex; flex-wrap: wrap; gap: 8px; }
+.c-pay-secondary { min-height: 46px; padding: 0 18px; border: 1px solid var(--border); border-radius: var(--radius-control); background: transparent; color: var(--ink); font: inherit; font-size: 14.5px; font-weight: 600; cursor: pointer; }
+.c-pay-hint { flex-basis: 100%; margin: 0; font-size: 12.5px; line-height: 18px; color: var(--ink-soft); }
+.c-pay-tell { min-height: 44px; padding: 0 4px; border: 0; background: none; color: var(--action); font: inherit; font-size: 14.5px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.c-pay-intro { margin: 0 0 12px; font-size: 14px; line-height: 1.5; color: var(--ink-soft); }
+@media (max-width: 560px) {
+  .c-pay-primary { flex: 1 1 100%; height: 50px; font-size: 16px; }
+  .c-pay-more { flex: 1 1 100%; }
+  .c-pay-more .c-pay-secondary { flex: 1 1 0; }
+  .c-pay-hint { text-align: center; }
+  .c-pay-tell { flex: 1 1 100%; }
+}
+.c-pay-favourite { color: var(--action); font-weight: 600; }
 }

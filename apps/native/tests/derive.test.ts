@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { demoBackend } from "../src/lib/demo";
-import { needs, owedTotals, oweTotals, recorded, settle, standing, statusFor, waiting } from "../src/lib/derive";
+import { aheadBy, essentials, feed, hubMoneyLine, needs, owedTotals, oweTotals, people, recorded, settle, standing, standingClause, statusFor, tilePulse, waiting, week, weekSentence } from "../src/lib/derive";
 import { equalShares, moneyList, parseAmount } from "../src/lib/format";
-import { payLinkHref } from "../src/lib/payLinks";
+import { parsePayLinks, payLinkHref } from "../src/lib/payLinks";
 import type { Snapshot } from "../src/lib/types";
 
 // Saturday 11 October 2026, the prototype's day.
@@ -90,5 +90,105 @@ describe("helpers", () => {
   it("fills the amount into a Monzo link", () => {
     expect(payLinkHref({ provider: "monzo", handle: "samokafor", accountName: null, sortCode: null, accountNumber: null }, 1600, "GBP", "Printer ink"))
       .toEqual({ href: "https://monzo.me/samokafor/16.00?d=Printer%20ink", amountFilled: true });
+  });
+});
+
+describe("the Hub at a glance", () => {
+  const park = (snapshots: Snapshot[]) => snapshots.find((item) => item.commune.id === "demo-park")!;
+
+  it("tells one money story: what you owe, what you're owed, and where that leaves you", async () => {
+    const { user, snapshots } = await load();
+    const owe = oweTotals(needs(snapshots, user.id, TODAY));
+    const owed = owedTotals(waiting(snapshots, user.id, TODAY));
+    expect(aheadBy(owe, owed)).toEqual([{ currency: "GBP", netMinor: 18180 - 8935 }]);
+    expect(standingClause({ currency: "GBP", netMinor: 9245 }, true)).toBe("so in pounds you’re £92.45 ahead");
+    expect(hubMoneyLine(7335, 18180, "GBP")).toBe("You’re also owed £181.80, so you’re £108.45 ahead overall.");
+    expect(hubMoneyLine(2000, 500, "GBP")).toBe("You’re also owed £5.00, so you owe £15.00 overall.");
+  });
+
+  it("lays out the week with late jobs first and bills on their day", async () => {
+    const { user, snapshots } = await load();
+    const value = week(park(snapshots), user.id, TODAY);
+    expect(value.late.map((item) => [item.title, item.who])).toEqual([["Put the bins out", "You"]]);
+    expect(value.days.map((day) => day.items.map((item) => item.title))).toEqual([
+      ["Hoover the stairs"], [], [], ["Water the plants"], ["British Gas"], ["Clear the gutters"], ["Cleaning supplies"],
+    ]);
+    expect(value.days[4].items[0]).toMatchObject({ kind: "bill", amountMinor: 16800, yourShareMinor: 4200, who: "Jordan" });
+    expect(value.days[5].items[0]).toMatchObject({ who: "Nobody yet", assigneeId: null });
+    expect(weekSentence(value)).toBe("1 late, 1 due today and 2 bills due this week.");
+  });
+
+  it("gives each person their balance with you, counting a payment they say they sent until it is confirmed", async () => {
+    const { user, snapshots } = await load();
+    expect(people(park(snapshots), user.id, TODAY).map((line) => [line.name, line.balance, line.job])).toEqual([
+      ["You", "£108.45 ahead", "Put the bins out · late"],
+      ["Jordan Hale", "Owes you £5.10", "Water the plants · Wed"],
+      ["Alex Rivera", "Owes you £48.60", "Nothing this week"],
+      ["Sam Okafor", "Owes you £54.75", "Nothing this week"],
+    ]);
+  });
+
+  it("puts emergency details first and keeps passwords marked secret", async () => {
+    const { snapshots } = await load();
+    const items = essentials(park(snapshots));
+    expect(items.map((item) => item.title)).toEqual(["Boiler", "Wi-Fi", "Bin days"]);
+    expect(items[0].facts.find((fact) => fact.label === "Engineer")).toMatchObject({ phone: true, secret: false });
+    expect(items[1].facts.find((fact) => fact.label === "Password")).toMatchObject({ secret: true, phone: false });
+  });
+
+  it("gives each commune tile a short pulse", async () => {
+    const { user, snapshots } = await load();
+    expect(snapshots.map((snapshot) => tilePulse(snapshot, user.id, TODAY))).toEqual([
+      { text: "1 late chore · 2 overdue bills", late: true },
+      { text: "1 overdue bill", late: true },
+      { text: "Apartment due in 12 days", late: false },
+    ]);
+  });
+
+  it("writes the amount into a payment someone says they sent", async () => {
+    const { user, snapshots } = await load();
+    expect(feed(snapshots, user.id, 10).map((item) => item.text)).toContain("said they paid you £21.60 for Big Tesco shop.");
+  });
+
+  it("can undo marking a task done", async () => {
+    const { backend } = await load();
+    const before = (await backend.snapshot((await backend.communes())[0])).operations!.find((item) => item.id === "op-hoover")!;
+    const occurrenceId = await backend.completeTask("op-hoover", { expectedDate: before.date, today: TODAY, requestId: "r1" });
+    const moved = (await backend.snapshot((await backend.communes())[0])).operations!.find((item) => item.id === "op-hoover")!;
+    expect(moved.date).not.toBe(before.date);
+    await backend.undoCompletion(occurrenceId!);
+    const back = (await backend.snapshot((await backend.communes())[0])).operations!.find((item) => item.id === "op-hoover")!;
+    expect(back).toMatchObject({ date: before.date, assigneeId: before.assigneeId, status: "open" });
+  });
+
+  it("asks who did someone else's task", async () => {
+    const { backend } = await load();
+    const plants = (await backend.snapshot((await backend.communes())[0])).operations!.find((item) => item.id === "op-plants")!;
+    await expect(backend.completeTask("op-plants", { expectedDate: plants.date, today: TODAY, requestId: "r2" })).rejects.toThrow("did it");
+    await expect(backend.completeTask("op-plants", { expectedDate: plants.date, today: TODAY, requestId: "r3", doneBy: "assignee" })).resolves.toMatch(/^occ-/);
+  });
+});
+
+describe("a favourite way to be paid", () => {
+  it("puts the favourite first and keeps the usual order after it", () => {
+    const links = parsePayLinks([
+      { provider: "bank", accountName: "Tom Reid", sortCode: "204577", accountNumber: "12345678" },
+      { provider: "paypal", handle: "tomreid", preferred: true },
+      { provider: "monzo", handle: "tomreid" },
+    ]);
+    expect(links.map((link) => link.provider)).toEqual(["paypal", "monzo", "bank"]);
+    expect(links[0].preferred).toBe(true);
+    expect(links[1].preferred).toBe(false);
+  });
+
+  it("only lets you favourite a way you have added, and clears it with null", async () => {
+    const backend = demoBackend();
+    await backend.signIn("maya@example.test", "x");
+    await expect(backend.setPreferredPayLink("revolut")).rejects.toThrow();
+    await backend.savePayLink("monzo", { handle: "maya" });
+    const marked = await backend.setPreferredPayLink("monzo");
+    expect(marked.find((link) => link.provider === "monzo")?.preferred).toBe(true);
+    const cleared = await backend.setPreferredPayLink(null);
+    expect(cleared.some((link) => link.preferred)).toBe(false);
   });
 });

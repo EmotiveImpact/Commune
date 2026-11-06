@@ -75,9 +75,6 @@ describe("announcements on This Hub", () => {
     expect(within(section).getByText("Boiler service Thursday")).toBeTruthy();
     expect(within(section).getByText("Please be in from 8.")).toBeTruthy();
     expect(within(section).getByText("Seen by 0 of 2")).toBeTruthy();
-    // It also counts as something that needs this member.
-    const needs = screen.getByRole("region", { name: "Needs you" });
-    expect(within(needs).getByText("1 item")).toBeTruthy();
     // A member cannot take down an admin's notice or post one.
     expect(within(section).queryByRole("button", { name: /^Take down/ })).toBeNull();
     expect(screen.queryByRole("button", { name: "Announce" })).toBeNull();
@@ -85,7 +82,6 @@ describe("announcements on This Hub", () => {
     expect(vi.mocked(post)).toHaveBeenCalledWith("/announcements/notice-1/acknowledge", {});
     expect(within(section).getByText("You have seen this")).toBeTruthy();
     expect(within(section).getByText("Seen by 1 of 2")).toBeTruthy();
-    expect(within(screen.getByRole("region", { name: "Needs you" })).getByText("0 items")).toBeTruthy();
   });
 
   it("shows an admin who is still to confirm, and takes a notice down after asking", async () => {

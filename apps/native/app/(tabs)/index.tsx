@@ -1,12 +1,12 @@
 import { ImageBackground, RefreshControl, Text, View } from "react-native";
 import { useState } from "react";
-import { comingUp, hasAny } from "../../src/lib/derive";
-import { cap, feedTime, firstName, longDate, money, moneyList, plural, word } from "../../src/lib/format";
+import { aheadBy, comingUp, hasAny, oweTotals, standingClause, type Need } from "../../src/lib/derive";
+import { cap, feedTime, firstName, joinAnd, longDate, money, moneyList, plural, word } from "../../src/lib/format";
 import type { CurrencyCode } from "../../src/lib/types";
 import { useApp } from "../../src/state";
 import { Body, TopBar, photoOf } from "../../src/ui/chrome";
 import { Avatar, Cal, Panel, Row, SectionHead, T } from "../../src/ui/kit";
-import { CommuneTiles, NeedsList, NextStep, WaitingRow } from "../../src/ui/parts";
+import { CommuneTiles, NeedsList, NextStep, TaskCheck, WaitingRow } from "../../src/ui/parts";
 import { useTheme } from "../../src/ui/theme";
 
 /** Home, Direction B: your standing on the dark band, the next step raised over it. */
@@ -20,7 +20,7 @@ export default function Home() {
   const lateText = late ? `${cap(plural(late, "thing is", "things are"))} overdue.` : "Nothing is overdue.";
   const oweCurrencies = Object.keys(owe).filter((key) => (owe[key as CurrencyCode] ?? 0) > 0) as CurrencyCode[];
   const places = [...new Set(needs.filter((need) => need.kind === "share").map((need) => need.communeId))];
-  const chores = needs.filter((need) => need.kind === "task").length;
+  const choresLeft = needs.filter((need) => need.kind === "task").length;
 
   if (!needs.length && !hasAny(owed)) {
     const photo = snapshots[0] ? photoOf(snapshots[0].commune.kind) : undefined;
@@ -52,10 +52,16 @@ export default function Home() {
       ? <>You owe <Em>{moneyList(owe)}</Em>.</>
       : <>You owe <Em>{money(owe[oweCurrencies[0]]!, oweCurrencies[0])}</Em> {places.length > 1 ? `across ${word(places.length)} communes` : `in ${app.snapshotOf(places[0])?.commune.name ?? "one commune"}`}.</>
     : hasAny(owed) ? <>You’re owed <Em>{moneyList(owed)}</Em>.</> : <>You owe nothing.</>;
+  // Where you stand once both directions count, kept per currency.
+  const many = new Set([...oweCurrencies, ...(Object.keys(owed) as CurrencyCode[]).filter((key) => (owed[key] ?? 0) > 0)]).size > 1;
+  const net = joinAnd(aheadBy(owe, owed).map((item) => standingClause(item, many)));
   const sub = oweCurrencies.length
-    ? `${hasAny(owed) ? `You’re owed ${moneyList(owed)}. ` : ""}${lateText}`
-    : `You owe nothing. ${chores ? `${cap(plural(chores, "chore is", "chores are"))} left.` : "Nothing needs you."}`;
+    ? `${hasAny(owed) ? `You’re owed ${moneyList(owed)}, ${net}. ` : ""}${lateText}`
+    : `You owe nothing. ${choresLeft ? `${cap(plural(choresLeft, "chore is", "chores are"))} left.` : "Nothing needs you."}`;
   const rest = needs.slice(1);
+  const chores = rest.filter((need): need is Extract<Need, { kind: "task" }> => need.kind === "task");
+  const toPay = rest.filter((need) => need.kind === "share");
+  const toPayTotal = moneyList(oweTotals(toPay));
 
   return <View style={{ flex: 1, backgroundColor: c.canvas }}>
     <TopBar />
@@ -68,9 +74,18 @@ export default function Home() {
       <View style={{ marginTop: -46, marginHorizontal: 16 }}><NextStep need={needs[0]} total={needs.length} /></View>
       <View style={{ padding: 16, paddingTop: 24, gap: 24 }}>
         <View style={{ gap: 12 }}><SectionHead title="Your communes" /><CommuneTiles /></View>
-        {rest.length ? <View style={{ gap: 12 }}>
-          <SectionHead title="Needs you" count={rest.length} />
-          <Panel><NeedsList items={rest} initial={2} /></Panel>
+        {chores.length ? <View style={{ gap: 12 }}>
+          <SectionHead title="Today" count={chores.length} />
+          <Panel>{chores.map((need, index) => {
+            const snapshot = app.snapshotOf(need.communeId);
+            return <TaskCheck key={need.key} first={index === 0} communeId={need.communeId} operationId={need.operationId} date={need.date}
+              title={need.title} assigneeId={user?.id ?? null} assigneeName={user?.name ?? "You"} late={need.band === "Overdue"}
+              meta={`${snapshot?.commune.name ?? ""} · ${need.band === "Overdue" ? need.status.text.toLowerCase() : "today"}`} />;
+          })}</Panel>
+        </View> : null}
+        {toPay.length ? <View style={{ gap: 12 }}>
+          <SectionHead title="Still to pay" count={toPay.length} right={toPayTotal ? <T kind="label" muted>{toPayTotal}</T> : undefined} />
+          <Panel><NeedsList items={toPay} initial={4} /></Panel>
         </View> : null}
         {waiting.length ? <View style={{ gap: 12 }}>
           <SectionHead title="Waiting on others" count={waiting.length} />

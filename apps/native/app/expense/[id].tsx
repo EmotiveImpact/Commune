@@ -1,19 +1,19 @@
 import { useState } from "react";
 import { View } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { Check } from "lucide-react-native";
 import { memberName, outstanding, pendingReport, statusFor } from "../../src/lib/derive";
 import { dayDate, firstName, money, shortDate } from "../../src/lib/format";
 import { failure, useApp } from "../../src/state";
 import { Body, Pad } from "../../src/ui/chrome";
 import { Avatar, Badge, Button, Cal, Kicker, Panel, Row, State, T } from "../../src/ui/kit";
+import { PayPrimary } from "../../src/ui/pay";
 import { useToast } from "../../src/ui/toast";
 import { useTheme } from "../../src/ui/theme";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function ExpenseDetail() {
   const { c } = useTheme();
-  const router = useRouter();
   const toast = useToast();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -81,8 +81,7 @@ export default function ExpenseDetail() {
       </Pad>
     </Body>
     {iOwe && mine ? <View style={{ padding: 16, paddingBottom: Math.max(insets.bottom, 16), gap: 8, backgroundColor: c.canvas, borderTopWidth: 1, borderTopColor: c.outline }}>
-      <Button size="lg" block label={`I’ve paid ${firstName(payer)} ${money(outstanding(mine), currency)}`} onPress={() => router.push(`/record/${mine.id}`)} />
-      <T kind="note" muted>Pay {firstName(payer)} however you usually do, then record it here.</T>
+      <PayPrimary target={{ shareId: mine.id, communeId: snapshot.commune.id, payerId: expense.paidByUserId, payerName: memberName(snapshot, expense.paidByUserId), amountMinor: outstanding(mine), currency, title: expense.title }} />
     </View> : null}
   </View>;
 }

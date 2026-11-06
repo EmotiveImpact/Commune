@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Alert, Platform, View } from "react-native";
 import { useRouter } from "expo-router";
-import { hasAny } from "../../src/lib/derive";
+import { hasAny, payLinksOf } from "../../src/lib/derive";
 import { firstName, money, moneyList, shortDate, word } from "../../src/lib/format";
 import type { CurrencyCode } from "../../src/lib/types";
 import { failure, useApp } from "../../src/state";
@@ -23,7 +23,8 @@ function ask(title: string, message: string, yes: string): Promise<boolean> {
 export default function Settle() {
   const { c } = useTheme();
   const router = useRouter();
-  const { settle, owe, owed, recorded, resolveReport, nudge } = useApp();
+  const { settle, owe, owed, recorded, resolveReport, nudge, snapshots } = useApp();
+  const payable = (communeId: string, userId: string) => payLinksOf(snapshots.find((item) => item.commune.id === communeId), userId).length > 0;
   const toast = useToast();
   const [busy, setBusy] = useState("");
   const payTotalCurrencies = Object.keys(owe) as CurrencyCode[];
@@ -79,7 +80,12 @@ export default function Settle() {
             meta={<T kind="label" muted>{row.items.map((item) => item.title).join(", ")}</T>}
             right={<View style={{ alignItems: "flex-end", gap: 6 }}>
               <T kind="amount">{money(row.amountMinor, currency)}</T>
-              <Button size="sm" variant="secondary" label="I’ve paid" accessibilityLabel={`I’ve paid ${row.name}`} onPress={() => router.push(`/record/${row.items[0].shareId}`)} />
+              {payable(row.items[0].communeId, row.userId)
+                ? <View style={{ flexDirection: "row", gap: 6 }}>
+                  <Button size="sm" variant="secondary" label="Already paid" accessibilityLabel={`Already paid ${row.name}`} onPress={() => router.push(`/record/${row.items[0].shareId}`)} />
+                  <Button size="sm" label="Pay" accessibilityLabel={`Pay ${row.name}`} onPress={() => router.push(`/pay/${row.items[0].shareId}`)} />
+                </View>
+                : <Button size="sm" variant="secondary" label="I’ve paid" accessibilityLabel={`I’ve paid ${row.name}`} onPress={() => router.push(`/record/${row.items[0].shareId}`)} />}
             </View>} />)}</Panel>
         </View>)}
 

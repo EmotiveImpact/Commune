@@ -275,9 +275,8 @@ describe("complete shared workflows", () => {
     mount("/hub");
     await screen.findByRole("heading", { name: "Shared essentials" });
     const headings = [
-      within(screen.getByRole("region", { name: "Your balance" })).getByRole("heading", { level: 2 }),
-      screen.getByRole("heading", { name: "Needs you" }),
       screen.getByRole("heading", { name: "This week" }),
+      screen.getByRole("heading", { name: "People" }),
       screen.getByRole("heading", { name: "Shared essentials" }),
     ];
     if (state === "populated") headings.push(screen.getByRole("heading", { name: "Recently in your commune" }));

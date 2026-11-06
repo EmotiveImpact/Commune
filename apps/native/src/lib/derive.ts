@@ -1,4 +1,4 @@
-import { addDays, calParts, daysBetween, firstName, money } from "./format";
+import { addDays, calParts, cap, daysBetween, firstName, joinAnd, money } from "./format";
 import { parsePayLinks, type PayLink } from "./payLinks";
 import type { CurrencyCode, Expense, Operation, PaymentReport, Share, Snapshot } from "./types";
 
@@ -262,13 +262,26 @@ export function feed(snapshots: Snapshot[], viewerId: string, limit = 4): FeedIt
         text: `added ${expense.title}, ${money(expense.amountMinor, commune.currency)}, to ${commune.name}.`,
       });
     }
+    for (const expense of live(snapshot)) {
+      if (expense.paidByUserId !== viewerId) continue;
+      for (const share of expense.shares) {
+        const report = pendingReport(share);
+        if (!report || share.userId === viewerId) continue;
+        out.push({
+          key: `r:${report.id}`, actorId: share.userId, actorName: memberName(snapshot, share.userId), communeName: commune.name, at: report.reportedAt,
+          text: `said they paid you ${money(report.amountMinor, commune.currency)} for ${expense.title}.`,
+        });
+      }
+    }
     for (const event of snapshot.activityEvents ?? []) {
       if (event.actorId === viewerId || event.kind === "expenses") continue;
       const name = memberName(snapshot, event.actorId);
       out.push({
         key: `a:${event.id}`, actorId: event.actorId, actorName: name, communeName: commune.name, at: event.createdAt,
-        // Joining names the person as the title; say it once.
-        text: `· ${event.title === name ? "" : `${event.title}: `}${event.description.replace(/\.$/, "")} · ${commune.name}`,
+        text: event.kind === "operations" && /completed/i.test(event.description)
+          ? `finished ${event.title} · ${commune.name}`
+          // Joining names the person as the title; say it once.
+          : `· ${event.title === name ? "" : `${event.title}: `}${event.description.replace(/\.$/, "")} · ${commune.name}`,
       });
     }
   }
@@ -302,4 +315,199 @@ export function payLinksOf(snapshot: Snapshot | undefined, userId: string): PayL
 
 export function activeMembers(snapshot: Snapshot) {
   return snapshot.members.filter((member) => member.active !== false);
+}
+
+const CURRENCY_WORD: Record<CurrencyCode, string> = { GBP: "pounds", EUR: "euros", USD: "dollars" };
+
+/**
+ * Where you stand once both directions count, per currency: positive when
+ * you are ahead. Only currencies you owe in are listed, because otherwise
+ * "you're owed" already says it.
+ */
+export function aheadBy(owe: Totals, owed: Totals): Array<{ currency: CurrencyCode; netMinor: number }> {
+  return (Object.keys(owe) as CurrencyCode[])
+    .filter((currency) => (owe[currency] ?? 0) > 0)
+    .map((currency) => ({ currency, netMinor: (owed[currency] ?? 0) - (owe[currency] ?? 0) }));
+}
+
+/** "so you’re £92.45 ahead overall", or "so in pounds you’re £92.45 ahead" when more than one currency is in play. */
+export function standingClause(net: { currency: CurrencyCode; netMinor: number }, manyCurrencies: boolean): string {
+  const amount = money(Math.abs(net.netMinor), net.currency);
+  const where = manyCurrencies ? `in ${CURRENCY_WORD[net.currency]} ` : "";
+  const end = manyCurrencies ? "" : " overall";
+  if (net.netMinor > 0) return `so ${where}you’re ${amount} ahead${end}`;
+  if (net.netMinor < 0) return `so ${where}you owe ${amount}${end}`;
+  return `so ${where}you’re even${end}`;
+}
+
+/** The Hub's money sentence under the headline, matching the web Hub. */
+export function hubMoneyLine(oweMinor: number, owedMinor: number, currency: CurrencyCode): string {
+  if (oweMinor > 0 && owedMinor > 0) {
+    return `You’re also owed ${money(owedMinor, currency)}, ${standingClause({ currency, netMinor: owedMinor - oweMinor }, false)}.`;
+  }
+  if (oweMinor > 0) return "Nobody owes you anything here.";
+  if (owedMinor > 0) return "You don’t owe anything here.";
+  return "Nothing is owed either way.";
+}
+
+export type WeekItem = {
+  key: string;
+  kind: "task" | "event" | "bill";
+  title: string;
+  date: string;
+  /** "You", a first name, or "Nobody yet". */
+  who: string;
+  assigneeId: string | null;
+  mine: boolean;
+  operation?: Operation;
+  expenseId?: string;
+  amountMinor?: number;
+  /** What is still yours to pay on a bill. */
+  yourShareMinor?: number;
+  currency: CurrencyCode;
+};
+export type Week = { late: WeekItem[]; days: Array<{ date: string; items: WeekItem[] }> };
+
+/** One commune's week: late tasks first, then seven days of tasks, events and bills due. */
+export function week(snapshot: Snapshot, viewerId: string, today: string): Week {
+  const { currency } = snapshot.commune;
+  const end = addDays(today, 6);
+  const who = (assigneeId: string | null | undefined) =>
+    !assigneeId ? "Nobody yet" : assigneeId === viewerId ? "You" : firstName(memberName(snapshot, assigneeId));
+  const fromOperation = (item: Operation): WeekItem => ({
+    key: `op:${item.id}`, kind: item.kind, title: item.title, date: item.date, who: who(item.assigneeId),
+    assigneeId: item.assigneeId ?? null, mine: item.assigneeId === viewerId, operation: item, currency,
+  });
+  const open = (snapshot.operations ?? []).filter((item) => item.status === "open");
+  const late = open.filter((item) => item.kind === "task" && item.date < today).sort((a, b) => a.date.localeCompare(b.date)).map(fromOperation);
+  const bills: WeekItem[] = live(snapshot)
+    .filter((expense) => expense.dueOn && expense.dueOn >= today && expense.dueOn <= end && expense.shares.some((share) => outstanding(share) > 0))
+    .map((expense) => {
+      const mine = expense.shares.find((share) => share.userId === viewerId && expense.paidByUserId !== viewerId);
+      return {
+        key: `bill:${expense.id}`, kind: "bill", title: expense.title, date: expense.dueOn!, who: who(expense.paidByUserId),
+        assigneeId: expense.paidByUserId, mine: expense.paidByUserId === viewerId, expenseId: expense.id,
+        amountMinor: expense.amountMinor, yourShareMinor: mine ? outstanding(mine) : 0, currency,
+      };
+    });
+  const days = Array.from({ length: 7 }, (_, index) => {
+    const date = addDays(today, index);
+    const items = [
+      ...open.filter((item) => item.date === date && (item.kind === "event" || item.date >= today)).map(fromOperation),
+      ...bills.filter((bill) => bill.date === date),
+    ];
+    return { date, items };
+  });
+  return { late, days };
+}
+
+/** One line for the photo: what this week holds, worded as the web Hub words it. */
+export function weekSentence(value: Week): string {
+  const late = value.late.length;
+  const today = value.days[0]?.items.filter((item) => item.kind !== "bill").length ?? 0;
+  const bills = value.days.reduce((sum, day) => sum + day.items.filter((item) => item.kind === "bill").length, 0);
+  const parts = [late ? `${late} late` : "", today ? `${today} due today` : "", bills ? `${bills} ${bills === 1 ? "bill" : "bills"} due this week` : ""].filter(Boolean);
+  if (!parts.length) return "A quiet week.";
+  return `${cap(joinAnd(parts))}.`;
+}
+
+/** A short pulse for a commune tile on Home: at most two things, the most pressing first. */
+export function tilePulse(snapshot: Snapshot, viewerId: string, today: string): { text: string; late: boolean } {
+  const value = week(snapshot, viewerId, today);
+  const overdue = live(snapshot).filter((expense) => expense.dueOn && expense.dueOn < today && expense.shares.some((share) => outstanding(share) > 0)).length;
+  const bills = value.days.reduce((sum, day) => sum + day.items.filter((item) => item.kind === "bill").length, 0);
+  const parts = [
+    value.late.length ? `${value.late.length} late ${value.late.length === 1 ? "chore" : "chores"}` : "",
+    overdue ? `${overdue} overdue ${overdue === 1 ? "bill" : "bills"}` : "",
+    bills ? `${bills} ${bills === 1 ? "bill" : "bills"} this week` : "",
+  ].filter(Boolean);
+  if (parts.length) return { text: parts.slice(0, 2).join(" · "), late: !!(value.late.length || overdue) };
+  const next = live(snapshot)
+    .filter((expense) => expense.dueOn && expense.dueOn > today && expense.shares.some((share) => outstanding(share) > 0))
+    .sort((a, b) => a.dueOn!.localeCompare(b.dueOn!))[0];
+  if (next) {
+    const days = daysBetween(today, next.dueOn!);
+    return { text: `${next.title} due in ${days} ${days === 1 ? "day" : "days"}`, late: false };
+  }
+  return { text: "Nothing due", late: false };
+}
+
+export type PersonLine = {
+  userId: string; name: string; isYou: boolean;
+  /** "Owes you £5.10", "You owe £12.00", "£108.45 ahead" or "All square". */
+  balance: string;
+  /** Money coming to the viewer reads green. */
+  coming: boolean;
+  /** Their next job, such as "Water the plants · Sun". */
+  job: string;
+};
+
+/**
+ * Each member's balance with the viewer in this commune, and what they have
+ * on next. Worked out from the shares themselves, so a payment someone says
+ * they sent still counts until it is confirmed.
+ */
+export function people(snapshot: Snapshot, viewerId: string, today: string): PersonLine[] {
+  const { currency } = snapshot.commune;
+  const net = new Map<string, number>();
+  for (const expense of live(snapshot)) {
+    for (const share of expense.shares) {
+      const left = outstanding(share);
+      if (!left) continue;
+      if (expense.paidByUserId === viewerId && share.userId !== viewerId) net.set(share.userId, (net.get(share.userId) ?? 0) + left);
+      if (share.userId === viewerId && expense.paidByUserId !== viewerId) net.set(expense.paidByUserId, (net.get(expense.paidByUserId) ?? 0) - left);
+    }
+  }
+  const end = addDays(today, 6);
+  const job = (userId: string) => {
+    const next = (snapshot.operations ?? [])
+      .filter((item) => item.kind === "task" && item.status === "open" && item.assigneeId === userId)
+      .sort((a, b) => a.date.localeCompare(b.date))[0];
+    if (!next || next.date > end) return "Nothing this week";
+    const when = next.date < today ? "late" : next.date === today ? "today" : calParts(next.date, today).dow;
+    return `${next.title} · ${when}`;
+  };
+  const members = activeMembers(snapshot);
+  const you = members.find((member) => member.userId === viewerId);
+  const yourNet = [...net.values()].reduce((sum, value) => sum + value, 0);
+  const others = members.filter((member) => member.userId !== viewerId).map((member): PersonLine => {
+    const value = net.get(member.userId) ?? 0;
+    return {
+      userId: member.userId, name: member.name, isYou: false, coming: value > 0, job: job(member.userId),
+      balance: value > 0 ? `Owes you ${money(value, currency)}` : value < 0 ? `You owe ${money(-value, currency)}` : "All square",
+    };
+  });
+  return [
+    ...(you ? [{
+      userId: you.userId, name: "You", isYou: true, coming: yourNet > 0, job: job(you.userId),
+      balance: yourNet > 0 ? `${money(yourNet, currency)} ahead` : yourNet < 0 ? `You owe ${money(-yourNet, currency)}` : "All square",
+    }] : []),
+    ...others,
+  ];
+}
+
+const SECRET = /password|passcode|door code|access code|pin code|\bcode\b/i;
+const PHONE = /^\+?[\d ()-]{7,}$/;
+const PRIORITY = ["Emergency", "Wi-Fi", "Keys / door", "Bins", "Contacts", "House rules", "Other"];
+export type Essential = {
+  id: string; title: string; category: string | null;
+  facts: Array<{ label: string; value: string; secret: boolean; phone: boolean }>;
+  /** When there are no labelled facts, the note's first line. */
+  summary: string;
+};
+/** Shared notes as the Hub shows them: the details people look up most first, facts in place, secrets marked. */
+export function essentials(snapshot: Snapshot, limit = 4): Essential[] {
+  const rank = (pill?: string) => {
+    const index = PRIORITY.indexOf(pill === "Landlord" ? "Contacts" : pill ?? "");
+    return index === -1 ? PRIORITY.length : index;
+  };
+  return [...(snapshot.notes ?? [])]
+    .sort((a, b) => rank(a.pill) - rank(b.pill))
+    .slice(0, limit)
+    .map((note) => {
+      const facts = (note.facts ?? []).filter(([label, value]) => label !== "This Hub" && value).slice(0, 3)
+        .map(([label, value]) => ({ label, value, secret: SECRET.test(label), phone: !SECRET.test(label) && PHONE.test(value.trim()) }));
+      const category = note.pill && note.pill !== note.title ? note.pill : null;
+      return { id: note.id, title: note.title, category, facts, summary: facts.length ? "" : (note.lede || note.body || "").slice(0, 120) };
+    });
 }

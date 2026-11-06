@@ -65,6 +65,7 @@
   text-wrap: balance;
 }
 .c-home-display em { font-style: normal; }
+.c-home-display.is-one-line { white-space: nowrap; text-wrap: nowrap; contain: inline-size; }
 .c-home-sub { max-width: 560px; font-size: 16px; line-height: 24px; color: var(--home-ink-2); }
 
 /* ---------- Status ---------- */
@@ -292,6 +293,8 @@
   transition: background var(--motion-short) var(--ease-standard);
 }
 .c-home-row.is-waiting { grid-template-columns: auto minmax(0, 1fr) auto; }
+.c-home-row.is-chore { grid-template-columns: auto minmax(0, 1fr) auto; }
+.c-home-row.is-chore .c-home-row-act { min-width: 0; }
 /* Coming up has no amount column: the date, the turn, and a button when nobody holds it. */
 .c-home-row.is-coming { grid-template-columns: auto minmax(0, 1fr) auto; }
 .c-home-row:hover { background: var(--home-hover); }
@@ -389,6 +392,19 @@
 .c-home-feed button { display: grid; }
 .c-home-feed button span { color: var(--home-ink-2); }
 .c-home-feed time { font-size: 12px; line-height: 19px; color: var(--home-ink-2); white-space: nowrap; }
+.c-home-feed-side { display: grid; justify-items: end; }
+.c-home-feed-side strong { font-size: 13.5px; line-height: 19px; font-weight: 500; font-variant-numeric: tabular-nums; }
+
+/* How the bill payer takes money, under the next step's button. */
+
+/* A commune card's week in a few words. */
+.c-home-pulse { display: block; margin-top: 4px; font-size: 12.5px; line-height: 17px; font-weight: 500; color: var(--home-action); }
+.c-home-pulse.is-late { color: var(--home-late); }
+
+/* Today: chores ticked off from Home. */
+.c-home-chores .c-home-row.is-late { background: color-mix(in srgb, var(--home-late) 8%, transparent); }
+.c-home-check { display: inline-grid; place-items: center; width: 44px; height: 44px; cursor: pointer; }
+.c-home-check input { width: 22px; height: 22px; margin: 0; accent-color: var(--home-action); cursor: pointer; }
 .c-home-empty { padding: 0 24px 20px; font-size: 14px; line-height: 20px; color: var(--home-ink-2); }
 
 /* ---------- All square: the commune's photo as the reward ---------- */
@@ -445,7 +461,9 @@
   .c-home-row-act { grid-area: act; min-width: 0; }
   .c-home-row-meta > :not(.c-home-place) { display: none; }
   /* Whose turn it is, or who pays, is the point of a Coming up row. */
-  .c-home-row.is-coming { grid-template-areas: "lead main act"; }
+  .c-home-row.is-coming,
+  .c-home-row.is-chore { grid-template-areas: "lead main act"; }
+  .c-home-row.is-chore .c-home-row-meta > :not(.c-home-place) { display: inline-flex; }
   .c-home-row.is-coming .c-home-row-meta > :not(.c-home-place) { display: inline; }
 }
 /* Narrower still (a phone, or a tablet beside the sidebar): tighter edges. */
