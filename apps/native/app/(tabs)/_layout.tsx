@@ -79,7 +79,7 @@ export default function TabsLayout() {
     </View>;
   }
   return <MenuShell>
-    <Tabs tabBar={(props) => <TabBar {...props} />} screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: c.canvas }, animation: "fade" }}>
+    <Tabs tabBar={(props) => <TabBar {...props} />} screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: c.canvas }, animation: "none" }}>
       {TABS.map((tab) => <Tabs.Screen key={tab.name} name={tab.name} options={{ title: tab.label }} />)}
     </Tabs>
   </MenuShell>;

@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Pressable, type PressableProps, type StyleProp, type ViewStyle } from "react-native";
+import { Pressable, View, type PressableProps, type StyleProp, type ViewStyle } from "react-native";
 import Animated, {
   useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withSpring, withTiming, type WithSpringConfig,
 } from "react-native-reanimated";
@@ -70,4 +70,12 @@ export function Rise({ index = 0, children, style, delay = 0 }: { index?: number
     transform: calm ? [] : [{ translateY: (1 - shown.value) * 10 }],
   }));
   return <Animated.View style={[style, animated]}>{children}</Animated.View>;
+}
+
+/**
+ * Same props as Rise, with no entrance. The tab screens use it: switching
+ * tabs shows the page at once rather than replaying its rows.
+ */
+export function Still({ children, style }: { index?: number; children: ReactNode; style?: StyleProp<ViewStyle>; delay?: number }) {
+  return <View style={style}>{children}</View>;
 }

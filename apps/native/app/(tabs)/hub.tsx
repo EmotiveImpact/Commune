@@ -15,7 +15,7 @@ import { usePrefs } from "../../src/prefs";
 import { failure, useApp } from "../../src/state";
 import { Body, Pad, TopBar, photoOf } from "../../src/ui/chrome";
 import { Avatar, Button, Cal, Empty, Faces, Panel, Row, SectionHead, State, T, tap } from "../../src/ui/kit";
-import { haptic, PressScale, Rise, springs, useCalm } from "../../src/ui/motion";
+import { haptic, PressScale, springs, useCalm } from "../../src/ui/motion";
 import { NeedsList, TaskCheck, WaitingRow } from "../../src/ui/parts";
 import { PayPrimary } from "../../src/ui/pay";
 import { useToast } from "../../src/ui/toast";
@@ -39,7 +39,6 @@ export default function Hub() {
   const { current } = useApp();
   const { hubTabsAt } = usePrefs();
   const [tab, setTab] = useState<HubTab>("overview");
-  const [entrance, setEntrance] = useState(0);
   const [heights, setHeights] = useState<Partial<Record<HubTab, number>>>({});
   const scroller = useRef<ScrollView>(null);
   const index = HUB_TABS.findIndex((item) => item.id === tab);
@@ -65,7 +64,8 @@ export default function Hub() {
     const to = HUB_TABS.findIndex((item) => item.id === next);
     if (to === at.value && !slid) return;
     at.value = to;
-    if (!slid) { pager.value = -to * width; movePill(to); setEntrance((value) => value + 1); }
+    // A tapped tab switches at once; only the pill slides. No entrance animation.
+    if (!slid) { pager.value = -to * width; movePill(to); }
     setTab(next);
     haptic.select();
   }, [at, pager, width, movePill]);
@@ -114,9 +114,7 @@ export default function Hub() {
             {HUB_TABS.map((item) => <View key={item.id} accessibilityElementsHidden={item.id !== tab} importantForAccessibility={item.id === tab ? "auto" : "no-hide-descendants"}
               onLayout={(event) => { const h = Math.ceil(event.nativeEvent.layout.height); setHeights((all) => (all[item.id] === h ? all : { ...all, [item.id]: h })); }}
               style={{ width, padding: 16, gap: 22 }}>
-              {pages[item.id].map((section, n) => item.id === tab
-                ? <Rise key={`${entrance}-${n}`} index={n}>{section}</Rise>
-                : <View key={n}>{section}</View>)}
+              {pages[item.id]}
             </View>)}
           </Animated.View>
         </View>

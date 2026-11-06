@@ -8,7 +8,7 @@ import { failure, useApp } from "../../src/state";
 import { Body, Pad, TopBar } from "../../src/ui/chrome";
 import { Avatar, Button, Kicker, Panel, Row, State, T, tap } from "../../src/ui/kit";
 import { useToast } from "../../src/ui/toast";
-import { Rise } from "../../src/ui/motion";
+import { Still } from "../../src/ui/motion";
 import { useTheme } from "../../src/ui/theme";
 
 const CURRENCY_WORD: Record<CurrencyCode, string> = { GBP: "pounds", EUR: "euros", USD: "dollars" };
@@ -68,12 +68,12 @@ export default function Settle() {
     <TopBar title="Settle" />
     <Body>
       <Pad>
-        <Rise index={0} style={{ gap: 6, paddingHorizontal: 4 }}>
+        <Still index={0} style={{ gap: 6, paddingHorizontal: 4 }}>
           <T kind="title" accessibilityRole="header">{payTotalCurrencies.length ? `You owe ${moneyList(owe)} to ${word(people)} ${people === 1 ? "person" : "people"}.` : "You owe nobody."}</T>
           <T kind="body" muted>{hasAny(owed) ? `You’re owed ${moneyList(owed)}.` : "Nobody owes you anything."} Each currency is kept separate.</T>
-        </Rise>
+        </Still>
 
-        {youOweCurrencies.map((currency, index) => <Rise key={`owe-${currency}`} index={1 + index} style={{ gap: 10 }}>
+        {youOweCurrencies.map((currency, index) => <Still key={`owe-${currency}`} index={1 + index} style={{ gap: 10 }}>
           <Kicker>You owe · {CURRENCY_WORD[currency]}</Kicker>
           <Panel>{settle.youOwe.filter((row) => row.currency === currency).map((row, index) => <Row key={`${row.userId}-${currency}`} first={index === 0}
             left={<Avatar name={row.name} size={40} />}
@@ -88,17 +88,17 @@ export default function Settle() {
                 </View>
                 : <Button size="sm" variant="secondary" label="I’ve paid" accessibilityLabel={`I’ve paid ${row.name}`} onPress={() => router.push(`/record/${row.items[0].shareId}`)} />}
             </View>} />)}</Panel>
-        </Rise>)}
+        </Still>)}
 
-        {recorded.length ? <Rise index={1 + youOweCurrencies.length} style={{ gap: 10 }}>
+        {recorded.length ? <Still index={1 + youOweCurrencies.length} style={{ gap: 10 }}>
           <Kicker>Waiting for them to confirm</Kicker>
           <Panel>{recorded.map((item, index) => <Row key={item.key} first={index === 0}
             left={<Avatar name={item.payerName} size={40} />}
             title={item.title}
             meta={<State text={`You recorded ${money(item.amountMinor, item.currency)} on ${shortDate(item.report.sentOn)}. ${firstName(item.payerName)} confirms it.`} />} />)}</Panel>
-        </Rise> : null}
+        </Still> : null}
 
-        {owedCurrencies.map((currency, index) => <Rise key={`owed-${currency}`} index={2 + youOweCurrencies.length + index} style={{ gap: 10 }}>
+        {owedCurrencies.map((currency, index) => <Still key={`owed-${currency}`} index={2 + youOweCurrencies.length + index} style={{ gap: 10 }}>
           <Kicker>Owed to you · {CURRENCY_WORD[currency]}</Kicker>
           <Panel>{settle.owedToYou.filter((row) => row.currency === currency).map((row, index) => {
             const pending = row.items.filter((item) => item.debtor.pending);
@@ -127,7 +127,7 @@ export default function Settle() {
               </View>)}
             </View>;
           })}</Panel>
-        </Rise>)}
+        </Still>)}
 
         {!youOweCurrencies.length && !owedCurrencies.length && !recorded.length
           ? <Panel pad><T kind="body" muted>Everyone is square. Nothing to settle.</T></Panel> : null}

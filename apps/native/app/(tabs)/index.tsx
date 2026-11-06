@@ -8,7 +8,7 @@ import { Body, TopBar, photoOf } from "../../src/ui/chrome";
 import { Avatar, Cal, Panel, Row, SectionHead, T } from "../../src/ui/kit";
 import { CommuneTiles, NeedsList, NextStep, TaskCheck, WaitingRow } from "../../src/ui/parts";
 import { useTheme } from "../../src/ui/theme";
-import { Rise } from "../../src/ui/motion";
+import { Still } from "../../src/ui/motion";
 
 /** Home, Direction B: your standing on the dark band, the next step raised over it. */
 export default function Home() {
@@ -37,12 +37,12 @@ export default function Home() {
           </View>
         </ImageBackground>
         <View style={{ padding: 16, gap: 24 }}>
-          <Rise index={0} style={{ gap: 12 }}><SectionHead title="Your communes" /><CommuneTiles /></Rise>
-          {soon.length ? <Rise index={1} style={{ gap: 12 }}>
+          <Still index={0} style={{ gap: 12 }}><SectionHead title="Your communes" /><CommuneTiles /></Still>
+          {soon.length ? <Still index={1} style={{ gap: 12 }}>
             <SectionHead title="Coming up" count={soon.length} />
             <Panel>{soon.map((item, index) => <Row key={item.key} first={index === 0} left={<Cal iso={item.date} today={today} small />} title={item.title} meta={<T kind="label" muted>{item.meta}</T>} />)}</Panel>
-          </Rise> : null}
-          <Rise index={2}><Feed /></Rise>
+          </Still> : null}
+          <Still index={2}><Feed /></Still>
         </View>
       </Body>
     </View>;
@@ -72,10 +72,10 @@ export default function Home() {
         <Text accessibilityRole="header" style={{ color: c.onFrame2, fontSize: 31, lineHeight: 35, fontWeight: "500", letterSpacing: -0.7 }}>{head}</Text>
         <Text style={{ color: c.onFrame2, fontSize: 14.5, lineHeight: 21 }}>{sub}</Text>
       </View>
-      <Rise index={0} style={{ marginTop: -46, marginHorizontal: 16 }}><NextStep need={needs[0]} total={needs.length} /></Rise>
+      <Still index={0} style={{ marginTop: -46, marginHorizontal: 16 }}><NextStep need={needs[0]} total={needs.length} /></Still>
       <View style={{ padding: 16, paddingTop: 24, gap: 24 }}>
-        <Rise index={1} style={{ gap: 12 }}><SectionHead title="Your communes" /><CommuneTiles /></Rise>
-        {chores.length ? <Rise index={2} style={{ gap: 12 }}>
+        <Still index={1} style={{ gap: 12 }}><SectionHead title="Your communes" /><CommuneTiles /></Still>
+        {chores.length ? <Still index={2} style={{ gap: 12 }}>
           <SectionHead title="Today" count={chores.length} />
           <Panel>{chores.map((need, index) => {
             const snapshot = app.snapshotOf(need.communeId);
@@ -83,16 +83,16 @@ export default function Home() {
               title={need.title} assigneeId={user?.id ?? null} assigneeName={user?.name ?? "You"} late={need.band === "Overdue"}
               meta={`${snapshot?.commune.name ?? ""} · ${need.band === "Overdue" ? need.status.text.toLowerCase() : "today"}`} />;
           })}</Panel>
-        </Rise> : null}
-        {toPay.length ? <Rise index={3} style={{ gap: 12 }}>
+        </Still> : null}
+        {toPay.length ? <Still index={3} style={{ gap: 12 }}>
           <SectionHead title="Still to pay" count={toPay.length} right={toPayTotal ? <T kind="label" muted>{toPayTotal}</T> : undefined} />
           <Panel><NeedsList items={toPay} initial={4} /></Panel>
-        </Rise> : null}
-        {waiting.length ? <Rise index={4} style={{ gap: 12 }}>
+        </Still> : null}
+        {waiting.length ? <Still index={4} style={{ gap: 12 }}>
           <SectionHead title="Waiting on others" count={waiting.length} />
           <Panel>{waiting.map((entry, index) => <WaitingRow key={entry.key} entry={entry} first={index === 0} />)}</Panel>
-        </Rise> : null}
-        <Rise index={5}><Feed /></Rise>
+        </Still> : null}
+        <Still index={5}><Feed /></Still>
       </View>
     </Body>
   </View>;

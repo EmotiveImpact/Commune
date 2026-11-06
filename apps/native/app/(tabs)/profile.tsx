@@ -11,7 +11,7 @@ import { failure, useApp } from "../../src/state";
 import { Body, TopBar, photoOf } from "../../src/ui/chrome";
 import { Avatar, Panel, Row, SectionHead, T } from "../../src/ui/kit";
 import { PayMark } from "../../src/ui/marks";
-import { haptic, Rise } from "../../src/ui/motion";
+import { haptic, Still } from "../../src/ui/motion";
 import { useToast } from "../../src/ui/toast";
 import { useTheme } from "../../src/ui/theme";
 
@@ -56,15 +56,15 @@ export default function Profile() {
     <TopBar title="Profile" />
     <Body>
       <View style={{ padding: 16, gap: 24 }}>
-        <Rise index={next()} style={{ flexDirection: "row", alignItems: "center", gap: 16, paddingHorizontal: 4, paddingTop: 6 }}>
+        <Still index={next()} style={{ flexDirection: "row", alignItems: "center", gap: 16, paddingHorizontal: 4, paddingTop: 6 }}>
           <Avatar name={user?.name ?? "You"} size={72} />
           <View style={{ flex: 1, minWidth: 0 }}>
             <T kind="title" accessibilityRole="header">{user?.name ?? "You"}</T>
             <T kind="body" muted>In {word(snapshots.length)} {snapshots.length === 1 ? "commune" : "communes"}</T>
           </View>
-        </Rise>
+        </Still>
 
-        <Rise index={next()} style={{ gap: 10 }}>
+        <Still index={next()} style={{ gap: 10 }}>
           <SectionHead title="Where you stand" />
           <Panel>
             {currencies.length ? currencies.map((currency, index) => {
@@ -83,9 +83,9 @@ export default function Profile() {
             title={snapshot.commune.name}
             meta={<T kind="label" muted>{standing(snapshot, needs, waiting, recorded).line}</T>}
             right={<ChevronRight size={17} color={c.ink2} />} />)}</Panel>
-        </Rise>
+        </Still>
 
-        <Rise index={next()} style={{ gap: 10 }}>
+        <Still index={next()} style={{ gap: 10 }}>
           <SectionHead title="How people pay you" right={<Pressable accessibilityRole="button" onPress={() => router.push("/pay-links")} hitSlop={8}><T kind="label" style={{ fontWeight: "600", textDecorationLine: "underline" }}>Edit</T></Pressable>} />
           <Panel>
             {myPayLinks == null ? <Row first title="Loading…" /> : null}
@@ -107,9 +107,9 @@ export default function Profile() {
               left={icon(<Plus size={17} color={c.ink} />)} title={`Add ${missing.slice(0, 2).join(" or ")}`} right={<ChevronRight size={17} color={c.ink2} />} /> : null}
           </Panel>
           <T kind="label" muted style={{ paddingHorizontal: 4 }}>People in your communes see these when they owe you, with the amount filled in. Star one to make it your favourite.</T>
-        </Rise>
+        </Still>
 
-        <Rise index={next()} style={{ gap: 10 }}>
+        <Still index={next()} style={{ gap: 10 }}>
           <SectionHead title="Account" />
           <Panel>
             <Row first left={icon(<User size={17} color={c.ink} />)} title="Name" meta={<T kind="label" muted>{user?.name}</T>} />
@@ -117,7 +117,7 @@ export default function Profile() {
             <Row onPress={() => router.push("/account")} left={icon(<Settings size={17} color={c.ink} />)} title="Settings"
               meta={<T kind="label" muted>Hub layout, notifications and sign out</T>} right={<ChevronRight size={17} color={c.ink2} />} />
           </Panel>
-        </Rise>
+        </Still>
         <T kind="label" muted style={{ textAlign: "center" }}>Commune {Constants.expoConfig?.version ?? ""}</T>
       </View>
     </Body>
