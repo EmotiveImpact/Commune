@@ -1,22 +1,14 @@
 import type { ReactNode } from "react";
-import { ActivityIndicator, Image, Platform, StyleSheet, Text, View, useWindowDimensions, type StyleProp, type TextStyle, type ViewStyle } from "react-native";
+import { ActivityIndicator, Image, StyleSheet, Text, View, type StyleProp, type TextStyle, type ViewStyle } from "react-native";
 import * as Haptics from "expo-haptics";
 import { calParts, initials } from "../lib/format";
 import type { Tone } from "../lib/derive";
 import { radius, useTheme, type Palette } from "./theme";
 import { PressScale } from "./motion";
 
-/** How tall the money sheets open, as a share of the screen. */
-export const SHEET_DETENT = 0.92;
-
-/**
- * Size for the root of a sheet screen. On iOS a fixed-detent form sheet does
- * not stretch flex: 1 content (react-native-screens 4.16), which left the pay
- * sheet blank with its form at the bottom, so it gets the sheet's height.
- */
+/** Root style for a sheet screen: it fills the page sheet it opens in. */
 export function useSheetFill(): ViewStyle {
-  const { height } = useWindowDimensions();
-  return Platform.OS === "ios" ? { height: height * SHEET_DETENT } : { flex: 1 };
+  return { flex: 1 };
 }
 
 export function tap(kind: "light" | "success" | "select" = "light") {

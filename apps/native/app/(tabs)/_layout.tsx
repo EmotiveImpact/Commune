@@ -22,8 +22,7 @@ const TABS: Array<{ name: string; label: string; Icon?: Icon }> = [
 
 /**
  * Five tabs on the dark frame. The chosen one has no pill: it comes alive
- * instead, springing up from a little smaller with a small dot under its
- * name, while the others rest at 55% opacity.
+ * instead, springing up from a little smaller, while the others rest at 55% opacity.
  */
 function TabBar({ state, navigation }: BottomTabBarProps) {
   const { c } = useTheme();
@@ -49,7 +48,6 @@ function TabButton({ tab, on, onPress }: { tab: (typeof TABS)[number]; on: boole
     if (on && !calm) { pop.value = 0.86; pop.value = withSpring(1, springs.bouncy); }
   }, [on, calm, life, pop]);
   const body = useAnimatedStyle(() => ({ opacity: 0.55 + 0.45 * life.value, transform: [{ scale: pop.value }] }));
-  const dot = useAnimatedStyle(() => ({ opacity: life.value, transform: [{ scale: 0.4 + 0.6 * life.value }] }));
   const color = c.onFrame;
   return <PressScale accessibilityRole="tab" accessibilityState={{ selected: on }} accessibilityLabel={tab.label} onPress={onPress}
     style={{ flex: 1, alignItems: "center" }}>
@@ -60,7 +58,6 @@ function TabButton({ tab, on, onPress }: { tab: (typeof TABS)[number]; on: boole
       </View>
       <Text style={{ fontSize: 11, fontWeight: on ? "600" : "500", color }}>{tab.label}</Text>
     </Animated.View>
-    <Animated.View style={[{ width: 4, height: 4, borderRadius: 2, backgroundColor: c.onFrame, marginTop: 4 }, dot]} />
   </PressScale>;
 }
 

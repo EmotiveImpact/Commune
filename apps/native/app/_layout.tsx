@@ -7,7 +7,6 @@ import { PrefsProvider } from "../src/prefs";
 import { AppProvider, useApp } from "../src/state";
 import { ToastProvider } from "../src/ui/toast";
 import { useTheme } from "../src/ui/theme";
-import { SHEET_DETENT } from "../src/ui/kit";
 
 /**
  * After a pay link opens another app, coming back asks whether the money
@@ -59,7 +58,11 @@ function Screens() {
     headerBackButtonDisplayMode: "minimal" as const,
     contentStyle: { backgroundColor: c.canvas },
   };
-  const sheet = { ...pushed, presentation: "formSheet" as const, sheetGrabberVisible: true, sheetAllowedDetents: [SHEET_DETENT], headerShown: false };
+  // Sheets are iOS page sheets: the screen behind shrinks back and the sheet
+  // swipes down to close. They replaced react-native-screens' form sheets,
+  // whose fixed detents laid content out at the bottom of a blank sheet,
+  // above all when one sheet replaced another (pay, then "tell them").
+  const sheet = { ...pushed, presentation: "modal" as const, headerShown: false };
   return <>
     <StatusBar style="light" />
     <PayReturn />
@@ -79,9 +82,9 @@ function Screens() {
       <Stack.Screen name="templates" options={{ ...pushed, title: "Templates" }} />
       <Stack.Screen name="record/[shareId]" options={sheet} />
       <Stack.Screen name="pay/[shareId]" options={sheet} />
-      <Stack.Screen name="paid/[shareId]" options={{ ...sheet, sheetAllowedDetents: "fitToContents" }} />
+      <Stack.Screen name="paid/[shareId]" options={sheet} />
       <Stack.Screen name="add-expense" options={sheet} />
-      <Stack.Screen name="switch" options={{ ...sheet, sheetAllowedDetents: "fitToContents" }} />
+      <Stack.Screen name="switch" options={sheet} />
     </Stack>
   </>;
 }
