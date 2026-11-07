@@ -66,7 +66,7 @@ export default function TabsLayout() {
   if (status === "signed-out") return <Redirect href="/sign-in" />;
   if (status === "starting" || status === "loading") {
     return <View style={{ flex: 1, backgroundColor: c.frame, alignItems: "center", justifyContent: "center", gap: 16 }}>
-      <Text style={{ color: c.onFrame, fontSize: 34, fontWeight: "700", letterSpacing: -2 }}>commune.</Text>
+      <Text style={{ color: c.onFrame, fontSize: 34, fontFamily: "CommuneWordmark36", letterSpacing: -2 }}>commune.</Text>
       <ActivityIndicator color={c.onFrame} />
     </View>;
   }

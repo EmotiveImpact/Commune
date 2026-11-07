@@ -30,7 +30,7 @@ export default function SignIn() {
       <ImageBackground source={{ uri: KIND_PHOTO.trip }} style={{ height: 300, backgroundColor: c.frame, justifyContent: "flex-end" }}>
         <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(14,16,24,0.45)" }]} />
         <Rise index={0} style={{ padding: 24, paddingTop: insets.top + 24, gap: 6 }}>
-          <Text accessibilityRole="header" style={{ color: "#fff", fontSize: 40, fontWeight: "700", letterSpacing: -2.2 }}>commune.</Text>
+          <Text accessibilityRole="header" style={{ color: "#fff", fontSize: 40, fontFamily: "CommuneWordmark36", letterSpacing: -2 }}>commune.</Text>
           <Text style={{ color: "rgba(255,255,255,0.88)", fontSize: 16, lineHeight: 23 }}>Bills, chores and the house notes, shared.</Text>
         </Rise>
       </ImageBackground>

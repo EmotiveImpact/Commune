@@ -103,7 +103,7 @@ function Screens() {
 
 export default function Root() {
   // The design language's faces; the first frame waits for them so text never jumps.
-  const [ready, fontError] = useFonts({ DMSans_400Regular, DMSans_500Medium, DMSans_600SemiBold, DMSans_700Bold, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold });
+  const [ready, fontError] = useFonts({ CommuneWordmark25: require("../assets/fonts/commune-wordmark-25.ttf"), CommuneWordmark36: require("../assets/fonts/commune-wordmark-36.ttf"), DMSans_400Regular, DMSans_500Medium, DMSans_600SemiBold, DMSans_700Bold, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold });
   if (!ready && !fontError) return null;
   return <GestureHandlerRootView style={{ flex: 1 }}>
     <PrefsProvider><AppProvider><ToastProvider><ConfirmProvider><Screens /></ConfirmProvider></ToastProvider></AppProvider></PrefsProvider>

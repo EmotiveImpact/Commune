@@ -28,7 +28,7 @@ export function TopBar({ title, children, clear }: { title?: string; children?: 
   const [searching, setSearching] = useState(false);
   return <View style={{ backgroundColor: clear ? "transparent" : c.frame, paddingTop: insets.top }}>
     <View style={{ height: BAR_HEIGHT, flexDirection: "row", alignItems: "center", paddingLeft: 20, paddingRight: 8, gap: 4 }}>
-      <Text accessibilityRole="header" accessibilityLabel={title ? `Commune, ${title}` : "Commune, Home"} style={{ color: c.onFrame, fontSize: 25, fontWeight: "700", letterSpacing: -1.4 }}>commune.</Text>
+      <Text accessibilityRole="header" accessibilityLabel={title ? `Commune, ${title}` : "Commune, Home"} style={{ color: c.onFrame, fontSize: 25, fontFamily: "CommuneWordmark25", letterSpacing: -1.4 }}>commune.</Text>
       <View style={{ flex: 1 }} />
       <PressScale scaleTo={0.9} accessibilityRole="button" accessibilityLabel="Search" hitSlop={4}
         onPress={() => setSearching(true)} style={({ pressed }) => ({ width: 46, height: 46, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}>
