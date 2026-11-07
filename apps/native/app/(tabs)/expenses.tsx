@@ -33,12 +33,12 @@ export default function Expenses() {
       <Pad gap={14}>
         <ScopeRow />
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-          <View accessibilityRole="radiogroup" style={{ flexDirection: "row", padding: 3, gap: 2, borderRadius: radius.pill, backgroundColor: c.recessed }}>
+          <View accessibilityRole="radiogroup" style={{ flexDirection: "row", gap: 6 }}>
             {(["all", "open", "settled"] as Filter[]).map((value) => {
               const on = filter === value;
               return <PressScale key={value} accessibilityRole="radio" accessibilityState={{ selected: on }} onPress={() => setFilter(value)}
-                style={{ height: 32, paddingHorizontal: 14, borderRadius: radius.pill, justifyContent: "center", backgroundColor: on ? c.frame : "transparent" }}>
-                <Text style={{ fontSize: 13, fontWeight: "500", color: on ? c.onFrame : c.ink2 }}>{value[0].toUpperCase() + value.slice(1)}</Text>
+                style={{ height: 34, paddingHorizontal: 14, borderRadius: radius.pill, justifyContent: "center", borderWidth: 1, borderColor: on ? c.frame : c.outline, backgroundColor: on ? c.frame : c.surface }}>
+                <Text style={{ fontSize: 13, fontWeight: on ? "600" : "500", color: on ? c.onFrame : c.ink }}>{value[0].toUpperCase() + value.slice(1)}</Text>
               </PressScale>;
             })}
           </View>
@@ -49,17 +49,17 @@ export default function Expenses() {
           const mine = expense.shares.find((share) => share.userId === user?.id);
           const open = isOpen(expense);
           return <Still key={`${filter}-${current.commune.id}-${expense.id}`} index={index}><PressScale accessibilityRole="button" onPress={() => router.push(`/expense/${expense.id}`)}>
-            <Panel style={{ padding: 16, gap: 14 }}>
+            <Panel style={{ paddingVertical: 14, paddingHorizontal: 16, gap: 10 }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                 <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: c.recessed, alignItems: "center", justifyContent: "center" }}><ReceiptText size={17} color={c.ink2} /></View>
-                <T kind="strong" style={{ flex: 1 }} lines={1}>{expense.title}</T>
+                <T kind="strong" style={{ flex: 1, fontSize: 15, fontWeight: "600" }} lines={1}>{expense.title}</T>
                 {open ? <Badge text="Open" tone="attention" /> : <Badge text="Settled" tone="settled" icon={<Check size={13} color={c.onSettled} strokeWidth={2.2} />} />}
               </View>
               <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                <View><T kind="label" muted>Total paid</T><T kind="title" style={{ fontVariant: ["tabular-nums"] }}>{money(expense.amountMinor, currency)}</T></View>
+                <View><T kind="label" muted>Total paid</T><T kind="title" style={{ fontSize: 24, lineHeight: 28, fontWeight: "600", fontVariant: ["tabular-nums"] }}>{money(expense.amountMinor, currency)}</T></View>
                 {mine ? <View style={{ alignItems: "flex-end" }}><T kind="label" muted>Your share</T><T kind="amount" style={{ marginTop: 4 }}>{money(mine.amountMinor, currency)}</T></View> : null}
               </View>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 12, borderTopWidth: 1, borderTopColor: c.outline, paddingTop: 12, borderRadius: radius.inner }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 12, borderTopWidth: 1, borderTopColor: c.outline2, paddingTop: 10, borderRadius: radius.inner }}>
                 <Cal iso={expense.dueOn} today={today} small />
                 <View style={{ flex: 1 }}>
                   <T kind="body" style={{ fontWeight: "500" }}>Paid by {expense.paidByUserId === user?.id ? "you" : memberName(current, expense.paidByUserId)}</T>

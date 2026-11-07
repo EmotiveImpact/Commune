@@ -87,15 +87,15 @@ export default function Profile() {
               left={<PayMark provider={link.provider} />}
               title={<View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                 <T kind="body" style={{ fontSize: 15, fontWeight: "500" }}>{PAY_PROVIDER_NAME[link.provider]}</T>
-                {link.preferred ? <View style={{ flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: c.settled, borderRadius: 10, paddingHorizontal: 7, height: 20 }}>
-                  <Star size={11} color={c.onSettled} fill={c.onSettled} /><Text style={{ fontSize: 11.5, fontWeight: "600", color: c.onSettled }}>Favourite</Text>
+                {link.preferred ? <View style={{ flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: c.recessed, borderRadius: 10, paddingHorizontal: 7, height: 20 }}>
+                  <Star size={11} color={c.favouriteEdge} fill={c.favourite} /><Text style={{ fontSize: 11.5, fontWeight: "600", color: c.ink2 }}>Favourite</Text>
                 </View> : null}
               </View>}
               meta={<T kind="label" muted lines={1}>{payLinkLabel(link)}</T>}
               right={<PressScale accessibilityRole="button" disabled={busy} accessibilityState={{ selected: !!link.preferred }}
                 accessibilityLabel={link.preferred ? `${PAY_PROVIDER_NAME[link.provider]} is your favourite` : `Make ${PAY_PROVIDER_NAME[link.provider]} your favourite`}
-                onPress={() => void star(link.provider)} hitSlop={6} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
-                <Star size={20} color={link.preferred ? c.attention : c.ink2} fill={link.preferred ? c.attention : "transparent"} strokeWidth={1.7} />
+                onPress={() => void star(link.provider)} hitSlop={6} style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}>
+                <Star size={20} color={link.preferred ? c.favouriteEdge : c.ink2} fill={link.preferred ? c.favourite : "transparent"} strokeWidth={1.7} />
               </PressScale>} />)}
             {missing.length ? <Row first={!links.length && myPayLinks != null} onPress={() => router.push("/pay-links")}
               left={icon(<Plus size={17} color={c.ink} />)} title={`Add ${missing.slice(0, 2).join(" or ")}`} right={<ChevronRight size={17} color={c.ink2} />} /> : null}
@@ -106,8 +106,8 @@ export default function Profile() {
         <Still index={next()} style={{ gap: 10 }}>
           <SectionHead title="Account" />
           <Panel>
-            <Row first left={icon(<User size={17} color={c.ink} />)} title="Name" meta={<T kind="label" muted>{user?.name}</T>} />
-            <Row left={icon(<Mail size={17} color={c.ink} />)} title="Email" meta={<T kind="label" muted>{user?.email}</T>} />
+            <Row first onPress={() => router.push("/account")} left={icon(<User size={17} color={c.ink} />)} title="Name" meta={<T kind="label" muted>{user?.name}</T>} right={<ChevronRight size={17} color={c.ink2} />} />
+            <Row onPress={() => router.push("/account")} left={icon(<Mail size={17} color={c.ink} />)} title="Email" meta={<T kind="label" muted>{user?.email}</T>} right={<ChevronRight size={17} color={c.ink2} />} />
             <Row onPress={() => router.push("/account")} left={icon(<Settings size={17} color={c.ink} />)} title="Settings"
               meta={<T kind="label" muted>Hub layout, notifications and sign out</T>} right={<ChevronRight size={17} color={c.ink2} />} />
           </Panel>

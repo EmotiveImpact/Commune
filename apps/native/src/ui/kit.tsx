@@ -202,7 +202,7 @@ export function Group({ label, count, late, first }: { label: string; count: num
 
 /** Small grey heading above a list, like "Owed to you · euros". */
 export function Kicker({ children }: { children: ReactNode }) {
-  return <T kind="note" muted style={{ fontWeight: "500", paddingHorizontal: 4 }}>{children}</T>;
+  return <T kind="note" muted style={{ fontSize: 12, lineHeight: 16, fontWeight: "500", paddingHorizontal: 4 }}>{children}</T>;
 }
 
 /**

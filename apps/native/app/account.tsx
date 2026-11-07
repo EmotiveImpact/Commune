@@ -51,7 +51,7 @@ export default function Account() {
           <SectionHead title="Layout" />
           <Panel pad>
             <T kind="body" style={{ fontSize: 15, fontWeight: "500" }}>Hub tabs</T>
-            <Segmented label="Hub tabs" options={HUB_TABS} value={hubTabsAt}
+            <Segmented tone="frame" label="Hub tabs" options={HUB_TABS} value={hubTabsAt}
               onChange={(value) => { setHubTabsAt(value); toast(value === "bottom" ? "Hub tabs now sit at the bottom." : "Hub tabs now sit under the photo."); }} />
             <T kind="label" muted>Where Overview, Money, Chores and Notes sit in each commune’s Hub.</T>
           </Panel>
