@@ -93,6 +93,9 @@ function Screens() {
       <Stack.Screen name="add-expense" options={sheet} />
       <Stack.Screen name="switch" options={SHEET_SCREEN} />
       <Stack.Screen name="invite" options={SHEET_SCREEN} />
+      <Stack.Screen name="add-note" options={SHEET_SCREEN} />
+      <Stack.Screen name="add-chore" options={SHEET_SCREEN} />
+      <Stack.Screen name="announce" options={SHEET_SCREEN} />
     </Stack>
     <HeroFlight />
   </>;

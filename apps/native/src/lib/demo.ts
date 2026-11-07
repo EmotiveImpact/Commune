@@ -232,6 +232,24 @@ export function demoBackend(now: () => string = todayIso): Backend {
         })),
       });
     },
+    async addNote(communeId, input) {
+      const snapshot = data.find((candidate) => candidate.commune.id === communeId);
+      if (!snapshot) throw new ApiError("Not a commune member", 403);
+      snapshot.notes = [...(snapshot.notes ?? []), { id: `note-${newId()}`, title: input.title, pill: input.pill ?? undefined, lede: input.lede ?? undefined, body: input.body ?? undefined, facts: input.facts }];
+    },
+    async addTask(communeId, input) {
+      const snapshot = data.find((candidate) => candidate.commune.id === communeId);
+      if (!snapshot) throw new ApiError("Not a commune member", 403);
+      const assigneeId = input.assigneeId ?? input.rotationIds?.[0] ?? null;
+      snapshot.operations = [...(snapshot.operations ?? []), { id: `op-${newId()}`, kind: "task", title: input.title, date: input.date, allDay: true,
+        assigneeId, rotationIds: input.rotationIds, repeat: input.repeat, status: "open", notes: input.notes ?? undefined }];
+    },
+    async announce(communeId, input) {
+      const snapshot = data.find((candidate) => candidate.commune.id === communeId);
+      if (!snapshot) throw new ApiError("Not a commune member", 403);
+      snapshot.announcements = [{ id: `ann-${newId()}`, title: input.title, body: input.body, authorId: MAYA.id, createdAt: new Date().toISOString(),
+        needsAcknowledgement: input.needsAcknowledgement, acknowledgements: [] }, ...(snapshot.announcements ?? [])];
+    },
     async invite(communeId, email) {
       if (!data.some((snapshot) => snapshot.commune.id === communeId)) throw new Error("That commune isn’t here any more.");
       const token = Array.from(email.trim().toLowerCase()).reduce((hash, ch) => (hash * 31 + ch.charCodeAt(0)) >>> 0, 7).toString(16).padStart(8, "0");

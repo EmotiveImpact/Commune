@@ -1,6 +1,7 @@
 import type { PayLink, PayLinkInput, PayProvider } from "./payLinks";
 import { parsePayLinks } from "./payLinks";
 import type { Commune, Snapshot, User } from "./types";
+import { requestId } from "./format";
 
 /**
  * Everything the phone app asks of Commune. The database stays the authority:
@@ -37,7 +38,16 @@ export interface Backend {
   setPreferredPayLink(provider: PayProvider | null): Promise<PayLink[]>;
   /** Creates an invitation for that email address and returns the link to send them. */
   invite(communeId: string, email: string, role?: "member" | "admin"): Promise<{ url: string }>;
+  /** Adds a note: a title, an optional short line, and labelled details such as a Wi-Fi password. */
+  addNote(communeId: string, input: NoteInput): Promise<void>;
+  /** Adds a chore, on one person, taken in turns, or open to anyone, once or repeating. */
+  addTask(communeId: string, input: TaskInput): Promise<void>;
+  /** Posts an announcement to everyone in the commune. */
+  announce(communeId: string, input: { title: string; body: string; needsAcknowledgement: boolean }): Promise<void>;
 }
+
+export type NoteInput = { title: string; pill: string | null; lede: string | null; body: string | null; facts: Array<[string, string]> };
+export type TaskInput = { title: string; date: string; assigneeId: string | null; rotationIds: string[] | null; repeat: "none" | "weekly" | "monthly"; notes: string | null };
 
 export class ApiError extends Error {
   constructor(message: string, readonly status: number) {
@@ -92,6 +102,18 @@ export function serverBackend(base: string): Backend {
     async addExpense(communeId, input) { await post(`/communes/${communeId}/expenses`, input); },
     async nudge(shareId, requestId) { await post("/reminders", { kind: "nudge", sourceId: shareId, requestId }); },
     async markRead(notificationId) { await post(`/notifications/${notificationId}/read`); },
+    async addNote(communeId, input) {
+      await post(`/communes/${communeId}/notes`, { ...input, kicker: null, requestId: requestId() });
+    },
+    async addTask(communeId, input) {
+      await post(`/communes/${communeId}/operations`, {
+        kind: "task", category: "chore", title: input.title, date: input.date, time: null, allDay: true,
+        assigneeId: input.assigneeId, rotationIds: input.rotationIds, repeat: input.repeat, notes: input.notes, requestId: requestId(),
+      });
+    },
+    async announce(communeId, input) {
+      await post(`/communes/${communeId}/announcements`, { ...input, requestId: requestId() });
+    },
     async invite(communeId, email, role = "member") {
       const result = await post<{ url: string }>(`/communes/${communeId}/invites`, { email, role });
       return { url: result.url };

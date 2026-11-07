@@ -1,5 +1,6 @@
 import { View } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { Plus } from "lucide-react-native";
 import { memberName, statusFor } from "../src/lib/derive";
 import { firstName } from "../src/lib/format";
 import { useApp } from "../src/state";
@@ -12,6 +13,7 @@ export default function Tasks() {
   const { current, user, today } = useApp();
   const task = useCompleteTask();
   const { c } = useTheme();
+  const router = useRouter();
   const { focus } = useLocalSearchParams<{ focus?: string }>();
   // A chore opened from search comes first and is marked, even when it is done.
   const items = (current?.operations ?? []).filter((item) => item.status === "open" || item.id === focus)
@@ -28,7 +30,7 @@ export default function Tasks() {
           right={mine && item.date <= today ? <Button size="sm" variant="secondary" label="Mark done" busy={task.busy === `task:${item.id}`}
             onPress={() => void task.run({ kind: "task", key: `task:${item.id}`, communeId: current!.commune.id, operationId: item.id, date: item.date, title: item.title, dueOn: item.date, band: "Today", status })} /> : null} /></View>;
       })}</Panel> : <Panel pad><T kind="body" muted>Nothing on the list for {current?.commune.name}.</T></Panel>}
-      <View><T kind="note" muted>Adding tasks, handovers and skips are on the web app for now.</T></View>
+      <Button variant="secondary" block label="Add a chore" icon={<Plus size={16} color={c.ink} />} onPress={() => router.push("/add-chore")} />
     </Pad>
   </Body>;
 }

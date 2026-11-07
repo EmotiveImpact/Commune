@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
-import { ImageBackground, Linking, RefreshControl, StyleSheet, View, useWindowDimensions } from "react-native";
+import { ImageBackground, Linking, Platform, RefreshControl, StyleSheet, View, useWindowDimensions } from "react-native";
 import { Text } from "../../src/ui/text";
 import { useRouter, type Href } from "expo-router";
 import { BlurView } from "expo-blur";
 import * as Clipboard from "expo-clipboard";
 import Animated, { interpolate, useAnimatedRef, runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming, Extrapolation, type SharedValue } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import { CalendarDays, Check, ChevronDown, ChevronRight, Copy, Eye, EyeOff, Files, Phone, Plus, ReceiptText, Repeat2, ShoppingBag, UsersRound } from "lucide-react-native";
+import { Megaphone, CalendarDays, Check, ChevronDown, ChevronRight, Copy, Eye, EyeOff, Files, Phone, Plus, ReceiptText, Repeat2, ShoppingBag, UsersRound } from "lucide-react-native";
 import {
   activeMembers, essentials, hubMoneyLine, oweTotals, owedTotals, people, week, weekSentence,
   type Essential, type WeekItem,
@@ -105,7 +105,7 @@ export default function Hub() {
   if (!current) return <View style={{ flex: 1 }}><TopBar title="Hub" /><Body><Pad><T kind="body" muted>You’re not in a commune yet.</T></Pad></Body></View>;
   const pills = <HubPills tab={tab} onPick={(next) => choose(next)} left={left} right={right} floating={hubTabsAt === "bottom"} />;
   const pages: Record<HubTab, ReactNode[]> = {
-    overview: [<YourPart key="part" onMore={() => choose("money")} />, <WeekPanel key="week" onAll={() => choose("chores")} />, <PeoplePanel key="people" />],
+    overview: [<Notice key="notice" />, <YourPart key="part" onMore={() => choose("money")} />, <WeekPanel key="week" onAll={() => choose("chores")} />, <PeoplePanel key="people" />],
     money: moneySections(),
     chores: [<ChoresPage key="chores" />],
     notes: [<Essentials key="essentials" />, <NotesList key="notes" />],
@@ -191,6 +191,9 @@ function Hero({ scrollY }: { scrollY: SharedValue<number> }) {
         {frost}<View style={glassIn}><ChevronDown size={15} color="#fff" /><Text style={{ color: "#fff", fontSize: 13, fontWeight: "500" }}>Change</Text></View>
       </PressScale> : null}
       <View style={{ flex: 1 }} />
+      <PressScale accessibilityRole="button" accessibilityLabel={`Announce something to ${commune.name}`} onPress={() => router.push("/announce")} style={[glass, { width: 36, paddingHorizontal: 0, justifyContent: "center" }]}>
+        {frost}<View style={glassIn}><Megaphone size={15} color="#fff" /></View>
+      </PressScale>
       <PressScale accessibilityRole="button" accessibilityLabel={`Invite people to ${commune.name}`} onPress={() => router.push("/members")} style={glass}>
         {frost}<View style={glassIn}><UsersRound size={15} color="#fff" /><Text style={{ color: "#fff", fontSize: 13, fontWeight: "500" }}>Invite</Text></View>
       </PressScale>
@@ -383,17 +386,6 @@ function WeekChip({ item, late }: { item: WeekItem; late?: boolean }) {
   </View>;
 }
 
-function DayHead({ date, label, count, late, first }: { date?: string; label?: string; count?: number; late?: boolean; first?: boolean }) {
-  const { c } = useTheme();
-  const { today } = useApp();
-  const parts = date ? calParts(date, today) : null;
-  return <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingTop: 12, paddingBottom: 4, paddingHorizontal: 16, borderTopWidth: first ? 0 : StyleSheet.hairlineWidth, borderTopColor: c.outline }}>
-    {date ? <Cal iso={date} today={today} small /> : null}
-    <Text accessibilityRole="header" style={{ fontSize: 13, fontWeight: "600", color: late ? c.late : c.ink }}>
-      {label ?? `${parts?.dow} ${parts?.day} ${parts?.mon}`}{count != null ? <Text style={{ color: c.ink2, fontWeight: "500" }}>  {count}</Text> : null}
-    </Text>
-  </View>;
-}
 
 function WeekRow({ item, late, chip }: { item: WeekItem; late?: boolean; chip?: boolean }) {
   const { c } = useTheme();
@@ -454,6 +446,7 @@ function Essentials() {
     {items.length ? items.map((item) => <EssentialCard key={item.id} item={item} />)
       : <Panel pad><T kind="body" muted>Nothing written down in {current.commune.name} yet.</T></Panel>}
     <T kind="label" muted style={{ paddingHorizontal: 4 }}>Only people in {current.commune.name} can see these. Passwords and codes stay hidden until you tap Show.</T>
+    <AddButton label="Add a note" href="/add-note" />
   </View>;
 }
 
@@ -467,7 +460,6 @@ function NotesList() {
     <SectionHead title="All notes" count={notes.length} right={<TextLink label="Open" onPress={() => router.push("/notes")} />} />
     <Panel>{notes.map((note, index) => <Row key={note.id} first={index === 0} onPress={() => router.push("/notes")} title={note.title}
       meta={note.lede || note.body ? <T kind="label" muted lines={1}>{note.lede || note.body}</T> : undefined} />)}</Panel>
-    <T kind="note" muted style={{ paddingHorizontal: 4 }}>Adding and editing notes is on the web app for now.</T>
   </View>;
 }
 
@@ -528,7 +520,35 @@ function MoneyMore() {
     title={row.label} meta={<T kind="label" muted lines={1}>{row.sub}</T>} right={<ChevronRight size={17} color={c.ink2} />} />)}</Panel>;
 }
 
-/** This week's chores, late ones first, each with its tick. Free days are left out. */
+/** v7's secondary "+ Add …" button, the same on every tab. */
+function AddButton({ label, href }: { label: string; href: Href }) {
+  const { c } = useTheme();
+  const router = useRouter();
+  return <Button variant="secondary" block label={label} icon={<Plus size={16} color={c.ink} />} onPress={() => router.push(href)} />;
+}
+
+/** The latest announcement, at the top of the Overview, until it is a fortnight old. */
+function Notice() {
+  const { c } = useTheme();
+  const { current, today } = useApp();
+  const latest = (current?.announcements ?? [])[0];
+  if (!current || !latest || latest.createdAt.slice(0, 10) < addDays(today, -14)) return null;
+  const author = current.members.find((member) => member.userId === latest.authorId)?.name ?? "Someone";
+  return <View accessibilityLabel="Announcement" style={{ flexDirection: "row", gap: 12, padding: 14, borderRadius: 15, backgroundColor: c.surface, borderWidth: 1, borderColor: c.outline2 }}>
+    <View style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: c.recessed, alignItems: "center", justifyContent: "center" }}><Megaphone size={17} color={c.ink} /></View>
+    <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+      <T kind="body" style={{ fontSize: 15, fontWeight: "600" }}>{latest.title}</T>
+      {latest.body ? <T kind="label" muted>{latest.body}</T> : null}
+      <T kind="note" muted>{firstName(author)} · {latest.createdAt.slice(0, 10) === today ? "today" : `${calParts(latest.createdAt.slice(0, 10), today).day} ${calParts(latest.createdAt.slice(0, 10), today).mon}`}</T>
+    </View>
+  </View>;
+}
+
+/**
+ * v7's Chores tab: each day as a row, its calendar on the left and that day's
+ * chores stacked as chips on the right, late ones first. Then the rota, and
+ * a button to add a chore.
+ */
 function ChoresPage() {
   const { c } = useTheme();
   const router = useRouter();
@@ -538,20 +558,40 @@ function ChoresPage() {
   const late = value.late;
   const days = value.days.map((day) => ({ ...day, items: day.items.filter((item) => item.kind === "task") })).filter((day) => day.items.length);
   const count = late.length + days.reduce((sum, day) => sum + day.items.length, 0);
-  return <View style={{ gap: 12 }}>
-    <SectionHead title="This week" count={count} right={<TextLink label="All tasks" onPress={() => router.push("/tasks")} />} />
-    <Panel>
-      {!count ? <Empty icon={<Check size={18} color={c.onSettled} />} title="No chores left this week" /> : <>
-        {late.length ? <DayHead first label="Late" count={late.length} late /> : null}
-        {late.map((item) => <WeekRow key={item.key} item={item} late />)}
-        {days.map((day, index) => <View key={day.date}>
-          <DayHead first={!late.length && index === 0} date={day.date} label={day.date === today ? "Today" : day.date === addDays(today, 1) ? "Tomorrow" : undefined} />
-          {day.items.map((item) => <WeekRow key={item.key} item={item} />)}
-        </View>)}
-      </>}
-    </Panel>
-    {count ? <T kind="label" muted style={{ textAlign: "center" }}>Free days are left out on the phone.</T> : null}
-    <T kind="note" muted style={{ paddingHorizontal: 4 }}>Adding chores and changing the rota is on the web app for now.</T>
+  const rotas = (current.operations ?? []).filter((item) => item.kind === "task" && item.status === "open" && (item.rotationIds?.length ?? 0) > 1);
+  const nameOf = (id: string) => (id === user?.id ? "you" : firstName(current.members.find((member) => member.userId === id)?.name ?? "someone"));
+  return <View style={{ gap: 22 }}>
+    <View style={{ gap: 12 }}>
+      <SectionHead title="This week" count={count} right={<TextLink label="All tasks" onPress={() => router.push("/tasks")} />} />
+      {!count ? <Panel><Empty icon={<Check size={18} color={c.onSettled} />} title="No chores left this week" /></Panel> : <View style={{ gap: 6 }}>
+        {late.length ? <DayRow left={<View style={{ width: 44, minHeight: 50, borderRadius: 10, backgroundColor: c.lateSoft, alignItems: "center", justifyContent: "center" }}>
+          <Text style={{ fontSize: 10.5, fontWeight: "600", color: c.late }}>Late</Text><Text style={{ fontSize: 17, lineHeight: 22, fontWeight: "700", color: c.late }}>{late.length}</Text></View>}>
+          {late.map((item) => <WeekChip key={item.key} item={item} late />)}
+        </DayRow> : null}
+        {days.map((day) => <DayRow key={day.date} left={<Cal iso={day.date} today={today} small />}>
+          {day.items.map((item) => <WeekChip key={item.key} item={item} />)}
+        </DayRow>)}
+      </View>}
+    </View>
+    {rotas.length ? <View style={{ gap: 12 }}>
+      <SectionHead title="Rota" />
+      <Panel>{rotas.map((item, index) => {
+        const ids = item.rotationIds ?? [];
+        const at = Math.max(0, ids.indexOf(item.assigneeId ?? ""));
+        const next = [ids[at], ids[(at + 1) % ids.length]].map(nameOf);
+        return <Row key={item.id} first={index === 0} title={item.title}
+          meta={<T kind="label" muted>{item.repeat === "monthly" ? "Monthly" : item.repeat === "weekly" ? "Weekly" : "Once"} · next: {next[0]}, then {next[1]}</T>}
+          right={<Faces names={ids.map((id) => (id === user?.id ? user?.name ?? "You" : current.members.find((member) => member.userId === id)?.name ?? "?"))} size={24} />} />;
+      })}</Panel>
+    </View> : null}
+    <AddButton label="Add a chore" href="/add-chore" />
+  </View>;
+}
+
+function DayRow({ left, children }: { left: ReactNode; children: ReactNode }) {
+  return <View style={{ flexDirection: "row", gap: 12, alignItems: "flex-start", paddingVertical: 4 }}>
+    {left}
+    <View style={{ flex: 1, minWidth: 0, gap: 6 }}>{children}</View>
   </View>;
 }
 
@@ -568,13 +608,15 @@ function EssentialCard({ item }: { item: Essential }) {
     tap();
     toast(`Copied ${(secrets[0] ?? item.facts[0])?.label.toLowerCase()}.`);
   }
-  return <View style={{ backgroundColor: c.surface, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, borderColor: c.outline, padding: 14, gap: 8 }}>
-    {item.category ? <T kind="note" muted style={{ fontWeight: "600", letterSpacing: 0.6, textTransform: "uppercase" }}>{item.category}</T> : null}
-    <T kind="strong">{item.title}</T>
-    {item.facts.length ? <View style={{ gap: 3 }}>{item.facts.map((fact) => <View key={fact.label} style={{ flexDirection: "row", gap: 12 }}>
-      <T kind="label" muted style={{ width: 78 }}>{fact.label}</T>
-      <T kind="label" style={{ flex: 1 }} >{fact.secret && !shown ? "••••••" : fact.value}</T>
-    </View>)}</View> : <T kind="label" muted>{item.summary}</T>}
+  // v7's note card: title, then a grid of labels (84 px) and values; secrets
+  // show as dots until asked for, then in a fixed-width face.
+  const mono = Platform.OS === "ios" ? "Menlo" : "monospace";
+  return <View style={{ backgroundColor: c.surface, borderRadius: 15, borderWidth: 1, borderColor: c.outline2, paddingVertical: 14, paddingHorizontal: 16, gap: 10 }}>
+    <T kind="strong" style={{ fontSize: 16, fontWeight: "600" }}>{item.title}</T>
+    {item.facts.length ? <View style={{ gap: 6 }}>{item.facts.map((fact) => <View key={fact.label} style={{ flexDirection: "row", gap: 10 }}>
+      <Text style={{ width: 84, fontSize: 14, lineHeight: 20, color: c.ink2 }}>{fact.label}</Text>
+      <Text style={fact.secret && shown ? { flex: 1, fontFamily: mono, fontSize: 13.5, lineHeight: 20, color: c.ink } : { flex: 1, fontSize: 14, lineHeight: 20, color: c.ink, letterSpacing: fact.secret ? 1.1 : 0 }}>{fact.secret && !shown ? "••••••••" : fact.value}</Text>
+    </View>)}</View> : <T kind="label" muted style={{ fontSize: 14, lineHeight: 20 }}>{item.summary}</T>}
     {secrets.length || phone ? <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap", marginTop: 2 }}>
       {secrets.length ? <>
         <Button size="sm" variant="secondary" label={shown ? "Hide" : "Show"} accessibilityLabel={`${shown ? "Hide" : "Show"} ${item.title} ${secrets[0].label.toLowerCase()}`}

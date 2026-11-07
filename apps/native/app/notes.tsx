@@ -1,12 +1,14 @@
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { Plus } from "lucide-react-native";
 import { useApp } from "../src/state";
 import { useTheme } from "../src/ui/theme";
 import { Body, Pad } from "../src/ui/chrome";
-import { Panel, T } from "../src/ui/kit";
+import { Button, Panel, T } from "../src/ui/kit";
 
 export default function Notes() {
   const { current } = useApp();
   const { c } = useTheme();
+  const router = useRouter();
   const { focus } = useLocalSearchParams<{ focus?: string }>();
   // A note opened from search comes first and is marked.
   const notes = [...(current?.notes ?? [])].sort((a, b) => Number(b.id === focus) - Number(a.id === focus));
@@ -17,6 +19,7 @@ export default function Notes() {
         {note.lede ? <T kind="body" muted>{note.lede}</T> : null}
         {note.body ? <T kind="body">{note.body}</T> : null}
       </Panel>) : <Panel pad><T kind="body" muted>Nothing written down in {current?.commune.name} yet.</T></Panel>}
+      <Button variant="secondary" block label="Add a note" icon={<Plus size={16} color={c.ink} />} onPress={() => router.push("/add-note")} />
     </Pad>
   </Body>;
 }
