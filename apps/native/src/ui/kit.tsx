@@ -131,7 +131,7 @@ export function Cal({ iso, today }: { iso: string | null; today: string; small?:
   }
   const p = calParts(iso, today);
   return <View accessibilityLabel={`${p.dow} ${p.day} ${p.mon}`} style={[box, { borderColor: c.calEdge, backgroundColor: c.calFace }]}>
-    <View style={{ alignSelf: "stretch", height: 15, alignItems: "center", justifyContent: "center", backgroundColor: p.isToday ? "#2d6a4f" : c.calStrip }}>
+    <View style={{ alignSelf: "stretch", height: 15, borderTopLeftRadius: 9, borderTopRightRadius: 9, alignItems: "center", justifyContent: "center", backgroundColor: p.isToday ? "#2d6a4f" : c.calStrip }}>
       <Text maxFontSizeMultiplier={1} style={{ fontSize: 9, fontWeight: "800", letterSpacing: 0.7, color: p.isToday ? "#fff" : c.calStripInk }}>{p.dow.toUpperCase()}</Text>
     </View>
     <Text maxFontSizeMultiplier={1} style={{ fontSize: 18, fontWeight: "800", letterSpacing: -0.6, color: c.ink, lineHeight: 22, fontVariant: ["tabular-nums"] }}>{p.day}</Text>
