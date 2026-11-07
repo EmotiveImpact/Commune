@@ -27,13 +27,6 @@ export const JOIN_MODES: Array<{ mode: JoinMode; label: string; line: string }> 
 /** Shown under "Join straight away", which lets anyone holding the code in. */
 export const INSTANT_WARNING = "Anyone with the code, even from a photo of it, can see this group’s names, bills and balances.";
 
-/** The ways to invite, for the summary on the invite page. */
-export const WAYS_TO_INVITE: Array<[string, string]> = [
-  ["Email", "One person, works for 7 days"],
-  ["Show a QR now", "Stops working after an hour"],
-  ["Sticker", "Works until you turn it off"],
-];
-
 const SITE = "https://app.ourcommune.io";
 
 /** The short link a code's QR carries. The app opens it; so does the website. */

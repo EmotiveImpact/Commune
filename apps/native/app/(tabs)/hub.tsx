@@ -360,10 +360,10 @@ function WeekPanel({ onAll }: { onAll(): void }) {
     <SectionHead title="This week" right={<TextLink label="All chores" onPress={onAll} />} />
     {empty ? <Panel><Empty icon={<Check size={18} color={c.onSettled} />} title="Nothing planned for this week" body="Tasks, events and bills due will show here." /></Panel> : <>
       <View accessibilityRole="tablist" style={{ flexDirection: "row", gap: 2 }}>
-        {value.late.length ? <WeekDay late on={chosen === "late"} top="Late" big={String(value.late.length)} dots={Math.min(3, value.late.length)} onPress={() => setPicked("late")} /> : null}
+        {value.late.length ? <WeekDay late on={chosen === "late"} top="Late" big={String(value.late.length)} bottom="to do" dots={Math.min(3, value.late.length)} onPress={() => setPicked("late")} /> : null}
         {value.days.map((day) => {
           const parts = calParts(day.date, today);
-          return <WeekDay key={day.date} today={day.date === today} on={chosen === day.date} top={parts.dow} big={parts.day} dots={Math.min(3, day.items.length)} onPress={() => setPicked(day.date)} />;
+          return <WeekDay key={day.date} today={day.date === today} on={chosen === day.date} top={parts.dow} big={parts.day} bottom={parts.mon} dots={Math.min(3, day.items.length)} onPress={() => setPicked(day.date)} />;
         })}
       </View>
       <View style={{ gap: 6 }}>
@@ -376,11 +376,11 @@ function WeekPanel({ onAll }: { onAll(): void }) {
 
 /**
  * A day in the week strip: the same date card used everywhere (46 by 52 face,
- * 15 px band, 18 px number), with dots in place of the month. Every card has
+ * 15 px band, 18 px number, month underneath), with dots for what is on just below it. Every card has
  * the same border and face; "today" is the green band and "chosen" is a dark
  * ring drawn just outside the card, so both can show at once and nothing shifts.
  */
-function WeekDay({ top, big, dots, on, today, late, onPress }: { top: string; big: string; dots: number; on: boolean; today?: boolean; late?: boolean; onPress(): void }) {
+function WeekDay({ top, big, bottom, dots, on, today, late, onPress }: { top: string; big: string; bottom: string; dots: number; on: boolean; today?: boolean; late?: boolean; onPress(): void }) {
   const { c } = useTheme();
   const strip = late ? c.late : today ? "#2d6a4f" : c.calStrip;
   const stripInk = late || today ? "#fff" : c.calStripInk;
@@ -390,12 +390,13 @@ function WeekDay({ top, big, dots, on, today, late, onPress }: { top: string; bi
       <View style={{ height: 15, borderTopLeftRadius: 8, borderTopRightRadius: 8, alignItems: "center", justifyContent: "center", backgroundColor: strip }}>
         <Text maxFontSizeMultiplier={1} style={{ fontSize: 10, fontWeight: "800", letterSpacing: 0.6, color: stripInk }}>{top.toUpperCase()}</Text>
       </View>
-      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 2 }}>
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
         <Text maxFontSizeMultiplier={1} style={{ fontSize: 18, lineHeight: 22, fontWeight: "800", letterSpacing: -0.6, color: late ? c.late : c.ink, fontVariant: ["tabular-nums"] }}>{big}</Text>
-        <View style={{ flexDirection: "row", gap: 3, height: 5 }}>
-          {Array.from({ length: dots }, (_, i) => <View key={i} style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: late ? c.late : c.ink2 }} />)}
-        </View>
+        <Text maxFontSizeMultiplier={1} numberOfLines={1} style={{ fontSize: 9.5, lineHeight: 12, fontWeight: "700", color: late ? c.late : c.calStripInk }}>{bottom}</Text>
       </View>
+    </View>
+    <View style={{ flexDirection: "row", justifyContent: "center", gap: 3, height: 5, marginTop: 5 }}>
+      {Array.from({ length: dots }, (_, i) => <View key={i} style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: late ? c.late : c.ink2 }} />)}
     </View>
   </PressScale>;
 }
@@ -600,7 +601,8 @@ function ChoresPage() {
       {!count ? <Panel><Empty icon={<Check size={18} color={c.onSettled} />} title="No chores left this week" /></Panel> : <View style={{ gap: 6 }}>
         {late.length ? <DayRow left={<View accessibilityLabel={`Late, ${late.length}`} style={{ width: 46, height: 52, borderRadius: 10, borderWidth: 1, borderColor: c.calEdge, backgroundColor: c.calFace, alignItems: "center", overflow: "hidden" }}>
           <View style={{ alignSelf: "stretch", height: 15, borderTopLeftRadius: 9, borderTopRightRadius: 9, alignItems: "center", justifyContent: "center", backgroundColor: c.late }}><Text maxFontSizeMultiplier={1} style={{ fontSize: 9, fontWeight: "800", letterSpacing: 0.7, color: "#fff" }}>LATE</Text></View>
-          <Text maxFontSizeMultiplier={1} style={{ fontSize: 18, lineHeight: 22, fontWeight: "800", color: c.late }}>{late.length}</Text></View>}>
+          <Text maxFontSizeMultiplier={1} style={{ fontSize: 18, lineHeight: 22, fontWeight: "800", color: c.late }}>{late.length}</Text>
+          <Text maxFontSizeMultiplier={1} style={{ fontSize: 9.5, lineHeight: 12, fontWeight: "700", color: c.late }}>to do</Text></View>}>
           {late.map((item) => <WeekChip key={item.key} item={item} late />)}
         </DayRow> : null}
         {days.map((day) => <DayRow key={day.date} left={<Cal iso={day.date} today={today} small />}>
