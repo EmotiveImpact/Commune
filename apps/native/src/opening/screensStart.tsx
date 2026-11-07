@@ -47,7 +47,7 @@ export function Launch() {
       {LETTERS.map((ch, i) => <Letter key={i} ch={ch} i={i} />)}
     </View>
     <Rise delay={1050} from={6} duration={600}>
-      <Text style={{ fontSize: 16, fontFamily: "DMSans_400Regular", color: "rgba(245,241,234,0.62)", letterSpacing: -0.16 }}>Live together. Keep it fair.</Text>
+      <Text style={{ fontSize: 16, fontFamily: "DMSans_400Regular", color: "rgba(245,241,234,0.62)", letterSpacing: -0.16 }}>for people who do life, together.</Text>
     </Rise>
   </View>;
 }
