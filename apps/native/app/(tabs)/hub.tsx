@@ -19,6 +19,8 @@ import { Body, Ground, Pad, PULL_SHOWN, TopBar, photoOf, usePull } from "../../s
 import { Avatar, Button, Cal, Empty, Faces, Panel, Row, SectionHead, State, T, tap, TextLink } from "../../src/ui/kit";
 import { haptic, PressScale, springs, useCalm } from "../../src/ui/motion";
 import { NeedsList, TaskCheck, WaitingRow } from "../../src/ui/parts";
+import { HOLD, useRemind } from "../../src/ui/remind";
+import { SwipeRow } from "../../src/ui/swipe";
 import { PayPrimary } from "../../src/ui/pay";
 import { HERO_HEIGHT, heroHidden, heroReveal, hubHooks } from "../../src/ui/hero";
 import { Rolling } from "../../src/ui/rolling";
@@ -270,6 +272,7 @@ function YourPart({ onMore }: { onMore(): void }) {
   const { current, needs, waiting, resolveReport } = useApp();
   const toast = useToast();
   const [busy, setBusy] = useState(false);
+  const remindFor = useRemind();
   if (!current) return null;
   const { commune } = current;
   const owe = oweTotals(needs, commune.id)[commune.currency] ?? 0;
@@ -303,7 +306,8 @@ function YourPart({ onMore }: { onMore(): void }) {
     </View>
     <T kind="label" muted style={{ fontSize: 14, lineHeight: 20 }}>{hubMoneyLine(owe, owed, commune.currency)}</T>
     {first ? <View style={{ backgroundColor: c.surface, borderRadius: 12, padding: 12, gap: 10 }}>
-      <PressScale scaleTo={0.985} accessibilityRole="button" onPress={() => router.push(`/expense/${first.expenseId}`)} style={{ flexDirection: "row", gap: 8, alignItems: "flex-start" }}>
+      <PressScale scaleTo={0.985} accessibilityRole="button" accessibilityHint="Hold for a reminder" onLongPress={remindFor(first.key)} delayLongPress={HOLD}
+        onPress={() => router.push(`/expense/${first.expenseId}`)} style={{ flexDirection: "row", gap: 8, alignItems: "flex-start" }}>
         <View style={{ flex: 1, minWidth: 0 }}>
           <T kind="body" style={{ fontSize: 14, fontWeight: "500" }}>{first.title}</T>
           <View style={{ flexDirection: "row", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
@@ -382,11 +386,20 @@ function WeekDay({ top, big, dots, on, today, late, onPress }: { top: string; bi
 }
 
 /** One chore, event or bill as a chip. A chore carries its tick; a bill sits on a clear chip with its icon. */
+/** The Remind me key for a week item: the bill, or the chore or event. */
+function weekKey(item: WeekItem): string {
+  return item.kind === "bill" ? `expense:${item.expenseId}` : `task:${item.operation?.id ?? item.key.replace(/^op:/, "")}`;
+}
+
 function WeekChip({ item, late }: { item: WeekItem; late?: boolean }) {
   const { c } = useTheme();
+  const remind = useRemind()(weekKey(item));
   const bill = item.kind === "bill";
-  return <View style={{ borderRadius: 12, overflow: "hidden", borderWidth: 1, borderColor: bill ? c.outline : c.outline2, backgroundColor: bill ? "transparent" : late ? c.lateSoft : c.surface }}>
-    <WeekRow item={item} late={late} chip />
+  // Swipe a chip left for Remind me, as on the money rows.
+  return <View style={{ borderRadius: 12, overflow: "hidden", borderWidth: 1, borderColor: bill ? c.outline : c.outline2 }}>
+    <SwipeRow label={item.title} onRemind={remind} background={bill ? c.canvas : late ? c.lateSoft : c.surface}>
+      {() => <WeekRow item={item} late={late} chip />}
+    </SwipeRow>
   </View>;
 }
 
@@ -395,6 +408,7 @@ function WeekRow({ item, late, chip }: { item: WeekItem; late?: boolean; chip?: 
   const { c } = useTheme();
   const router = useRouter();
   const { current, user } = useApp();
+  const remind = useRemind()(weekKey(item));
   if (!current) return null;
   if (item.kind === "task" && item.operation) {
     const who = item.mine ? "You" : item.who;
@@ -407,7 +421,8 @@ function WeekRow({ item, late, chip }: { item: WeekItem; late?: boolean; chip?: 
     ? `Bill due · ${money(item.amountMinor ?? 0, item.currency)}${item.yourShareMinor ? ` · your share ${money(item.yourShareMinor, item.currency)}` : item.mine ? " · you paid it" : ""}`
     : [item.operation?.time ? item.operation.time.slice(0, 5) : "", item.assigneeId ? item.who : ""].filter(Boolean).join(" · ") || "Event";
   const Icon = bill ? ReceiptText : CalendarDays;
-  return <PressScale scaleTo={0.985} accessibilityRole="button" accessibilityLabel={`${item.title}. ${meta}`}
+  return <PressScale scaleTo={0.985} accessibilityRole="button" accessibilityLabel={`${item.title}. ${meta}`} accessibilityHint="Hold for a reminder"
+    onLongPress={remind} delayLongPress={HOLD}
     onPress={() => (bill ? router.push(`/expense/${item.expenseId}`) : router.push("/tasks"))}
     style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: chip ? 10 : 12, minHeight: chip ? 52 : undefined, paddingVertical: chip ? 6 : 10, paddingHorizontal: chip ? 10 : 16, backgroundColor: pressed ? c.press : "transparent" })}>
     <View style={{ width: 28, height: 28, borderRadius: chip ? 8 : 14, backgroundColor: c.recessed, alignItems: "center", justifyContent: "center" }}><Icon size={15} color={c.ink2} /></View>

@@ -107,8 +107,8 @@ export function Row({ left, title, meta, right, onPress, onLongPress, first, acc
     {right}
   </>;
   const style = { flexDirection: "row" as const, alignItems: "center" as const, gap: 12, paddingVertical: 12, paddingHorizontal: 16, borderTopWidth: first ? 0 : 1, borderTopColor: c.outline2 };
-  return onPress
-    ? <PressScale accessibilityRole="button" accessibilityLabel={accessibilityLabel} onPress={onPress} onLongPress={onLongPress} delayLongPress={550} style={style} scaleTo={0.985} pressedStyle={{ backgroundColor: c.press }}>{body}</PressScale>
+  return onPress || onLongPress
+    ? <PressScale accessibilityRole="button" accessibilityLabel={accessibilityLabel} accessibilityHint={onLongPress ? "Hold for a reminder" : undefined} onPress={onPress} onLongPress={onLongPress} delayLongPress={450} style={style} scaleTo={0.985} pressedStyle={{ backgroundColor: c.press }}>{body}</PressScale>
     : <View style={style}>{body}</View>;
 }
 

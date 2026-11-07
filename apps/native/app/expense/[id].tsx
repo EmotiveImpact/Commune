@@ -3,7 +3,7 @@ import { Image, View } from "react-native";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { Text } from "../../src/ui/text";
 import { useLocalSearchParams } from "expo-router";
-import { Check } from "lucide-react-native";
+import { Check, Clock3 } from "lucide-react-native";
 import { memberName, outstanding, pendingReport, statusFor } from "../../src/lib/derive";
 import { dayDate, firstName, money, shortDate } from "../../src/lib/format";
 import { failure, useApp } from "../../src/state";
@@ -12,6 +12,7 @@ import { Avatar, Badge, Button, Cal, Panel, Row, State, T } from "../../src/ui/k
 import { PayPrimary } from "../../src/ui/pay";
 import { ToastLift, useToast } from "../../src/ui/toast";
 import { useTheme } from "../../src/ui/theme";
+import { useRemind } from "../../src/ui/remind";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function ExpenseDetail() {
@@ -21,6 +22,7 @@ export default function ExpenseDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { snapshots, user, today, withdrawReport } = useApp();
   const [busy, setBusy] = useState(false);
+  const remindFor = useRemind();
   const snapshot = snapshots.find((item) => item.expenses.some((expense) => expense.id === id));
   const expense = snapshot?.expenses.find((item) => item.id === id);
   if (!snapshot || !expense) return <Body><Pad><T kind="body" muted>This expense is no longer here.</T></Pad></Body>;
@@ -76,6 +78,8 @@ export default function ExpenseDetail() {
           {myReport ? <State text={`Recorded, waiting for ${firstName(payer)}`} />
             : iOwe ? <State text={status.text} tone={status.tone} /> : null}
         </Panel>
+        {expense.voidedAt ? null : <Button variant="secondary" block label={iOwe ? "Remind me to pay" : "Remind me"} accessibilityLabel={`Remind me about ${expense.title}`}
+          icon={<Clock3 size={16} color={c.ink} />} onPress={remindFor(`expense:${expense.id}`)} />}
         <View style={{ gap: 10 }}>
           <Text style={{ fontSize: 12, lineHeight: 16, fontWeight: "500", color: c.ink2, paddingHorizontal: 4 }}>{expense.shares.every((share) => share.amountMinor === expense.shares[0].amountMinor) ? "Split equally" : "Split"}</Text>
           <Panel>{expense.shares.map((share, index) => {

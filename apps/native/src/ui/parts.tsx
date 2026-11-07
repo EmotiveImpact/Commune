@@ -1,9 +1,10 @@
 import { SwipeRow } from "./swipe";
+import { HOLD, useRemind } from "./remind";
 import { useRef, useState } from "react";
 import Svg, { Path } from "react-native-svg";
-import { View } from "react-native";
+import { Pressable, View } from "react-native";
 import { useRouter } from "expo-router";
-import { Check, ChevronDown } from "lucide-react-native";
+import { Check, ChevronDown, Clock3 } from "lucide-react-native";
 import { standing, tilePulse, type Need, type Waiting } from "../lib/derive";
 import { firstName, joinAnd, money } from "../lib/format";
 import { failure, useApp } from "../state";
@@ -74,7 +75,7 @@ export function NeedRow({ need, first }: { need: Need; first?: boolean }) {
   const { today } = useApp();
   const task = useCompleteTask();
   const payable = usePayable(need.communeId, need.kind === "share" ? need.payerId : "");
-  const remind = () => { tap("light"); router.push(`/remind/${encodeURIComponent(need.key)}`); };
+  const remind = useRemind()(need.key);
   // v7: swipe left for "Remind me", or hold the row, and the drawer offers the options.
   return <SwipeRow label={need.title} onRemind={remind}>{(guard) => <Row first={first} onLongPress={guard(remind)}
     accessibilityLabel={`${need.title}. ${need.status.text}.`}
@@ -125,8 +126,10 @@ export function WaitingRow({ entry, first }: { entry: Waiting; first?: boolean }
   const toConfirm = entry.debtors.filter((debtor) => debtor.pending);
   const nudgeable = entry.debtors.filter((debtor) => debtor.canNudge && !debtor.nudgedToday && !debtor.pending);
   const nudged = entry.debtors.some((debtor) => debtor.nudgedToday);
+  const remind = useRemind()(`expense:${entry.expenseId}`);
   // Confirming and nudging open their sheets, which show the details first.
-  return <Row first={first} onPress={() => router.push(`/expense/${entry.expenseId}`)}
+  // Swipe left or hold the row to be reminded to chase it.
+  return <SwipeRow label={entry.title} onRemind={remind}>{(guard) => <Row first={first} onPress={guard(() => router.push(`/expense/${entry.expenseId}`))} onLongPress={guard(remind)}
     left={<Faces names={entry.debtors.map((debtor) => debtor.name)} size={28} />}
     title={entry.title}
     meta={<>
@@ -141,7 +144,7 @@ export function WaitingRow({ entry, first }: { entry: Waiting; first?: boolean }
       : toConfirm.length ? <Button size="sm" label="Review" onPress={() => router.push("/settle")} />
       : nudgeable.length ? <Button size="sm" variant="secondary" label="Nudge" onPress={() => router.push(`/nudge/${entry.expenseId}`)} />
       : nudged ? <T kind="note" muted>Nudged today</T> : null}
-  />;
+  />}</SwipeRow>;
 }
 
 export function CommuneTiles() {
@@ -218,6 +221,8 @@ export function NextStep({ need, total }: { need: Need | undefined; total: numbe
   const router = useRouter();
   const { snapshotOf, waiting, today } = useApp();
   const task = useCompleteTask();
+  const remindFor = useRemind();
+  const remind = need ? remindFor(need.key) : undefined;
   const card = { backgroundColor: c.surface, borderRadius: 15, padding: 18, paddingBottom: 20, gap: 16, shadowColor: "#121622", shadowOpacity: 0.18, shadowRadius: 20, shadowOffset: { width: 0, height: 12 }, elevation: 6 };
   if (!need) {
     const late = waiting.find((entry) => entry.status.tone === "attention");
@@ -233,12 +238,20 @@ export function NextStep({ need, total }: { need: Need | undefined; total: numbe
     </View>;
   }
   const commune = snapshotOf(need.communeId)?.commune;
+  // Hold the card (or tap the clock) for Remind me tonight or tomorrow, as in v7.
   return <View style={card} accessibilityLabel="Your next step">
-    <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginVertical: -6 }}>
       <T kind="note" muted style={{ fontWeight: "500" }}>Your next step</T>
-      <T kind="note" muted style={{ fontWeight: "500" }}>1 of {total}</T>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
+        <T kind="note" muted style={{ fontWeight: "500" }}>1 of {total}</T>
+        <PressScale scaleTo={0.9} accessibilityRole="button" accessibilityLabel={`Remind me about ${need.title}`} onPress={remind}
+          hitSlop={6} style={{ width: 32, height: 32, alignItems: "center", justifyContent: "center", marginRight: -8 }}>
+          <Clock3 size={16} color={c.ink2} />
+        </PressScale>
+      </View>
     </View>
-    <PressScale scaleTo={0.985} accessibilityRole="button" onPress={() => router.push(need.kind === "share" ? `/expense/${need.expenseId}` : "/tasks")} style={{ flexDirection: "row", gap: 14, alignItems: "center" }}>
+    <PressScale scaleTo={0.985} accessibilityRole="button" accessibilityHint="Hold for a reminder" onLongPress={remind} delayLongPress={HOLD}
+      onPress={() => router.push(need.kind === "share" ? `/expense/${need.expenseId}` : "/tasks")} style={{ flexDirection: "row", gap: 14, alignItems: "center" }}>
       {need.kind === "share" && commune ? <Who name={need.payerName} photo={photoOf(commune.kind)} /> : <Cal iso={need.dueOn} today={today} small />}
       <View style={{ flex: 1, minWidth: 0 }}>
         <Swap value={need.key}><T kind="strong" style={{ fontSize: 17, lineHeight: 23 }}>{need.title}</T></Swap>
@@ -302,15 +315,20 @@ export function TaskCheck({ communeId, operationId, date, title, assigneeId, ass
     });
   };
   const on = ticked || task.busy === key;
+  const remind = useRemind()(key);
   return <Animated.View exiting={calm ? FadeOut.duration(150) : undefined}
     onLayout={(event) => { if (!ticked) rowH.value = event.nativeEvent.layout.height; }}
     style={[{ borderTopWidth: first ? 0 : 1, borderTopColor: c.outline2, backgroundColor: late ? c.lateSoft : "transparent" }, rowStyle]}>
     <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10, paddingLeft: 16, paddingRight: 6 }}>
-      <Avatar name={assigneeId ? assigneeName : "?"} size={28} />
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <T kind="body" style={{ fontSize: 15, lineHeight: 21, fontWeight: "500" }}>{title}</T>
-        <T kind="label" color={late ? c.late : c.ink2}>{meta}</T>
-      </View>
+      {/* Hold the chore for a reminder. */}
+      <Pressable accessibilityRole="button" accessibilityLabel={`${title}. ${meta}`} accessibilityHint="Hold for a reminder" onLongPress={remind} delayLongPress={HOLD}
+        style={{ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 12 }}>
+        <Avatar name={assigneeId ? assigneeName : "?"} size={28} />
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <T kind="body" style={{ fontSize: 15, lineHeight: 21, fontWeight: "500" }}>{title}</T>
+          <T kind="label" color={late ? c.late : c.ink2}>{meta}</T>
+        </View>
+      </Pressable>
       {!assigneeId && !on ? <Button size="sm" variant="secondary" label="I’ll do it" busy={claimer.busy === operationId}
         onPress={() => void claimer.claim(communeId, operationId, date, title)} /> : null}
       <PressScale accessibilityRole="checkbox" accessibilityState={{ checked: on, busy: task.busy === key }} accessibilityLabel={`Mark ${title} done`}
