@@ -13,6 +13,11 @@
       "supportsTablet": false,
       "config": {
         "usesNonExemptEncryption": false
+      },
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "Commune uses Face ID to unlock the app when you turn it on in Settings.",
+        "NSCameraUsageDescription": "Commune uses the camera to photograph receipts when you add an expense.",
+        "NSPhotoLibraryUsageDescription": "Commune lets you choose a receipt photo when you add an expense."
       }
     },
     "android": {
