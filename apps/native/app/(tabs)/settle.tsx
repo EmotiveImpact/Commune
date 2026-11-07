@@ -6,7 +6,7 @@ import { firstName, money, moneyList, shortDate, word } from "../../src/lib/form
 import type { CurrencyCode } from "../../src/lib/types";
 import { failure, useApp } from "../../src/state";
 import { Body, Pad, TopBar } from "../../src/ui/chrome";
-import { Avatar, Button, Kicker, Panel, Row, State, T, tap } from "../../src/ui/kit";
+import { Avatar, Button, Kicker, Panel, Row, State, T } from "../../src/ui/kit";
 import { useConfirm } from "../../src/ui/confirm";
 import { useToast } from "../../src/ui/toast";
 import { Still } from "../../src/ui/motion";
@@ -29,17 +29,6 @@ export default function Settle() {
   const youOweCurrencies = [...new Set(settle.youOwe.map((row) => row.currency))];
   const owedCurrencies = [...new Set(settle.owedToYou.map((row) => row.currency))];
 
-  async function confirm(communeId: string, reportId: string, name: string, amount: string) {
-    if (!(await ask(`Confirm ${firstName(name)}’s ${amount}?`, `Only confirm once the money is in your account. This records it against ${firstName(name)}’s share.`, "Confirm"))) return;
-    setBusy(reportId);
-    try {
-      await resolveReport(communeId, reportId, "confirm");
-      tap("success");
-      toast(`Confirmed. ${firstName(name)}’s ${amount} is recorded.`);
-    } catch (cause) {
-      toast(failure(cause, "Couldn’t confirm it."));
-    } finally { setBusy(""); }
-  }
   async function decline(communeId: string, reportId: string, name: string) {
     if (!(await ask(`Not received from ${firstName(name)}?`, `${firstName(name)} sees that it hasn’t arrived yet and can report it again.`, "Not received"))) return;
     setBusy(reportId);
@@ -116,7 +105,7 @@ export default function Settle() {
                 <T kind="body">{firstName(row.name)} says they’ve paid you {money(debtor.pending!.amountMinor, currency)} for {entry.title}, sent {shortDate(debtor.pending!.sentOn)}{debtor.pending!.reference ? `, reference “${debtor.pending!.reference}”` : ""}.</T>
                 <View style={{ flexDirection: "row", gap: 10, flexWrap: "wrap" }}>
                   <Button size="sm" label={`Confirm ${money(debtor.pending!.amountMinor, currency)}`} busy={busy === debtor.pending!.id}
-                    onPress={() => void confirm(entry.communeId, debtor.pending!.id, row.name, money(debtor.pending!.amountMinor, currency))} />
+                    onPress={() => router.push(`/confirm/${debtor.pending!.id}`)} />
                   <Button size="sm" variant="secondary" label="Not received" disabled={busy === debtor.pending!.id}
                     onPress={() => void decline(entry.communeId, debtor.pending!.id, row.name)} />
                 </View>

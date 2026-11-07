@@ -102,38 +102,11 @@ export function NeedsList({ items, initial = Infinity }: { items: Need[]; initia
 
 export function WaitingRow({ entry, first }: { entry: Waiting; first?: boolean }) {
   const router = useRouter();
-  const { nudge, resolveReport } = useApp();
-  const toast = useToast();
-  const [busy, setBusy] = useState(false);
   const total = entry.debtors.reduce((sum, debtor) => sum + debtor.amountMinor, 0);
   const toConfirm = entry.debtors.filter((debtor) => debtor.pending);
   const nudgeable = entry.debtors.filter((debtor) => debtor.canNudge && !debtor.nudgedToday && !debtor.pending);
   const nudged = entry.debtors.some((debtor) => debtor.nudgedToday);
-  async function send() {
-    setBusy(true);
-    try {
-      for (const debtor of nudgeable) await nudge(entry.communeId, debtor.shareId);
-      toast(`Nudged ${joinAnd(nudgeable.map((debtor) => firstName(debtor.name)))}.`);
-    } catch (cause) {
-      toast(failure(cause, "Couldn’t send the nudge."));
-    } finally {
-      setBusy(false);
-    }
-  }
-  async function confirm() {
-    const debtor = toConfirm[0];
-    if (!debtor?.pending) return;
-    setBusy(true);
-    try {
-      await resolveReport(entry.communeId, debtor.pending.id, "confirm");
-      tap("success");
-      toast(`Confirmed. ${firstName(debtor.name)}’s ${money(debtor.pending.amountMinor, entry.currency)} is recorded.`);
-    } catch (cause) {
-      toast(failure(cause, "Couldn’t confirm it. Try again."));
-    } finally {
-      setBusy(false);
-    }
-  }
+  // Confirming and nudging open their sheets, which show the details first.
   return <Row first={first} onPress={() => router.push(`/expense/${entry.expenseId}`)}
     left={<Faces names={entry.debtors.map((debtor) => debtor.name)} size={28} />}
     title={entry.title}
@@ -144,10 +117,10 @@ export function WaitingRow({ entry, first }: { entry: Waiting; first?: boolean }
         : <State text={entry.status.text} tone={entry.status.tone} />}
     </>}
     right={toConfirm.length === 1 && toConfirm[0].pending
-      ? <Button size="sm" label={`Confirm ${money(toConfirm[0].pending.amountMinor, entry.currency)}`} busy={busy}
-        accessibilityLabel={`Confirm ${firstName(toConfirm[0].name)} paid ${money(toConfirm[0].pending.amountMinor, entry.currency)} for ${entry.title}`} onPress={() => void confirm()} />
+      ? <Button size="sm" label={`Confirm ${money(toConfirm[0].pending.amountMinor, entry.currency)}`} 
+        accessibilityLabel={`Confirm ${firstName(toConfirm[0].name)} paid ${money(toConfirm[0].pending.amountMinor, entry.currency)} for ${entry.title}`} onPress={() => router.push(`/confirm/${toConfirm[0].pending!.id}`)} />
       : toConfirm.length ? <Button size="sm" label="Review" onPress={() => router.push("/settle")} />
-      : nudgeable.length ? <Button size="sm" variant="secondary" label="Nudge" busy={busy} onPress={() => void send()} />
+      : nudgeable.length ? <Button size="sm" variant="secondary" label="Nudge" onPress={() => router.push(`/nudge/${entry.expenseId}`)} />
       : nudged ? <T kind="note" muted>Nudged today</T> : null}
   />;
 }

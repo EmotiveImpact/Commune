@@ -1,23 +1,24 @@
 import { useState } from "react";
-import { PressScale } from "../src/ui/motion";
 import { ScrollView, View } from "react-native";
-import { Text, TextInput } from "../src/ui/text";
 import { useRouter } from "expo-router";
-import { X } from "lucide-react-native";
 import { activeMembers } from "../src/lib/derive";
-import { addDays, equalShares, firstName, money, parseAmount, shortDate } from "../src/lib/format";
+import { addDays, equalShares, firstName, money, parseAmount, shortDate, word } from "../src/lib/format";
 import { failure, useApp } from "../src/state";
-import { Button, ErrorText, T, tap, useSheetFill } from "../src/ui/kit";
+import { Button, ErrorText, T, tap, FITTED } from "../src/ui/kit";
+import { BigAmount, Chips, Field, People, PersonChip, SheetBar } from "../src/ui/form";
+import { Keypad } from "../src/ui/keypad";
+import { Sheet } from "../src/ui/sheet";
 import { useToast } from "../src/ui/toast";
-import { radius, useTheme } from "../src/ui/theme";
+import { useTheme } from "../src/ui/theme";
 
 const CATEGORIES = ["Bills", "Groceries", "Household", "Food", "Rent", "Travel", "Other"];
 
-/** Add an expense to the commune in view, split equally between the people chosen. */
-export default function AddExpense() {
+/**
+ * Add an expense to the commune in view, split equally between the people
+ * chosen. The amount is typed on the app's own keypad under the big figure.
+ */
+function AddBody({ close }: { close: () => void }) {
   const { c } = useTheme();
-  const fill = useSheetFill();
-  const router = useRouter();
   const toast = useToast();
   const { current, user, today, addExpense } = useApp();
   const people = current ? activeMembers(current) : [];
@@ -26,25 +27,36 @@ export default function AddExpense() {
   const [payer, setPayer] = useState(user?.id ?? "");
   const [included, setIncluded] = useState<string[]>(people.map((member) => member.userId));
   const [category, setCategory] = useState("Other");
-  const [due, setDue] = useState<string | null>(addDays(today, 7));
+  const [due, setDue] = useState<string>(addDays(today, 7));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const close = () => (router.canGoBack() ? router.back() : router.replace("/"));
   if (!current) return null;
   const currency = current.commune.currency;
   const minor = parseAmount(amount);
-  let preview = "";
-  try { if (minor) preview = `${money(equalShares(minor, included)[included.length - 1].amountMinor, currency)} each`; } catch { preview = ""; }
+  const nameOf = (userId: string) => userId === user?.id ? "you" : firstName(people.find((member) => member.userId === userId)?.name ?? "");
+  let shares: Array<{ userId: string; amountMinor: number }> | null = null;
+  try { if (minor && included.length) shares = equalShares(minor, included); } catch { shares = null; }
+  const valid = !!title.trim() && !!shares && !!payer;
+
+  // "£10.80 each between four. Paid by you."
+  let help = "Type the amount, then choose who shares it.";
+  if (minor && !included.length) help = "Choose at least one person to share it.";
+  else if (minor && !shares) help = "That’s less than a penny each.";
+  else if (shares && minor) {
+    const paidBy = `Paid by ${nameOf(payer)}.`;
+    const high = shares[0].amountMinor;
+    const low = shares[shares.length - 1].amountMinor;
+    const each = high === low ? `${money(low, currency)} each` : `${money(low, currency)} or ${money(high, currency)} each`;
+    help = shares.length === 1
+      ? `All ${money(minor, currency)} on ${nameOf(shares[0].userId)}. ${paidBy}`
+      : `${each} between ${shares.length < 10 ? word(shares.length) : shares.length}. ${paidBy}`;
+  }
 
   async function save() {
-    if (!title.trim()) { setError("Say what it was for."); return; }
-    if (!minor) { setError("Enter the amount paid, for example 48.00."); return; }
-    if (!included.length) { setError("Choose who shares it."); return; }
-    let shares;
-    try { shares = equalShares(minor, included); } catch (cause) { setError(failure(cause, "That split doesn’t work.")); return; }
+    if (!valid || !shares || !minor) return;
     setBusy(true); setError("");
     try {
-      await addExpense(current!.commune.id, { title: title.trim(), amountMinor: minor, category, dueOn: due, paidByUserId: payer, shares });
+      await addExpense(current!.commune.id, { title: title.trim(), amountMinor: minor, category, dueOn: due || null, paidByUserId: payer, shares });
       tap("success");
       toast(`${title.trim()} added to ${current!.commune.name}.`);
       close();
@@ -53,73 +65,40 @@ export default function AddExpense() {
     } finally { setBusy(false); }
   }
 
-  const input = { height: 46, borderRadius: radius.control, borderWidth: 1, borderColor: c.outline, backgroundColor: c.surface, paddingHorizontal: 12, fontSize: 16, color: c.ink };
-  const chip = (on: boolean) => ({ height: 36, paddingHorizontal: 14, borderRadius: 18, justifyContent: "center" as const, backgroundColor: on ? c.frame : c.surface, borderWidth: 1, borderColor: on ? c.frame : c.outline });
-  const chipText = (on: boolean) => ({ fontSize: 13.5, fontWeight: "500" as const, color: on ? c.onFrame : c.ink });
-  // No KeyboardAvoidingView: inside an iOS form sheet it pads the top and pushes
-  // the content to the bottom. The scroll view moves fields above the keyboard.
-  return <View style={[fill, { backgroundColor: c.canvas }]}>
-    <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={{ padding: 20, paddingTop: 22, gap: 18 }} keyboardShouldPersistTaps="handled">
-      <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
-        <View style={{ flex: 1 }}>
-          <T kind="title" accessibilityRole="header">Add an expense</T>
-          <T kind="body" muted>{current.commune.name}</T>
-        </View>
-        <PressScale scaleTo={0.9} accessibilityRole="button" accessibilityLabel="Close" onPress={close} hitSlop={8} style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: c.recessed, alignItems: "center", justifyContent: "center" }}>
-          <X size={18} color={c.ink} />
-        </PressScale>
-      </View>
-      <View style={{ gap: 6 }}>
-        <T kind="label" style={{ fontWeight: "600" }}>What was it for?</T>
-        <TextInput accessibilityLabel="What was it for?" value={title} onChangeText={setTitle} maxLength={80} placeholder="Big Tesco shop" placeholderTextColor={c.ink2} style={input} />
-      </View>
-      <View style={{ gap: 6 }}>
-        <T kind="label" style={{ fontWeight: "600" }}>Amount</T>
-        <TextInput accessibilityLabel="Amount" value={amount} onChangeText={setAmount} keyboardType="decimal-pad" inputMode="decimal" placeholder="0.00" placeholderTextColor={c.ink2} style={input} />
-      </View>
-      <View style={{ gap: 8 }}>
-        <T kind="label" style={{ fontWeight: "600" }}>Who paid</T>
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-          {people.map((member) => <PressScale key={member.userId} accessibilityRole="radio" accessibilityState={{ selected: payer === member.userId }} onPress={() => setPayer(member.userId)} style={chip(payer === member.userId)}>
-            <Text style={chipText(payer === member.userId)}>{member.userId === user?.id ? "You" : firstName(member.name)}</Text>
-          </PressScale>)}
-        </View>
-      </View>
-      <View style={{ gap: 8 }}>
-        <T kind="label" style={{ fontWeight: "600" }}>Split equally between</T>
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-          {people.map((member) => {
-            const on = included.includes(member.userId);
-            return <PressScale key={member.userId} accessibilityRole="checkbox" accessibilityState={{ checked: on }}
-              onPress={() => setIncluded(on ? included.filter((value) => value !== member.userId) : people.map((p) => p.userId).filter((value) => value === member.userId || included.includes(value)))} style={chip(on)}>
-              <Text style={chipText(on)}>{member.userId === user?.id ? "You" : firstName(member.name)}</Text>
-            </PressScale>;
-          })}
-        </View>
-        {preview ? <T kind="note" muted>{preview}{minor && included.length && minor % included.length ? ", the first people carry the spare penny" : ""}.</T> : null}
-      </View>
-      <View style={{ gap: 8 }}>
-        <T kind="label" style={{ fontWeight: "600" }}>Category</T>
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-          {CATEGORIES.map((value) => <PressScale key={value} accessibilityRole="radio" accessibilityState={{ selected: category === value }} onPress={() => setCategory(value)} style={chip(category === value)}>
-            <Text style={chipText(category === value)}>{value}</Text>
-          </PressScale>)}
-        </View>
-      </View>
-      <View style={{ gap: 8 }}>
-        <T kind="label" style={{ fontWeight: "600" }}>Due</T>
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-          {[[today, "Today"], [addDays(today, 7), `In a week, ${shortDate(addDays(today, 7))}`], [null, "No due date"]].map(([value, label]) => {
-            const on = due === value;
-            return <PressScale key={label} accessibilityRole="radio" accessibilityState={{ selected: on }} onPress={() => setDue(value)} style={chip(on)}>
-              <Text style={chipText(on)}>{label}</Text>
-            </PressScale>;
-          })}
-        </View>
-      </View>
-      <ErrorText>{error}</ErrorText>
-      <Button size="lg" block label="Add expense" busy={busy} onPress={() => void save()} />
-      <T kind="note" muted>Uneven splits, templates and receipts are on the web app for now.</T>
-    </ScrollView>
-  </View>;
+  const toggle = (userId: string) => setIncluded(included.includes(userId)
+    ? included.filter((value) => value !== userId)
+    : people.map((member) => member.userId).filter((value) => value === userId || included.includes(value)));
+  const label = (userId: string, name: string) => userId === user?.id ? "You" : firstName(name);
+  return <ScrollView style={[FITTED, { flexGrow: 0, backgroundColor: c.canvas }]} contentContainerStyle={{ padding: 20, paddingTop: 14, gap: 18 }} keyboardShouldPersistTaps="handled">
+    <SheetBar title="Add an expense" onCancel={close} />
+    <View style={{ gap: 2, paddingVertical: 4 }}>
+      <BigAmount text={money(minor ?? 0, currency)} empty={!minor} label={`Amount, ${money(minor ?? 0, currency)}`} />
+      <T kind="label" muted style={{ textAlign: "center" }}>{current.commune.name}</T>
+    </View>
+    <Keypad value={amount} onChange={setAmount} />
+    <Field label="What was it for?" value={title} onChange={setTitle} placeholder="Big Tesco shop" />
+    <People label="Who paid">
+      {people.map((member) => <PersonChip key={member.userId} name={member.name} label={label(member.userId, member.name)}
+        on={payer === member.userId} onPress={() => { tap("select"); setPayer(member.userId); }} />)}
+    </People>
+    <View style={{ gap: 8 }}>
+      <People label="Split equally between">
+        {people.map((member) => <PersonChip key={member.userId} many name={member.name} label={label(member.userId, member.name)}
+          on={included.includes(member.userId)} onPress={() => { tap("select"); toggle(member.userId); }} />)}
+      </People>
+      <T kind="note" muted accessibilityRole="text">{help}</T>
+    </View>
+    <Chips label="Category" options={CATEGORIES.map((value) => [value, value])} chosen={[category]} onPick={setCategory} />
+    <Chips label="Due" options={[[today, "Today"], [addDays(today, 7), `In a week, ${shortDate(addDays(today, 7))}`], ["", "No due date"]]}
+      chosen={[due]} onPick={setDue} />
+    <ErrorText>{error}</ErrorText>
+    <Button size="lg" block label={minor ? `Add ${money(minor, currency)}` : "Add expense"} busy={busy} disabled={!valid} onPress={() => void save()} />
+  </ScrollView>;
+}
+
+export default function AddExpense() {
+  const router = useRouter();
+  const [closing, setClosing] = useState(false);
+  const leave = () => (router.canGoBack() ? router.back() : router.replace("/"));
+  return <Sheet closing={closing} onClosed={leave}><AddBody close={() => setClosing(true)} /></Sheet>;
 }
