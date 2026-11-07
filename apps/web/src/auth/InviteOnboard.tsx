@@ -1,7 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useSearch } from "wouter";
 import { AuthLayout } from "./AuthLayout";
-import { visitStory } from "../stories/choose";
 import { useApp } from "../state";
 import type { Hub } from "../data/household";
 import { LIMITS } from "../data/limits";
@@ -9,7 +8,6 @@ import { CommuneLocationFields, EMPTY_COMMUNE_LOCATION } from "../ui/CommuneLoca
 import { rememberReturn } from "../nav";
 
 export function InvitePage() {
-  const [story] = useState(() => visitStory());
   const { go, session, authStatus, previewInvite, inviteAddressHint, acceptInvite, signOut } = useApp();
   const signedInUserId = session?.userId;
   const token = new URLSearchParams(useSearch()).get("token") ?? "";
@@ -77,7 +75,7 @@ export function InvitePage() {
   const elsewhere = !loading && !invite && session && hint ? hint : null;
 
   return (
-    <AuthLayout story={story}>
+    <AuthLayout invite={{ communeName: invite?.communeName, role: invite?.role }}>
       <div className="commune-auth-panel">
         <h2>{loading ? "Loading invitation…" : invite ? `Join ${invite.communeName}` : token && !session ? "You have a Commune invitation" : elsewhere ? "This invitation is for another address" : "Invitation unavailable"}</h2>
         <p className="commune-auth-lede">

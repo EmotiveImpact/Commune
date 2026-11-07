@@ -52,6 +52,34 @@ export function AuthStory({ story, compact = false }: { story: Story; compact?: 
 }
 
 /**
+ * The invitation page's panel. Never the story cast: real names beside cast
+ * faces would mix the two, so this shows a people-free photo and only what
+ * the invitation itself says (the commune, once it has loaded, and the role).
+ */
+export function InviteScene({ communeName, role, compact = false }: { communeName?: string; role?: string; compact?: boolean }) {
+  const line = communeName ? `There's a place for you in ${communeName}.` : "Someone has kept a place for you.";
+  const fact = role ? `You'll join as a ${role.toLowerCase()}.` : "Sign in to see who asked you.";
+  if (compact) {
+    return (
+      <figure className="c-story-strip">
+        <Photo image="inv-home" className="c-story-strip-photo" />
+        <figcaption><span>You're invited</span>{line}</figcaption>
+      </figure>
+    );
+  }
+  return (
+    <figure className="c-story-auth">
+      <Photo image="inv-home" className="c-story-auth-photo" />
+      <figcaption className="c-story-auth-copy">
+        <span className="c-story-eyebrow">You're invited</span>
+        <span className="c-story-line">{line}</span>
+        <span className="c-story-invite-fact">{fact}</span>
+      </figcaption>
+    </figure>
+  );
+}
+
+/**
  * On an empty screen: the bill from the story they saw, and the way to add
  * their own. `quiet` where the page already has its filled Add button.
  */

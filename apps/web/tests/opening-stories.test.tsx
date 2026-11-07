@@ -1,9 +1,9 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { IMAGE_KEYS, STORIES, storyById } from "@commune/core/stories";
+import { CAST_NAMES, IMAGE_KEYS, STORIES, storyById } from "@commune/core/stories";
 import { forgetVisitStory, seenStory, visitStory } from "../src/stories/choose";
 import { storyImage } from "../src/stories/images";
-import { AuthStory, FirstBillCard, LoadingLines } from "../src/stories/StoryParts";
+import { AuthStory, FirstBillCard, InviteScene, LoadingLines } from "../src/stories/StoryParts";
 import { PendingShell } from "../src/shell/PendingShell";
 
 afterEach(() => {
@@ -73,5 +73,14 @@ describe("opening stories in the web app", () => {
 
   it("has twelve stories", () => {
     expect(STORIES).toHaveLength(12);
+  });
+});
+
+describe("the invitation panel", () => {
+  it("shows the commune and role, never a cast name", () => {
+    const { container } = render(<InviteScene communeName="Flat 4" role="Member" />);
+    expect(screen.getByText("There's a place for you in Flat 4.")).toBeTruthy();
+    expect(screen.getByText("You'll join as a member.")).toBeTruthy();
+    for (const name of CAST_NAMES) expect(container.textContent).not.toContain(name);
   });
 });
