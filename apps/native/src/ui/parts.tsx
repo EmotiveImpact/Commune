@@ -1,3 +1,4 @@
+import { SwipeRow } from "./swipe";
 import { useRef, useState } from "react";
 import Svg, { Path } from "react-native-svg";
 import { Image, View, useWindowDimensions } from "react-native";
@@ -57,9 +58,11 @@ export function NeedRow({ need, first }: { need: Need; first?: boolean }) {
   const { today } = useApp();
   const task = useCompleteTask();
   const payable = usePayable(need.communeId, need.kind === "share" ? need.payerId : "");
-  return <Row first={first}
+  const remind = () => { tap("light"); router.push(`/remind/${encodeURIComponent(need.key)}`); };
+  // v7: swipe left for "Remind me", or hold the row, and the drawer offers the options.
+  return <SwipeRow label={need.title} onRemind={remind}>{(guard) => <Row first={first} onLongPress={guard(remind)}
     accessibilityLabel={`${need.title}. ${need.status.text}.`}
-    onPress={() => router.push(need.kind === "share" ? `/expense/${need.expenseId}` : "/tasks")}
+    onPress={guard(() => router.push(need.kind === "share" ? `/expense/${need.expenseId}` : "/tasks"))}
     left={<Cal iso={need.dueOn} today={today} small />}
     title={need.title}
     meta={<>
@@ -71,7 +74,7 @@ export function NeedRow({ need, first }: { need: Need; first?: boolean }) {
         ? <Button size="sm" variant="secondary" label="Pay" accessibilityLabel={`Pay ${need.payerName} for ${need.title}`} onPress={() => router.push(`/pay/${need.shareId}`)} />
         : <Button size="sm" variant="secondary" label="I’ve paid" accessibilityLabel={`I’ve paid ${need.payerName} for ${need.title}`} onPress={() => router.push(`/record/${need.shareId}`)} />
       : <Button size="sm" variant="secondary" label="Mark done" busy={task.busy === need.key} onPress={() => void task.run(need)} />}
-  />;
+  />}</SwipeRow>;
 }
 
 /** Needs grouped by when they are due, with "Show more" after the first few. */

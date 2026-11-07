@@ -94,8 +94,8 @@ export function Panel({ children, pad, style }: { children: ReactNode; pad?: boo
   return <View style={[{ backgroundColor: c.surface, borderRadius: radius.surface, borderWidth: 1, borderColor: c.outline2, overflow: "hidden" }, pad ? { padding: 20, gap: 12 } : null, style]}>{children}</View>;
 }
 
-export function Row({ left, title, meta, right, onPress, first, accessibilityLabel }: {
-  left?: ReactNode; title: ReactNode; meta?: ReactNode; right?: ReactNode; onPress?: () => void; first?: boolean; accessibilityLabel?: string;
+export function Row({ left, title, meta, right, onPress, onLongPress, first, accessibilityLabel }: {
+  left?: ReactNode; title: ReactNode; meta?: ReactNode; right?: ReactNode; onPress?: () => void; onLongPress?: () => void; first?: boolean; accessibilityLabel?: string;
 }) {
   const { c } = useTheme();
   const body = <>
@@ -108,7 +108,7 @@ export function Row({ left, title, meta, right, onPress, first, accessibilityLab
   </>;
   const style = { flexDirection: "row" as const, alignItems: "center" as const, gap: 12, paddingVertical: 12, paddingHorizontal: 16, borderTopWidth: first ? 0 : 1, borderTopColor: c.outline2 };
   return onPress
-    ? <PressScale accessibilityRole="button" accessibilityLabel={accessibilityLabel} onPress={onPress} style={style} scaleTo={0.985} pressedStyle={{ backgroundColor: c.press }}>{body}</PressScale>
+    ? <PressScale accessibilityRole="button" accessibilityLabel={accessibilityLabel} onPress={onPress} onLongPress={onLongPress} delayLongPress={550} style={style} scaleTo={0.985} pressedStyle={{ backgroundColor: c.press }}>{body}</PressScale>
     : <View style={style}>{body}</View>;
 }
 
