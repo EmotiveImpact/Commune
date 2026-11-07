@@ -9,6 +9,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { PrefsProvider } from "../src/prefs";
 import { AppProvider, useApp } from "../src/state";
 import { ConfirmProvider } from "../src/ui/confirm";
+import { HeroFlight } from "../src/ui/hero";
 import { ToastProvider } from "../src/ui/toast";
 import { PushedBar } from "../src/ui/chrome";
 import { SHEET_SCREEN } from "../src/ui/sheet";
@@ -93,6 +94,7 @@ function Screens() {
       <Stack.Screen name="switch" options={SHEET_SCREEN} />
       <Stack.Screen name="invite" options={SHEET_SCREEN} />
     </Stack>
+    <HeroFlight />
   </>;
 }
 

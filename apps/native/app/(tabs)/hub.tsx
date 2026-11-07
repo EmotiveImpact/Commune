@@ -5,7 +5,7 @@ import { Text } from "../../src/ui/text";
 import { useRouter, type Href } from "expo-router";
 import { BlurView } from "expo-blur";
 import * as Clipboard from "expo-clipboard";
-import Animated, { interpolate, runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming, Extrapolation, type SharedValue } from "react-native-reanimated";
+import Animated, { interpolate, useAnimatedRef, runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming, Extrapolation, type SharedValue } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { CalendarDays, Check, ChevronDown, ChevronRight, Copy, Eye, EyeOff, Files, Phone, Plus, ReceiptText, Repeat2, ShoppingBag, UsersRound } from "lucide-react-native";
 import {
@@ -20,6 +20,7 @@ import { Avatar, Button, Cal, Empty, Faces, Panel, Row, SectionHead, State, T, t
 import { haptic, PressScale, springs, useCalm } from "../../src/ui/motion";
 import { NeedsList, TaskCheck, WaitingRow } from "../../src/ui/parts";
 import { PayPrimary } from "../../src/ui/pay";
+import { HERO_HEIGHT, heroHidden, heroReveal, hubHooks } from "../../src/ui/hero";
 import { Rolling } from "../../src/ui/rolling";
 import { useToast } from "../../src/ui/toast";
 import { KIND_NAME, radius, useTheme } from "../../src/ui/theme";
@@ -44,6 +45,8 @@ export default function Hub() {
   const [tab, setTab] = useState<HubTab>("overview");
   const [heights, setHeights] = useState<Partial<Record<HubTab, number>>>({});
   const pull = usePull();
+  const scroller = useAnimatedRef<Animated.ScrollView>();
+  useEffect(() => { hubHooks.scrollTop = () => scroller.current?.scrollTo({ y: 0, animated: false }); return () => { hubHooks.scrollTop = undefined; }; }, [scroller]);
   const { refresh } = useApp();
   const [pulling, setPulling] = useState(false);
   const index = HUB_TABS.findIndex((item) => item.id === tab);
@@ -109,7 +112,7 @@ export default function Hub() {
   };
   return <View style={{ flex: 1, backgroundColor: c.canvas }}>
     <TopBar title="Hub" />
-    <Animated.ScrollView onScroll={pull.onScroll} scrollEventThrottle={16} style={{ flex: 1 }}
+    <Animated.ScrollView ref={scroller} onScroll={pull.onScroll} scrollEventThrottle={16} style={{ flex: 1 }}
       refreshControl={<RefreshControl refreshing={pulling} tintColor="#ffffff" onRefresh={async () => { setPulling(true); await refresh(); setPulling(false); }} />}
       stickyHeaderIndices={hubTabsAt === "top" ? [1] : undefined}
       contentContainerStyle={{ paddingBottom: hubTabsAt === "bottom" ? 96 : 32 }}>
@@ -136,7 +139,6 @@ function moneySections(): ReactNode[] {
 }
 
 /** The photo, its place and people, and the week's pulse, with Change and Invite on glass. */
-const HERO_HEIGHT = 262;
 const HERO_GROUND = "#262b3a";
 
 function Hero({ scrollY }: { scrollY: SharedValue<number> }) {
@@ -145,7 +147,13 @@ function Hero({ scrollY }: { scrollY: SharedValue<number> }) {
   // gap, like a music app's album header, instead of showing a blank band.
   const stretch = useAnimatedStyle(() => {
     const gap = Math.max(0, -scrollY.value) * PULL_SHOWN;
-    return { transform: [{ translateY: -gap / 2 }, { scale: interpolate(gap, [0, HERO_HEIGHT], [1, 2], Extrapolation.EXTEND) }] };
+    return { opacity: 1 - heroHidden.value, transform: [{ translateY: -gap / 2 }, { scale: interpolate(gap, [0, HERO_HEIGHT], [1, 2], Extrapolation.EXTEND) }] };
+  });
+  // After the photo lands from a tile, the buttons and words rise in.
+  const reveal = useAnimatedStyle(() => ({ opacity: heroReveal.value, transform: [{ translateY: 10 * (1 - heroReveal.value) }] }));
+  const revealLate = useAnimatedStyle(() => {
+    const k = Math.max(0, Math.min(1, heroReveal.value * 1.25 - 0.25));
+    return { opacity: k, transform: [{ translateY: 10 * (1 - k) }] };
   });
   const { current, communes, user, today } = useApp();
   if (!current) return null;
@@ -178,7 +186,7 @@ function Hero({ scrollY }: { scrollY: SharedValue<number> }) {
       <Rect x="0" y="0" width="100%" height="100%" fill="url(#heroScrim)" />
     </Svg>
     </Animated.View>
-    <View style={{ flexDirection: "row", padding: 14, gap: 8 }}>
+    <Animated.View style={[{ flexDirection: "row", padding: 14, gap: 8 }, reveal]}>
       {communes.length > 1 ? <PressScale accessibilityRole="button" accessibilityLabel={`Commune: ${commune.name}. Change commune.`} onPress={() => router.push("/switch")} style={glass}>
         {frost}<View style={glassIn}><ChevronDown size={15} color="#fff" /><Text style={{ color: "#fff", fontSize: 13, fontWeight: "500" }}>Change</Text></View>
       </PressScale> : null}
@@ -186,9 +194,9 @@ function Hero({ scrollY }: { scrollY: SharedValue<number> }) {
       <PressScale accessibilityRole="button" accessibilityLabel={`Invite people to ${commune.name}`} onPress={() => router.push("/members")} style={glass}>
         {frost}<View style={glassIn}><UsersRound size={15} color="#fff" /><Text style={{ color: "#fff", fontSize: 13, fontWeight: "500" }}>Invite</Text></View>
       </PressScale>
-    </View>
+    </Animated.View>
     <View style={{ flex: 1 }} />
-    <View style={{ paddingHorizontal: 18, paddingBottom: 18, gap: 4 }}>
+    <Animated.View style={[{ paddingHorizontal: 18, paddingBottom: 18, gap: 4 }, revealLate]}>
       <Text style={{ color: "rgba(255,255,255,0.86)", fontSize: 12.5, lineHeight: 17, fontWeight: "500" }}>{KIND_NAME[commune.kind]}{place ? ` · ${place}` : ""}</Text>
       <Text accessibilityRole="header" style={{ color: "#fff", fontSize: 28, lineHeight: 34, fontWeight: "600", letterSpacing: -0.6 }}>{commune.name}</Text>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: 2 }}>
@@ -198,7 +206,7 @@ function Hero({ scrollY }: { scrollY: SharedValue<number> }) {
       <View style={{ alignSelf: "flex-start", marginTop: 8, backgroundColor: "rgba(250,248,244,0.94)", borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 6 }}>
         <Text style={{ color: "#1a1e2b", fontSize: 13, lineHeight: 17, fontWeight: "500" }}>{sentence}</Text>
       </View>
-    </View>
+    </Animated.View>
   </View>;
 }
 

@@ -1,13 +1,16 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Svg, { Path } from "react-native-svg";
-import { Image, View } from "react-native";
+import { Image, View, useWindowDimensions } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Check, ChevronDown } from "lucide-react-native";
 import { standing, tilePulse, type Need, type Waiting } from "../lib/derive";
 import { firstName, joinAnd, money } from "../lib/format";
 import { failure, useApp } from "../state";
 import type { Snapshot } from "../lib/types";
-import { photoOf } from "./chrome";
+import { BAR_HEIGHT, photoOf } from "./chrome";
+import { HERO_HEIGHT, flyHero } from "./hero";
+import type { Rect as Box } from "./origin";
 import { Avatar, Button, Cal, Faces, Group, Meta, Row, State, T, Who, tap } from "./kit";
 import { PayPrimary, usePayable } from "./pay";
 import { Rolling, Swap } from "./rolling";
@@ -153,24 +156,38 @@ export function CommuneTiles() {
   const { c } = useTheme();
   const router = useRouter();
   const { snapshots, needs, waiting, recorded, setCurrent, user, today, current } = useApp();
+  const calm = useCalm();
+  const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
   const rows: Snapshot[][] = [];
   snapshots.forEach((snapshot, index) => { if (index % 3 === 0) rows.push([]); rows[rows.length - 1].push(snapshot); });
   return <View style={{ gap: 16 }}>
     {rows.map((row, index) => <View key={index} style={{ flexDirection: "row", gap: 10 }}>
       {row.map((snapshot) => <Tile key={snapshot.commune.id} snapshot={snapshot}
         info={standing(snapshot, needs, waiting, recorded)} pulse={tilePulse(snapshot, user?.id ?? "", today)}
-        onPress={() => { setCurrent(snapshot.commune.id); router.push("/hub"); }} c={c.ink2} placeholder={c.recessed}
+        onPress={(from) => {
+          // The photo flies from the tile into the Hub's hero (v7), then the Hub opens under it.
+          if (from && !calm) flyHero(from, { x: 0, y: insets.top + BAR_HEIGHT, w: width, h: HERO_HEIGHT }, photoOf(snapshot.commune.kind));
+          setCurrent(snapshot.commune.id); router.push("/hub");
+        }} c={c.ink2} placeholder={c.recessed}
         isCurrent={snapshots.length > 1 && current?.commune.id === snapshot.commune.id} />)}
       {Array.from({ length: 3 - row.length }, (_, spare) => <View key={`spare-${spare}`} style={{ flex: 1 }} />)}
     </View>)}
   </View>;
 }
 function Tile({ snapshot, info, pulse, onPress, c, placeholder, isCurrent }: {
-  snapshot: Snapshot; info: ReturnType<typeof standing>; pulse: ReturnType<typeof tilePulse>; onPress: () => void; c: string; placeholder: string; isCurrent?: boolean;
+  snapshot: Snapshot; info: ReturnType<typeof standing>; pulse: ReturnType<typeof tilePulse>; onPress: (from: Box | null) => void; c: string; placeholder: string; isCurrent?: boolean;
 }) {
-  return <PressScale accessibilityRole="button" accessibilityLabel={`${snapshot.commune.name}. ${info.line}. ${pulse.text}.`} onPress={onPress}
+  const photo = useRef<View>(null);
+  const open = () => {
+    const node = photo.current as unknown as { getBoundingClientRect?: () => DOMRect; measureInWindow?: View["measureInWindow"] } | null;
+    if (node?.getBoundingClientRect) { const r = node.getBoundingClientRect(); onPress({ x: r.left, y: r.top, w: r.width, h: r.height }); return; }
+    if (!node?.measureInWindow) { onPress(null); return; }
+    node.measureInWindow((x, y, w, h) => onPress(w && h ? { x, y, w, h } : null));
+  };
+  return <PressScale accessibilityRole="button" accessibilityLabel={`${snapshot.commune.name}. ${info.line}. ${pulse.text}.`} onPress={open}
     style={({ pressed }) => ({ flex: 1, minWidth: 0, gap: 8, opacity: pressed ? 0.85 : 1 })}>
-    <View>
+    <View ref={photo} collapsable={false}>
       <Image source={{ uri: photoOf(snapshot.commune.kind) }} style={{ width: "100%", aspectRatio: 1 / 0.9, borderRadius: 12, backgroundColor: placeholder }} />
       {/* v7's "Current" tag: a small dark glass label on the photo. */}
       {isCurrent ? <View style={{ position: "absolute", left: 6, top: 6, height: 18, paddingHorizontal: 7, borderRadius: 9, backgroundColor: "rgba(14,16,24,0.55)", borderWidth: 1, borderColor: "rgba(255,255,255,0.18)", justifyContent: "center" }}>
