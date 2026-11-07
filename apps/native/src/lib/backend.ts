@@ -1,6 +1,6 @@
 import type { PayLink, PayLinkInput, PayProvider } from "./payLinks";
 import { parsePayLinks } from "./payLinks";
-import type { Commune, Snapshot, User } from "./types";
+import type { Commune, CurrencyCode, Snapshot, User } from "./types";
 import { requestId } from "./format";
 
 /**
@@ -44,6 +44,10 @@ export interface Backend {
   addTask(communeId: string, input: TaskInput): Promise<void>;
   /** Posts an announcement to everyone in the commune. */
   announce(communeId: string, input: { title: string; body: string; needsAcknowledgement: boolean }): Promise<void>;
+  /** "I'll do it": takes a chore nobody has yet. expectedDate rejects a stale screen. */
+  claimTask(operationId: string, input: { toMemberId: string; expectedDate: string; today: string; requestId: string }): Promise<void>;
+  /** Starts a new commune with you as its admin, and returns its id. */
+  createCommune(input: { name: string; kind: "household" | "workspace" | "trip"; currency: CurrencyCode }): Promise<string>;
 }
 
 export type NoteInput = { title: string; pill: string | null; lede: string | null; body: string | null; facts: Array<[string, string]> };
@@ -113,6 +117,12 @@ export function serverBackend(base: string): Backend {
     },
     async announce(communeId, input) {
       await post(`/communes/${communeId}/announcements`, { ...input, requestId: requestId() });
+    },
+    async claimTask(operationId, input) {
+      await post(`/operations/${operationId}/handovers`, { ...input, expectedAssigneeId: null, reason: null });
+    },
+    async createCommune(input) {
+      return (await post<{ id: string }>("/communes", input)).id;
     },
     async invite(communeId, email, role = "member") {
       const result = await post<{ url: string }>(`/communes/${communeId}/invites`, { email, role });

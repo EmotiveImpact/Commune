@@ -99,7 +99,7 @@ export default function Settle() {
                   {pending.length ? null
                     : nudgeable.length ? <Button size="sm" variant="secondary" label={`Nudge ${firstName(row.name)}`} busy={busy === `n:${row.name}`}
                       onPress={() => void sendNudge(nudgeable[0].waiting.communeId, nudgeable.map((item) => item.debtor.shareId), row.name)} />
-                    : <T kind="note" muted>{nudged ? "Nudged today" : "Not due yet"}</T>}
+                    : <T kind="note" muted>{nudged ? "Nudged today" : nudgeFrom(row.items.map((item) => item.waiting.dueOn))}</T>}
                 </View>} />
               {pending.map(({ waiting: entry, debtor }) => <View key={debtor.pending!.id} style={{ marginHorizontal: 16, marginBottom: 14, padding: 14, borderRadius: 12, backgroundColor: c.attentionSoft, gap: 10 }}>
                 <T kind="body">{firstName(row.name)} says they’ve paid you {money(debtor.pending!.amountMinor, currency)} for {entry.title}, sent {shortDate(debtor.pending!.sentOn)}{debtor.pending!.reference ? `, reference “${debtor.pending!.reference}”` : ""}.</T>
@@ -120,4 +120,10 @@ export default function Settle() {
       </Pad>
     </Body>
   </View>;
+}
+
+/** v7's "Nudge from 18 Oct": nudging opens on the earliest due date still to come. */
+function nudgeFrom(dues: Array<string | null>): string {
+  const next = dues.filter((due): due is string => !!due).sort()[0];
+  return next ? `Nudge from ${shortDate(next)}` : "No due date";
 }

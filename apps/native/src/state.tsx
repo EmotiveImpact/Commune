@@ -49,6 +49,8 @@ type App = {
   /** Returns the completion's id, for Undo. */
   completeTask(communeId: string, operationId: string, expectedDate: string, doneBy?: "me" | "assignee"): Promise<string | null>;
   undoCompletion(communeId: string, occurrenceId: string): Promise<void>;
+  /** "I'll do it" on a chore nobody has yet. */
+  claimTask(communeId: string, operationId: string, expectedDate: string): Promise<void>;
   addExpense(communeId: string, input: Parameters<Backend["addExpense"]>[1]): Promise<void>;
   nudge(communeId: string, shareId: string): Promise<void>;
   /** Marks what you've now seen as read, so the bell stops showing new. */
@@ -165,6 +167,10 @@ export function AppProvider({ children, backend: given }: { children: ReactNode;
         const occurrenceId = await backend.completeTask(operationId, { expectedDate, today: todayIso(), requestId: requestId(), ...(doneBy ? { doneBy } : {}) });
         await reload(communeId);
         return occurrenceId;
+      },
+      async claimTask(communeId, operationId, expectedDate) {
+        await backend.claimTask(operationId, { toMemberId: user!.id, expectedDate, today: todayIso(), requestId: requestId() });
+        await reload(communeId);
       },
       async undoCompletion(communeId, occurrenceId) {
         await backend.undoCompletion(occurrenceId);

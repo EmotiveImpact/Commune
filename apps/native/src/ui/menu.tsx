@@ -141,7 +141,7 @@ function MenuPanel() {
           {on ? <Check size={18} color={c.onFrame} /> : null}
         </PressScale>;
       })}
-      <PressScale scaleTo={0.985} accessibilityRole="button" onPress={() => { close(); toast("New communes are set up on the web for now."); }}
+      <PressScale scaleTo={0.985} accessibilityRole="button" onPress={() => go("/new-commune")}
         style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 14, padding: 8, borderRadius: 14, backgroundColor: pressed ? c.frameRaised : "transparent" })}>
         <View style={{ width: 44, height: 44, borderRadius: 10, borderWidth: 1, borderColor: "rgba(245,241,234,0.3)", alignItems: "center", justifyContent: "center" }}>
           <Plus size={18} color={c.onFrame} />

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Image, View } from "react-native";
 import { useRouter } from "expo-router";
-import { Check } from "lucide-react-native";
+import { Check, Plus } from "lucide-react-native";
 import { activeMembers, standing } from "../src/lib/derive";
 import { useApp } from "../src/state";
 import { photoOf } from "../src/ui/chrome";
@@ -13,12 +13,17 @@ import { KIND_NAME, useTheme } from "../src/ui/theme";
 export default function Switch() {
   const router = useRouter();
   const [closing, setClosing] = useState(false);
-  const leave = () => (router.canGoBack() ? router.back() : router.replace("/"));
-  return <Sheet closing={closing} onClosed={leave}><SwitchBody close={() => setClosing(true)} /></Sheet>;
+  const [next, setNext] = useState<(() => void) | null>(null);
+  const leave = () => {
+    if (router.canGoBack()) router.back(); else router.replace("/");
+    if (next) setTimeout(next, 30);
+  };
+  return <Sheet closing={closing} onClosed={leave}><SwitchBody close={(then) => { if (then) setNext(() => then); setClosing(true); }} /></Sheet>;
 }
 
-function SwitchBody({ close }: { close: () => void }) {
+function SwitchBody({ close }: { close: (then?: () => void) => void }) {
   const { c } = useTheme();
+  const router = useRouter();
   const { snapshots, current, setCurrent, needs, waiting, recorded } = useApp();
   return <View style={[FITTED, { padding: 20, paddingTop: 12, gap: 14 }]}>
     <T kind="title" accessibilityRole="header">Your communes</T>
@@ -31,6 +36,10 @@ function SwitchBody({ close }: { close: () => void }) {
         title={snapshot.commune.name}
         meta={<T kind="label" muted>{KIND_NAME[snapshot.commune.kind]} · {people} {people === 1 ? "person" : "people"} · {standing(snapshot, needs, waiting, recorded).line}</T>}
         right={on ? <Check size={18} color={c.action} /> : null} />;
-    })}</Panel>
+    })}
+      <Row onPress={() => close(() => router.push("/new-commune"))}
+        left={<View style={{ width: 40, height: 40, borderRadius: 9, borderWidth: 1, borderStyle: "dashed", borderColor: c.outline, alignItems: "center", justifyContent: "center" }}><Plus size={18} color={c.ink} /></View>}
+        title="New commune" meta={<T kind="label" muted>A home, a team or a trip</T>} />
+    </Panel>
   </View>;
 }

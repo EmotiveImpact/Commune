@@ -51,6 +51,24 @@ export function useCompleteTask() {
   };
 }
 
+/** "I'll do it": take a chore nobody has yet. */
+export function useClaimTask() {
+  const { claimTask } = useApp();
+  const toast = useToast();
+  const [busy, setBusy] = useState<string | null>(null);
+  async function claim(communeId: string, operationId: string, date: string, title: string) {
+    setBusy(operationId);
+    try {
+      await claimTask(communeId, operationId, date);
+      tap("success");
+      toast(`${title} is yours.`);
+    } catch (cause) {
+      toast(failure(cause, "Couldn’t take it. Try again."));
+    } finally { setBusy(null); }
+  }
+  return { busy, claim };
+}
+
 export function NeedRow({ need, first }: { need: Need; first?: boolean }) {
   const router = useRouter();
   const { today } = useApp();
@@ -251,6 +269,7 @@ export function TaskCheck({ communeId, operationId, date, title, assigneeId, ass
   const calm = useCalm();
   const { user } = useApp();
   const task = useCompleteTask();
+  const claimer = useClaimTask();
   const [asking, setAsking] = useState(false);
   const [ticked, setTicked] = useState(false);
   const key = `task:${operationId}`;
@@ -292,6 +311,8 @@ export function TaskCheck({ communeId, operationId, date, title, assigneeId, ass
         <T kind="body" style={{ fontSize: 15, lineHeight: 21, fontWeight: "500" }}>{title}</T>
         <T kind="label" color={late ? c.late : c.ink2}>{meta}</T>
       </View>
+      {!assigneeId && !on ? <Button size="sm" variant="secondary" label="I’ll do it" busy={claimer.busy === operationId}
+        onPress={() => void claimer.claim(communeId, operationId, date, title)} /> : null}
       <PressScale accessibilityRole="checkbox" accessibilityState={{ checked: on, busy: task.busy === key }} accessibilityLabel={`Mark ${title} done`}
         disabled={on} onPress={() => (theirs ? setAsking(!asking) : done())} scaleTo={0.9}
         style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}>

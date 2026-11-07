@@ -91,6 +91,7 @@ function Screens() {
       <Stack.Screen name="confirm/[reportId]" options={SHEET_SCREEN} />
       <Stack.Screen name="nudge/[expenseId]" options={SHEET_SCREEN} />
       <Stack.Screen name="remind/[key]" options={SHEET_SCREEN} />
+      <Stack.Screen name="new-commune" options={SHEET_SCREEN} />
       <Stack.Screen name="switch" options={SHEET_SCREEN} />
       <Stack.Screen name="invite" options={SHEET_SCREEN} />
       <Stack.Screen name="add-note" options={SHEET_SCREEN} />

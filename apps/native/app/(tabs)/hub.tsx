@@ -395,7 +395,7 @@ function WeekRow({ item, late, chip }: { item: WeekItem; late?: boolean; chip?: 
     const who = item.mine ? "You" : item.who;
     return <TaskCheck communeId={current.commune.id} operationId={item.operation.id} date={item.operation.date} title={item.title}
       assigneeId={item.assigneeId} assigneeName={item.assigneeId === user?.id ? user?.name ?? "You" : current.members.find((member) => member.userId === item.assigneeId)?.name ?? item.who}
-      first={chip} late={late} meta={late ? `${who} · late` : item.assigneeId ? who : "Nobody yet · tick it to take it"} />;
+      first={chip} late={late} meta={late ? `${who} · late` : item.assigneeId ? who : "Nobody yet"} />;
   }
   const bill = item.kind === "bill";
   const meta = bill

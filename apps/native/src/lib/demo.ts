@@ -250,6 +250,27 @@ export function demoBackend(now: () => string = todayIso): Backend {
       snapshot.announcements = [{ id: `ann-${newId()}`, title: input.title, body: input.body, authorId: MAYA.id, createdAt: new Date().toISOString(),
         needsAcknowledgement: input.needsAcknowledgement, acknowledgements: [] }, ...(snapshot.announcements ?? [])];
     },
+    async claimTask(operationId, input) {
+      for (const snapshot of data) {
+        const item = snapshot.operations?.find((candidate) => candidate.id === operationId);
+        if (!item) continue;
+        if (item.status !== "open") throw new ApiError("This task is already done", 409);
+        if (input.expectedDate !== item.date || item.assigneeId) throw new ApiError("This task has already moved on. Refresh to see who has it now.", 409);
+        item.assigneeId = input.toMemberId;
+        return;
+      }
+      throw new ApiError("This task has been removed", 404);
+    },
+    async createCommune(input) {
+      const id = `demo-${newId()}`;
+      data.push({
+        commune: { id, name: input.name, kind: input.kind, currency: input.currency, role: "admin", memberCount: 1 },
+        members: [{ ...PEOPLE.maya, role: "admin", active: true }],
+        expenses: [], funds: [], notifications: [], reminderTargets: [], notes: [], operations: [],
+        recurringBills: [], splitTemplates: [], payLinks: {}, activityEvents: [],
+      });
+      return id;
+    },
     async invite(communeId, email) {
       if (!data.some((snapshot) => snapshot.commune.id === communeId)) throw new Error("That commune isn’t here any more.");
       const token = Array.from(email.trim().toLowerCase()).reduce((hash, ch) => (hash * 31 + ch.charCodeAt(0)) >>> 0, 7).toString(16).padStart(8, "0");

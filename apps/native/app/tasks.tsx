@@ -7,11 +7,12 @@ import { useApp } from "../src/state";
 import { useTheme } from "../src/ui/theme";
 import { Body, Pad } from "../src/ui/chrome";
 import { Button, Cal, Panel, Row, State, T } from "../src/ui/kit";
-import { useCompleteTask } from "../src/ui/parts";
+import { useClaimTask, useCompleteTask } from "../src/ui/parts";
 
 export default function Tasks() {
   const { current, user, today } = useApp();
   const task = useCompleteTask();
+  const claimer = useClaimTask();
   const { c } = useTheme();
   const router = useRouter();
   const { focus } = useLocalSearchParams<{ focus?: string }>();
@@ -27,7 +28,9 @@ export default function Tasks() {
         const status = statusFor(item.date, today, "task");
         return <View key={item.id} style={item.id === focus ? { backgroundColor: c.settled } : null}><Row first={index === 0} left={<Cal iso={item.date} today={today} small />} title={item.title}
           meta={<><T kind="label" muted>{who}{item.repeat !== "none" ? ` · every ${item.repeat === "weekly" ? "week" : "month"}` : ""}</T>{mine && item.date <= today ? <State text={status.text} tone={status.tone} /> : null}</>}
-          right={mine && item.date <= today ? <Button size="sm" variant="secondary" label="Mark done" busy={task.busy === `task:${item.id}`}
+          right={!item.assigneeId ? <Button size="sm" variant="secondary" label="I’ll do it" busy={claimer.busy === item.id}
+            onPress={() => void claimer.claim(current!.commune.id, item.id, item.date, item.title)} />
+            : mine && item.date <= today ? <Button size="sm" variant="secondary" label="Mark done" busy={task.busy === `task:${item.id}`}
             onPress={() => void task.run({ kind: "task", key: `task:${item.id}`, communeId: current!.commune.id, operationId: item.id, date: item.date, title: item.title, dueOn: item.date, band: "Today", status })} /> : null} /></View>;
       })}</Panel> : <Panel pad><T kind="body" muted>Nothing on the list for {current?.commune.name}.</T></Panel>}
       <Button variant="secondary" block label="Add a chore" icon={<Plus size={16} color={c.ink} />} onPress={() => router.push("/add-chore")} />
