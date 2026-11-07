@@ -70,6 +70,16 @@ describe("the build's exact connect policy", () => {
       + "https://ep-a.neonauth.c-2.eu-west-2.aws.neon.tech https://ep-a.apirest.c-2.eu-west-2.aws.neon.tech https://br-a.compute.eu-west-2.aws.neon.tech\" />");
   });
 
+  it("names the Data API host derived from the Neon Auth URL when the build sets no Data API URL", () => {
+    // Production sets only the Auth URL; leaving the derived host out blocked every read after sign-in.
+    const out = transform({
+      VITE_NEON_AUTH_URL: "https://ep-a.neonauth.c-7.us-east-2.aws.neon.tech/neondb/auth",
+      VITE_REMINDER_FUNCTION_URL: "https://br-a-reminders.compute.c-7.us-east-2.aws.neon.tech/",
+    });
+    expect(out).toContain("connect-src 'self' https://ep-a.neonauth.c-7.us-east-2.aws.neon.tech "
+      + "https://ep-a.apirest.c-7.us-east-2.aws.neon.tech https://br-a-reminders.compute.c-7.us-east-2.aws.neon.tech\" />");
+  });
+
   it("adds nothing to a build without Neon endpoints, such as the local app", () => {
     expect(transform({})).toBe(html);
   });
