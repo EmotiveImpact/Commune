@@ -137,8 +137,9 @@ export function Cal({ iso, today, small }: { iso: string | null; today: string; 
 export function State({ text, tone = "plain" }: { text: string; tone?: Tone | "settled" }) {
   const { c } = useTheme();
   const color = tone === "late" ? c.late : tone === "attention" ? c.attention : tone === "settled" ? c.onSettled : c.ink2;
-  return <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexShrink: 1 }}>
-    {tone === "settled" ? null : <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: tone === "plain" ? c.outline : color }} />}
+  // The dot sits on the first line, so it stays put when the words wrap.
+  return <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 6, flexShrink: 1 }}>
+    {tone === "settled" ? null : <View style={{ width: 6, height: 6, borderRadius: 3, marginTop: 5, backgroundColor: tone === "plain" ? c.outline : color }} />}
     <Text style={{ fontSize: 12.5, lineHeight: 16, fontWeight: "500", color, flexShrink: 1 }}>{text}</Text>
   </View>;
 }

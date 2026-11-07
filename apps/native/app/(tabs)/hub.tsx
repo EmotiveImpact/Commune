@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
-import { ImageBackground, Linking, Pressable, RefreshControl, StyleSheet, View, useWindowDimensions } from "react-native";
+import { ImageBackground, Linking, RefreshControl, StyleSheet, View, useWindowDimensions } from "react-native";
 import { Text } from "../../src/ui/text";
 import { useRouter, type Href } from "expo-router";
 import { BlurView } from "expo-blur";
@@ -20,6 +20,7 @@ import { Avatar, Button, Cal, Empty, Faces, Panel, Row, SectionHead, State, T, t
 import { haptic, PressScale, springs, useCalm } from "../../src/ui/motion";
 import { NeedsList, TaskCheck, WaitingRow } from "../../src/ui/parts";
 import { PayPrimary } from "../../src/ui/pay";
+import { Rolling } from "../../src/ui/rolling";
 import { useToast } from "../../src/ui/toast";
 import { KIND_NAME, radius, useTheme } from "../../src/ui/theme";
 
@@ -154,7 +155,11 @@ function Hero({ scrollY }: { scrollY: SharedValue<number> }) {
   const sentence = weekSentence(week(current, user?.id ?? "", today));
   // v7's glass buttons: dark frosted glass with a soft light edge.
   const glass = { flexDirection: "row" as const, alignItems: "center" as const, gap: 6, height: 36, paddingHorizontal: 13, borderRadius: 18, overflow: "hidden" as const, borderWidth: 1, borderColor: "rgba(255,255,255,0.18)" };
-  const frost = <><BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} /><View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(14,16,24,0.45)" }]} /></>;
+  const glassIn = { flexDirection: "row" as const, alignItems: "center" as const, gap: 6, zIndex: 1 };
+  const frost = <View pointerEvents="none" style={[StyleSheet.absoluteFill, { borderRadius: 18, overflow: "hidden" }]}>
+    <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
+    <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(14,16,24,0.45)" }]} />
+  </View>;
   return <View style={{ height: HERO_HEIGHT, backgroundColor: HERO_GROUND }}>
     <Ground color={HERO_GROUND} />
     <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, stretch]}>
@@ -175,11 +180,11 @@ function Hero({ scrollY }: { scrollY: SharedValue<number> }) {
     </Animated.View>
     <View style={{ flexDirection: "row", padding: 14, gap: 8 }}>
       {communes.length > 1 ? <PressScale accessibilityRole="button" accessibilityLabel={`Commune: ${commune.name}. Change commune.`} onPress={() => router.push("/switch")} style={glass}>
-        {frost}<ChevronDown size={15} color="#fff" /><Text style={{ color: "#fff", fontSize: 13, fontWeight: "500" }}>Change</Text>
+        {frost}<View style={glassIn}><ChevronDown size={15} color="#fff" /><Text style={{ color: "#fff", fontSize: 13, fontWeight: "500" }}>Change</Text></View>
       </PressScale> : null}
       <View style={{ flex: 1 }} />
       <PressScale accessibilityRole="button" accessibilityLabel={`Invite people to ${commune.name}`} onPress={() => router.push("/members")} style={glass}>
-        {frost}<UsersRound size={15} color="#fff" /><Text style={{ color: "#fff", fontSize: 13, fontWeight: "500" }}>Invite</Text>
+        {frost}<View style={glassIn}><UsersRound size={15} color="#fff" /><Text style={{ color: "#fff", fontSize: 13, fontWeight: "500" }}>Invite</Text></View>
       </PressScale>
     </View>
     <View style={{ flex: 1 }} />
@@ -228,7 +233,7 @@ function HubPills({ tab, onPick, left, right, floating }: {
       <Animated.View pointerEvents="none" style={[{ position: "absolute", top: 4, bottom: 4, left: 0, borderRadius: 999, backgroundColor: c.surface, shadowColor: "#1a1e2b", shadowOpacity: 0.12, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 2 }, pill]} />
       {HUB_TABS.map((item, i) => {
         const on = item.id === tab;
-        return <Pressable key={item.id} accessibilityRole="tab" accessibilityState={{ selected: on }} accessibilityLabel={item.label}
+        return <PressScale key={item.id} accessibilityRole="tab" accessibilityState={{ selected: on }} accessibilityLabel={item.label}
           onLayout={(event) => {
             const { x, width } = event.nativeEvent.layout;
             sizes.current[i * 2] = x; sizes.current[i * 2 + 1] = width;
@@ -237,7 +242,7 @@ function HubPills({ tab, onPick, left, right, floating }: {
           onPress={() => onPick(item.id)}
           style={{ flex: 1, height: 40, alignItems: "center", justifyContent: "center" }}>
           <Text style={{ fontSize: 15, fontWeight: on ? "600" : "500", color: on ? c.ink : c.ink2 }}>{item.label}</Text>
-        </Pressable>;
+        </PressScale>;
       })}
     </View>
   </View>;
@@ -273,7 +278,7 @@ function YourPart({ onMore }: { onMore(): void }) {
   }
   const big = { color: c.ink, fontSize: 25, lineHeight: 30, fontWeight: "500" as const, letterSpacing: -0.5 };
   // The amount sits in its own small white chip with rounded corners, as in v7.
-  const chip = (amount: number) => <View style={{ backgroundColor: c.surface, borderRadius: 8, paddingHorizontal: 6, marginHorizontal: 6 }}><Text style={big}>{money(amount, commune.currency)}</Text></View>;
+  const chip = (amount: number) => <View style={{ backgroundColor: c.surface, borderRadius: 8, paddingHorizontal: 6, marginHorizontal: 6 }}><Rolling text={money(amount, commune.currency)} style={big} /></View>;
   return <View accessibilityLabel="Your part" style={{ backgroundColor: mix(c.settled, c.canvas, 0.55), borderRadius: 15, borderWidth: 1, borderColor: c.outline2, padding: 16, gap: 8 }}>
     <T kind="note" muted style={{ fontSize: 12.5, fontWeight: "600" }}>Your part in {commune.name}</T>
     <View accessibilityRole="header" style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center" }}>
@@ -283,7 +288,7 @@ function YourPart({ onMore }: { onMore(): void }) {
     </View>
     <T kind="label" muted style={{ fontSize: 14, lineHeight: 20 }}>{hubMoneyLine(owe, owed, commune.currency)}</T>
     {first ? <View style={{ backgroundColor: c.surface, borderRadius: 12, padding: 12, gap: 10 }}>
-      <Pressable accessibilityRole="button" onPress={() => router.push(`/expense/${first.expenseId}`)} style={{ flexDirection: "row", gap: 8, alignItems: "flex-start" }}>
+      <PressScale scaleTo={0.985} accessibilityRole="button" onPress={() => router.push(`/expense/${first.expenseId}`)} style={{ flexDirection: "row", gap: 8, alignItems: "flex-start" }}>
         <View style={{ flex: 1, minWidth: 0 }}>
           <T kind="body" style={{ fontSize: 14, fontWeight: "500" }}>{first.title}</T>
           <View style={{ flexDirection: "row", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
@@ -292,7 +297,7 @@ function YourPart({ onMore }: { onMore(): void }) {
           </View>
         </View>
         <T kind="amount" style={{ fontSize: 19, lineHeight: 24 }}>{money(first.amountMinor, first.currency)}</T>
-      </Pressable>
+      </PressScale>
       <PayPrimary size="md" target={{ shareId: first.shareId, communeId: first.communeId, payerId: first.payerId, payerName: first.payerName, amountMinor: first.amountMinor, currency: first.currency, title: first.title }} />
       {shares.length > 1 ? <TextLink centred label={`${shares.length - 1} more to settle`} onPress={onMore} /> : null}
     </View> : toConfirm?.debtor.pending ? <View style={{ backgroundColor: c.surface, borderRadius: 12, padding: 12, gap: 10 }}>
@@ -398,7 +403,7 @@ function WeekRow({ item, late, chip }: { item: WeekItem; late?: boolean; chip?: 
     ? `Bill due · ${money(item.amountMinor ?? 0, item.currency)}${item.yourShareMinor ? ` · your share ${money(item.yourShareMinor, item.currency)}` : item.mine ? " · you paid it" : ""}`
     : [item.operation?.time ? item.operation.time.slice(0, 5) : "", item.assigneeId ? item.who : ""].filter(Boolean).join(" · ") || "Event";
   const Icon = bill ? ReceiptText : CalendarDays;
-  return <Pressable accessibilityRole="button" accessibilityLabel={`${item.title}. ${meta}`}
+  return <PressScale scaleTo={0.985} accessibilityRole="button" accessibilityLabel={`${item.title}. ${meta}`}
     onPress={() => (bill ? router.push(`/expense/${item.expenseId}`) : router.push("/tasks"))}
     style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: chip ? 10 : 12, minHeight: chip ? 52 : undefined, paddingVertical: chip ? 6 : 10, paddingHorizontal: chip ? 10 : 16, backgroundColor: pressed ? c.press : "transparent" })}>
     <View style={{ width: 28, height: 28, borderRadius: chip ? 8 : 14, backgroundColor: c.recessed, alignItems: "center", justifyContent: "center" }}><Icon size={15} color={c.ink2} /></View>
@@ -406,7 +411,7 @@ function WeekRow({ item, late, chip }: { item: WeekItem; late?: boolean; chip?: 
       <T kind="body" style={chip ? { fontSize: 14, lineHeight: 19, fontWeight: "500" } : { fontSize: 15, lineHeight: 21, fontWeight: "500" }}>{item.title}</T>
       <T kind="label" muted style={chip ? { fontSize: 12.5, lineHeight: 17 } : undefined}>{meta}</T>
     </View>
-  </Pressable>;
+  </PressScale>;
 }
 
 /** Each person's balance with you here, and what they have on next. */
@@ -418,7 +423,7 @@ function PeoplePanel() {
   const lines = people(current, user?.id ?? "", today);
   return <View style={{ gap: 12 }}>
     <SectionHead title="People" right={<TextLink label="Members" onPress={() => router.push("/members")} />} />
-    <Panel>{lines.map((line, index) => <Pressable key={line.userId} accessibilityRole="button" accessibilityLabel={`${line.name}. ${line.balance}. ${line.job}.`}
+    <Panel>{lines.map((line, index) => <PressScale scaleTo={0.985} key={line.userId} accessibilityRole="button" accessibilityLabel={`${line.name}. ${line.balance}. ${line.job}.`}
       onPress={() => router.push("/settle")}
       style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 11, paddingHorizontal: 16, borderTopWidth: index ? StyleSheet.hairlineWidth : 0, borderTopColor: c.outline, backgroundColor: pressed ? c.press : "transparent" })}>
       <Avatar name={line.isYou ? user?.name ?? "You" : line.name} size={36} />
@@ -427,7 +432,7 @@ function PeoplePanel() {
         <T kind="label" muted lines={1}>{line.job}</T>
       </View>
       <T kind="label" color={line.coming ? c.action : c.ink} style={{ fontWeight: "600" }}>{line.balance}</T>
-    </Pressable>)}</Panel>
+    </PressScale>)}</Panel>
   </View>;
 }
 

@@ -41,10 +41,12 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 /**
  * A Pressable that gives under the finger: it settles to 0.97 on the snappy
- * spring and springs back on release. With Reduce Motion it only dims.
+ * spring and springs back on release (v7 uses 0.985 for full-width rows).
+ * With Reduce Motion it only dims. `style` may be a function of `pressed`,
+ * as with Pressable.
  */
 export function PressScale({ style, children, onPressIn, onPressOut, scaleTo = 0.97, pressedStyle, pressRef, ...rest }: Omit<PressableProps, "style" | "children"> & {
-  style?: StyleProp<ViewStyle>; pressedStyle?: StyleProp<ViewStyle>; children?: ReactNode; scaleTo?: number; pressRef?: React.Ref<View>;
+  style?: StyleProp<ViewStyle> | ((state: { pressed: boolean }) => StyleProp<ViewStyle>); pressedStyle?: StyleProp<ViewStyle>; children?: ReactNode; scaleTo?: number; pressRef?: React.Ref<View>;
 }) {
   const calm = useCalm();
   const scale = useSharedValue(1);
@@ -53,7 +55,7 @@ export function PressScale({ style, children, onPressIn, onPressOut, scaleTo = 0
   return <AnimatedPressable {...rest} ref={pressRef as never}
     onPressIn={(event) => { setPressed(true); if (!calm) scale.value = withSpring(scaleTo, springs.snappy); onPressIn?.(event); }}
     onPressOut={(event) => { setPressed(false); scale.value = withSpring(1, springs.snappy); onPressOut?.(event); }}
-    style={[style, pressed ? pressedStyle : null, animated]}>
+    style={[typeof style === "function" ? style({ pressed }) : style, pressed ? pressedStyle : null, animated]}>
     {children}
   </AnimatedPressable>;
 }

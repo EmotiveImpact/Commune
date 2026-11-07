@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CommuneTiles, NeedsList, NextStep, TaskCheck, WaitingRow } from "../../src/ui/parts";
 import { useTheme } from "../../src/ui/theme";
 import { Still } from "../../src/ui/motion";
+import { Swap } from "../../src/ui/rolling";
 
 /** Home, Direction B: your standing on the dark band, the next step raised over it. */
 export default function Home() {
@@ -72,6 +73,7 @@ export default function Home() {
       ? <>You owe <Em>{moneyList(owe)}</Em>.</>
       : <>You owe <Em>{money(owe[oweCurrencies[0]]!, oweCurrencies[0])}</Em> {places.length > 1 ? `across ${word(places.length)} communes` : `in ${app.snapshotOf(places[0])?.commune.name ?? "one commune"}`}.</>
     : hasAny(owed) ? <>You’re owed <Em>{moneyList(owed)}</Em>.</> : <>You owe nothing.</>;
+  const headKey = `${moneyList(owe)}|${moneyList(owed)}|${places.length}`;
   // Where you stand once both directions count, kept per currency.
   const many = new Set([...oweCurrencies, ...(Object.keys(owed) as CurrencyCode[]).filter((key) => (owed[key] ?? 0) > 0)]).size > 1;
   const net = joinAnd(aheadBy(owe, owed).map((item) => standingClause(item, many)));
@@ -88,8 +90,8 @@ export default function Home() {
     <Body refreshControl={pull} ground={c.frame}>
       <View style={{ backgroundColor: c.frame, paddingHorizontal: 20, paddingTop: 14, paddingBottom: 66, gap: 10 }}>
         <Text style={{ color: c.onFrame2, fontSize: 13, lineHeight: 18, fontWeight: "500" }}>{longDate(today)}</Text>
-        <Text accessibilityRole="header" style={{ color: c.onFrame, fontSize: 31, lineHeight: 35, fontWeight: "500", letterSpacing: -0.7 }}>{head}</Text>
-        <Text style={{ color: c.onFrame2, fontSize: 14.5, lineHeight: 21 }}>{boldStanding(sub, c.onFrame)}</Text>
+        <Swap value={headKey}><Text accessibilityRole="header" style={{ color: c.onFrame, fontSize: 31, lineHeight: 35, fontWeight: "500", letterSpacing: -0.7 }}>{head}</Text></Swap>
+        <Swap value={sub}><Text style={{ color: c.onFrame2, fontSize: 14.5, lineHeight: 21 }}>{boldStanding(sub, c.onFrame)}</Text></Swap>
       </View>
       <Still index={0} style={{ marginTop: -46, marginHorizontal: 16 }}><NextStep need={needs[0]} total={needs.length} /></Still>
       <View style={{ padding: 16, paddingTop: 28, gap: 28 }}>

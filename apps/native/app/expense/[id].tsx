@@ -8,7 +8,7 @@ import { failure, useApp } from "../../src/state";
 import { Body, Pad } from "../../src/ui/chrome";
 import { Avatar, Badge, Button, Cal, Kicker, Panel, Row, State, T } from "../../src/ui/kit";
 import { PayPrimary } from "../../src/ui/pay";
-import { useToast } from "../../src/ui/toast";
+import { ToastLift, useToast } from "../../src/ui/toast";
 import { useTheme } from "../../src/ui/theme";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -81,6 +81,7 @@ export default function ExpenseDetail() {
       </Pad>
     </Body>
     {iOwe && mine ? <View style={{ padding: 16, paddingBottom: Math.max(insets.bottom, 16), gap: 8, backgroundColor: c.canvas, borderTopWidth: 1, borderTopColor: c.outline }}>
+      <ToastLift />
       <PayPrimary target={{ shareId: mine.id, communeId: snapshot.commune.id, payerId: expense.paidByUserId, payerName: memberName(snapshot, expense.paidByUserId), amountMinor: outstanding(mine), currency, title: expense.title }} />
     </View> : null}
   </View>;

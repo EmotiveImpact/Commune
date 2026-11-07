@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Linking, Pressable, ScrollView, View } from "react-native";
+import { PressScale } from "../../src/ui/motion";
+import { Linking, ScrollView, View } from "react-native";
 import { Text, TextInput } from "../../src/ui/text";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Clipboard from "expo-clipboard";
@@ -73,9 +74,9 @@ function RecordBody({ close }: { close: () => void }) {
           <T kind="title" accessibilityRole="header">Tell {name} you’ve paid</T>
           <T kind="body" muted>{expense.title} · {snapshot.commune.name}</T>
         </View>
-        <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={close} hitSlop={8} style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: c.recessed, alignItems: "center", justifyContent: "center" }}>
+        <PressScale scaleTo={0.9} accessibilityRole="button" accessibilityLabel="Close" onPress={close} hitSlop={8} style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: c.recessed, alignItems: "center", justifyContent: "center" }}>
           <X size={18} color={c.ink} />
-        </Pressable>
+        </PressScale>
       </View>
 
       <View style={{ gap: 8 }}>
@@ -112,10 +113,10 @@ function RecordBody({ close }: { close: () => void }) {
         <View style={{ flexDirection: "row", gap: 8 }}>
           {[today, addDays(today, -1)].map((day, index) => {
             const on = sentOn === day;
-            return <Pressable key={day} accessibilityRole="radio" accessibilityState={{ selected: on }} onPress={() => setSentOn(day)}
+            return <PressScale key={day} accessibilityRole="radio" accessibilityState={{ selected: on }} onPress={() => setSentOn(day)}
               style={{ height: 36, paddingHorizontal: 14, borderRadius: 18, justifyContent: "center", backgroundColor: on ? c.frame : c.surface, borderWidth: 1, borderColor: on ? c.frame : c.outline }}>
               <Text style={{ fontSize: 13.5, fontWeight: "500", color: on ? c.onFrame : c.ink }}>{index === 0 ? "Today" : `Yesterday, ${shortDate(day)}`}</Text>
-            </Pressable>;
+            </PressScale>;
           })}
         </View>
       </View>

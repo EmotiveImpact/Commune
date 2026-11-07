@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
-import { Image, Pressable, RefreshControl, StyleSheet, View, type ScrollViewProps } from "react-native";
+import { PressScale } from "./motion";
+import { Image, RefreshControl, StyleSheet, View, type ScrollViewProps } from "react-native";
 import { Text } from "./text";
 import Animated, { useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -29,19 +30,19 @@ export function TopBar({ title, children, clear }: { title?: string; children?: 
     <View style={{ height: BAR_HEIGHT, flexDirection: "row", alignItems: "center", paddingLeft: 20, paddingRight: 8, gap: 4 }}>
       <Text accessibilityRole="header" accessibilityLabel={title ? `Commune, ${title}` : "Commune, Home"} style={{ color: c.onFrame, fontSize: 25, fontWeight: "700", letterSpacing: -1.4 }}>commune.</Text>
       <View style={{ flex: 1 }} />
-      <Pressable accessibilityRole="button" accessibilityLabel="Search" hitSlop={4}
+      <PressScale scaleTo={0.9} accessibilityRole="button" accessibilityLabel="Search" hitSlop={4}
         onPress={() => setSearching(true)} style={({ pressed }) => ({ width: 46, height: 46, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}>
         <Search size={22} color={c.onFrame} strokeWidth={1.7} />
-      </Pressable>
-      <Pressable accessibilityRole="button" accessibilityLabel={unread ? "Notifications, something new" : "Notifications"} hitSlop={4}
+      </PressScale>
+      <PressScale scaleTo={0.9} accessibilityRole="button" accessibilityLabel={unread ? "Notifications, something new" : "Notifications"} hitSlop={4}
         onPress={() => router.push("/notifications")} style={({ pressed }) => ({ width: 46, height: 46, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}>
         <Bell size={22} color={c.onFrame} strokeWidth={1.7} />
         {unread ? <View style={{ position: "absolute", top: 10, right: 11, width: 9, height: 9, borderRadius: 5, backgroundColor: c.dot, borderWidth: 2, borderColor: c.frame }} /> : null}
-      </Pressable>
-      <Pressable accessibilityRole="button" accessibilityLabel="Menu" accessibilityState={{ expanded: menu.isOpen }} hitSlop={4}
+      </PressScale>
+      <PressScale scaleTo={0.9} accessibilityRole="button" accessibilityLabel="Menu" accessibilityState={{ expanded: menu.isOpen }} hitSlop={4}
         onPress={menu.open} style={({ pressed }) => ({ width: 46, height: 46, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}>
         <Menu size={23} color={c.onFrame} strokeWidth={1.7} />
-      </Pressable>
+      </PressScale>
     </View>
     {children}
     <SearchScreen visible={searching} onClose={() => setSearching(false)} />
@@ -62,10 +63,10 @@ export function PushedBar({ title, onBack }: { title: string; onBack?: () => voi
   return <View style={{ backgroundColor: c.frame, paddingTop: insets.top }}>
     <View style={{ height: BAR_HEIGHT, flexDirection: "row", alignItems: "center", paddingHorizontal: 6 }}>
       <View style={{ width: 52 }}>
-        {onBack ? <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={onBack} hitSlop={6}
+        {onBack ? <PressScale scaleTo={0.9} accessibilityRole="button" accessibilityLabel="Back" onPress={onBack} hitSlop={6}
           style={({ pressed }) => ({ width: 46, height: 46, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.6 : 1 })}>
           <ChevronLeft size={27} color={c.onFrame} strokeWidth={1.8} />
-        </Pressable> : null}
+        </PressScale> : null}
       </View>
       <Text accessibilityRole="header" numberOfLines={1} style={{ flex: 1, textAlign: "center", color: c.onFrame, fontSize: 17, fontWeight: "600" }}>{title}</Text>
       <View style={{ width: 52 }} />
@@ -134,7 +135,7 @@ export function ScopeRow() {
   if (!current) return null;
   const { commune } = current;
   const people = activeMembers(current).length;
-  return <Pressable accessibilityRole="button" accessibilityLabel={`Commune: ${commune.name}. Change commune.`}
+  return <PressScale scaleTo={0.985} accessibilityRole="button" accessibilityLabel={`Commune: ${commune.name}. Change commune.`}
     disabled={communes.length < 2} onPress={() => router.push("/switch")}
     style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, padding: 10, borderRadius: radius.surface, backgroundColor: pressed ? c.press : c.surface, borderWidth: StyleSheet.hairlineWidth, borderColor: c.outline })}>
     <Image source={{ uri: photoOf(commune.kind) }} style={{ width: 40, height: 40, borderRadius: 9, backgroundColor: c.recessed }} />
@@ -145,5 +146,5 @@ export function ScopeRow() {
     {communes.length > 1 ? <View style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingRight: 4 }}>
       <T kind="label" style={{ fontWeight: "500" }}>Change</T><ChevronDown size={16} color={c.ink} />
     </View> : null}
-  </Pressable>;
+  </PressScale>;
 }
