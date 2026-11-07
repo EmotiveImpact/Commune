@@ -61,8 +61,8 @@ function Screens() {
   // the screen, under a top bar the same height as the tabs' one.
   const pushed = {
     headerShown: true,
-    header: ({ navigation, options, back }: { navigation: { goBack(): void }; options: { title?: string }; back?: unknown }) =>
-      <PushedBar title={options.title ?? ""} onBack={back ? () => navigation.goBack() : undefined} />,
+    header: ({ navigation, options, back }: { navigation: { goBack(): void }; options: { title?: string; headerRight?: (props: { canGoBack: boolean }) => React.ReactNode }; back?: unknown }) =>
+      <PushedBar title={options.title ?? ""} onBack={back ? () => navigation.goBack() : undefined} right={options.headerRight?.({ canGoBack: !!back })} />,
     animation: "slide_from_right" as const,
     gestureEnabled: true,
     fullScreenGestureEnabled: true,
@@ -78,6 +78,7 @@ function Screens() {
       <Stack.Screen name="expense/[id]" options={{ ...pushed, title: "Expense" }} />
       <Stack.Screen name="notifications" options={{ ...pushed, title: "Notifications" }} />
       <Stack.Screen name="account" options={{ ...pushed, title: "Settings" }} />
+      <Stack.Screen name="notification-settings" options={{ ...pushed, title: "Notification settings" }} />
       <Stack.Screen name="help" options={{ ...pushed, title: "Help and feedback" }} />
       <Stack.Screen name="pay-links" options={{ ...pushed, title: "How people pay you" }} />
       <Stack.Screen name="tasks" options={{ ...pushed, title: "Chores and tasks" }} />
@@ -101,6 +102,7 @@ function Screens() {
       <Stack.Screen name="add-chore" options={SHEET_SCREEN} />
       <Stack.Screen name="announce" options={SHEET_SCREEN} />
       <Stack.Screen name="appearance" options={SHEET_SCREEN} />
+      <Stack.Screen name="edit-profile" options={SHEET_SCREEN} />
     </Stack>
     <HeroFlight />
     <LockGate />

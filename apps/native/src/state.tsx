@@ -9,6 +9,7 @@ import {
   type FeedItem, type Need, type Recorded, type Settle, type Totals, type Waiting,
 } from "./lib/derive";
 import { requestId, todayIso } from "./lib/format";
+import { usePrefs } from "./prefs";
 import { OUTBOX_STORE, enqueue, flush, isNetworkError, parseOutbox, type Queued } from "./lib/outbox";
 import type { PayLink, PayLinkInput, PayProvider } from "./lib/payLinks";
 import type { Commune, Snapshot, User } from "./lib/types";
@@ -87,6 +88,7 @@ export function AppProvider({ children, backend: given }: { children: ReactNode;
   const [status, setStatus] = useState<Status>("starting");
   const [error, setError] = useState("");
   const [user, setUser] = useState<User | null>(null);
+  const { displayName } = usePrefs();
   const [communes, setCommunes] = useState<Commune[]>([]);
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [currentId, setCurrentId] = useState<string | null>(null);
@@ -182,7 +184,9 @@ export function AppProvider({ children, backend: given }: { children: ReactNode;
     const owing = needs(snapshots, viewerId, today);
     const owed = waiting(snapshots, viewerId, today);
     return {
-      backend, status, error, user, today, communes, snapshots,
+      backend, status, error, today, communes, snapshots,
+      // A name chosen in Edit profile shows on this phone in place of the account's.
+      user: user && displayName ? { ...user, name: displayName } : user,
       current: snapshots.find((item) => item.commune.id === currentId) ?? snapshots[0],
       setCurrent: setCurrentId,
       snapshotOf: (communeId) => snapshots.find((item) => item.commune.id === communeId),
@@ -276,7 +280,7 @@ export function AppProvider({ children, backend: given }: { children: ReactNode;
       payingAway,
       clearPayingAway() { setPayingAway(null); },
     };
-  }, [backend, status, error, user, today, communes, snapshots, currentId, myPayLinks, payingAway, refresh, loadAll, reload, loadMyPayLinks, online, outbox, sending, keepOutbox]);
+  }, [backend, status, error, user, displayName, today, communes, snapshots, currentId, myPayLinks, payingAway, refresh, loadAll, reload, loadMyPayLinks, online, outbox, sending, keepOutbox]);
 
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }

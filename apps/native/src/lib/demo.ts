@@ -94,7 +94,11 @@ function demoData(today: string): Snapshot[] {
             contributions: paid.map((amountMinor, k) => ({ id: `contrib-${p}-${k}`, amountMinor, contributedAt: at(-30 * (k + 1) + index), voidedAt: null })) };
         }),
       }],
-      notifications: [], reminderTargets: nudges(parkExpenses),
+      notifications: [
+        { id: "note-n-alex", kind: "nudge", sourceId: "share-1-maya", amountMinor: 1200, communeId: "demo-park", senderUserId: id("alex"), expenseId: "exp-1", title: "Broadband", createdAt: at(0, "08:40:00"), readAt: null },
+        { id: "note-n-gas", kind: "expense-corrected", sourceId: "exp-2", amountMinor: null, communeId: "demo-park", senderUserId: id("jordan"), expenseId: "exp-2", title: "British Gas", createdAt: at(-1, "18:05:00"), readAt: at(-1, "19:00:00") },
+        { id: "note-n-kitty", kind: "chase", sourceId: "commit-maya", amountMinor: 6000, communeId: "demo-park", senderUserId: id("sam"), expenseId: null, title: "Holiday kitty", createdAt: at(-4, "12:30:00"), readAt: at(-4, "13:00:00") },
+      ], reminderTargets: nudges(parkExpenses),
       notes: [
         { id: "note-bins", title: "Bin days", pill: "Bins", lede: "Black bin Thursday, recycling every other Monday.", facts: [["Black", "Thursday"], ["Recycling", "Every other Monday"]] },
         { id: "note-wifi", title: "Wi-Fi", pill: "Wi-Fi", lede: "ParkStreet-5G. The password is on the router.", facts: [["Network", "ParkStreet-5G"], ["Password", "plantpot-42"]] },
@@ -122,7 +126,9 @@ function demoData(today: string): Snapshot[] {
       commune: commune("demo-studio", "Studio East", "workspace", "GBP", ["maya", "sam"], { address: "Unit 4, Hackney Wick" }),
       members: members(["maya", "sam"], "maya"),
       expenses: studioExpenses,
-      funds: [], notifications: [], reminderTargets: nudges(studioExpenses),
+      funds: [], notifications: [
+        { id: "note-n-ink", kind: "nudge", sourceId: "share-8-maya", amountMinor: 1600, communeId: "demo-studio", senderUserId: id("sam"), expenseId: "exp-8", title: "Printer ink", createdAt: at(-2, "15:20:00"), readAt: at(-2, "16:00:00") },
+      ], reminderTargets: nudges(studioExpenses),
       notes: [{ id: "note-alarm", title: "Alarm code and opening hours", lede: "Code is on the card in the drawer. Open 8 till 8." }],
       operations: [], recurringBills: [], splitTemplates: [], payLinks: pick(["maya", "sam"]), activityEvents: [],
     },

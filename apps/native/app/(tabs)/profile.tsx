@@ -3,13 +3,14 @@ import { Pressable, View } from "react-native";
 import { Text } from "../../src/ui/text";
 import { useRouter } from "expo-router";
 import Constants from "expo-constants";
-import { ChevronRight, Mail, Plus, Settings, Star, User } from "lucide-react-native";
+import { Bell, ChevronRight, CircleHelp, LogOut, Pencil, Plus, Settings, Star } from "lucide-react-native";
 import { cap, money, word } from "../../src/lib/format";
+import { useConfirm } from "../../src/ui/confirm";
 import { payLinkLabel, PAY_PROVIDER_NAME, PAY_PROVIDERS, type PayProvider } from "../../src/lib/payLinks";
-import type { CurrencyCode } from "../../src/lib/types";
+import type { CurrencyCode, Snapshot } from "../../src/lib/types";
 import { failure, useApp } from "../../src/state";
 import { Body, TopBar } from "../../src/ui/chrome";
-import { Avatar, Panel, Row, SectionHead, T } from "../../src/ui/kit";
+import { Avatar, Button, Panel, Row, SectionHead, T } from "../../src/ui/kit";
 import { PayMark } from "../../src/ui/marks";
 import { haptic, Still, PressScale } from "../../src/ui/motion";
 import { useToast } from "../../src/ui/toast";
@@ -18,12 +19,33 @@ import { useTheme } from "../../src/ui/theme";
 const CURRENCY_WORD: Record<CurrencyCode, string> = { GBP: "pounds", EUR: "euros", USD: "dollars" };
 const CURRENCY_MARK: Record<CurrencyCode, string> = { GBP: "£", EUR: "€", USD: "$" };
 
-/** Profile: the person, where they stand in each currency, and how people pay them. */
+/** Bills you added this month and chores waiting on you, from your communes. */
+function activity(snapshots: Snapshot[], me: string, today: string) {
+  const month = today.slice(0, 7);
+  let billsAdded = 0, choresOnYou = 0;
+  for (const snapshot of snapshots) {
+    for (const expense of snapshot.expenses) {
+      if (expense.voidedAt) continue;
+      if (expense.paidByUserId === me && (expense.createdAt ?? "").slice(0, 7) === month) billsAdded += 1;
+    }
+    choresOnYou += (snapshot.operations ?? []).filter((op) => op.kind === "task" && op.status === "open" && op.assigneeId === me).length;
+  }
+  return { billsAdded, choresOnYou };
+}
+
+/** Profile: the person, shortcuts, this month, where they stand in each currency, how people pay them, and signing out. */
 export default function Profile() {
   const { c } = useTheme();
   const router = useRouter();
   const toast = useToast();
-  const { user, snapshots, owe, owed, myPayLinks, loadMyPayLinks, setPreferredPayLink } = useApp();
+  const { user, snapshots, owe, owed, myPayLinks, loadMyPayLinks, setPreferredPayLink, signOut, today, needs } = useApp();
+  const confirm = useConfirm();
+  async function askSignOut() {
+    if (!(await confirm({ title: "Sign out of Commune on this phone?", message: "Your records stay in Commune. You’ll sign in again to see them.", yes: "Sign out", destructive: true }))) return;
+    void signOut().then(() => router.replace("/sign-in"));
+  }
+  const stats = activity(snapshots, user?.id ?? "", today);
+  const toPay = needs.filter((need) => need.kind === "share").length;
   const [busy, setBusy] = useState(false);
   useEffect(() => { loadMyPayLinks().catch(() => undefined); }, [loadMyPayLinks]);
 
@@ -49,18 +71,48 @@ export default function Profile() {
     }
   }
 
-  const icon = (node: React.ReactNode) => <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: c.recessed, alignItems: "center", justifyContent: "center" }}>{node}</View>;
+  const icon = (node: React.ReactNode, tone?: string) => <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: tone ?? c.recessed, alignItems: "center", justifyContent: "center" }}>{node}</View>;
   let step = 0;
   const next = () => step++;
   return <View style={{ flex: 1, backgroundColor: c.canvas }}>
     <TopBar title="Profile" />
     <Body>
       <View style={{ padding: 16, gap: 24 }}>
-        <Still index={next()} style={{ flexDirection: "row", alignItems: "center", gap: 16, paddingHorizontal: 4, paddingTop: 6 }}>
-          <Avatar name={user?.name ?? "You"} size={72} />
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <T kind="title" accessibilityRole="header">{user?.name ?? "You"}</T>
-            <T kind="body" muted>In {word(snapshots.length)} {snapshots.length === 1 ? "commune" : "communes"}</T>
+        <Still index={next()} style={{ alignItems: "center", gap: 10, paddingTop: 8 }}>
+          <Avatar name={user?.name ?? "You"} size={88} />
+          <View style={{ alignItems: "center", gap: 2 }}>
+            <T kind="title" accessibilityRole="header" style={{ textAlign: "center" }}>{user?.name ?? "You"}</T>
+            <T kind="label" muted style={{ textAlign: "center" }}>{user?.email}</T>
+            <T kind="label" muted style={{ textAlign: "center" }}>In {word(snapshots.length)} {snapshots.length === 1 ? "commune" : "communes"}</T>
+          </View>
+          <View style={{ alignSelf: "stretch", flexDirection: "row", justifyContent: "center" }}>
+            <Button size="sm" variant="secondary" label="Edit profile" icon={<Pencil size={14} color={c.ink} />} onPress={() => router.push("/edit-profile")} />
+          </View>
+        </Still>
+
+        <Still index={next()} style={{ flexDirection: "row", gap: 10 }}>
+          {[
+            { label: "Settings", Icon: Settings, go: "/account" },
+            { label: "Notifications", Icon: Bell, go: "/notifications" },
+            { label: "Help", Icon: CircleHelp, go: "/help" },
+          ].map(({ label, Icon, go }) => <PressScale key={label} scaleTo={0.97} accessibilityRole="button" accessibilityLabel={label} onPress={() => router.push(go as never)}
+            style={({ pressed }) => ({ flex: 1, minHeight: 76, borderRadius: 16, backgroundColor: pressed ? c.press : c.surface, alignItems: "center", justifyContent: "center", gap: 6, borderWidth: 1, borderColor: c.outline2 })}>
+            <Icon size={20} color={c.ink} strokeWidth={1.8} />
+            <Text style={{ fontSize: 13, lineHeight: 17, fontWeight: "500", color: c.ink }}>{label}</Text>
+          </PressScale>)}
+        </Still>
+
+        <Still index={next()} style={{ gap: 10 }}>
+          <SectionHead title="At a glance" />
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            {[
+              { n: stats.billsAdded, label: stats.billsAdded === 1 ? "bill you added this month" : "bills you added this month" },
+              { n: toPay, label: toPay === 1 ? "bill still to pay" : "bills still to pay" },
+              { n: stats.choresOnYou, label: stats.choresOnYou === 1 ? "chore on you" : "chores on you" },
+            ].map((item) => <View key={item.label} style={{ flex: 1, padding: 14, borderRadius: 16, backgroundColor: c.surface, gap: 2 }}>
+              <Text style={{ fontSize: 26, lineHeight: 30, fontWeight: "600", color: c.ink, fontVariant: ["tabular-nums"] }}>{item.n}</Text>
+              <Text style={{ fontSize: 12.5, lineHeight: 17, color: c.ink2 }}>{item.label}</Text>
+            </View>)}
           </View>
         </Still>
 
@@ -103,13 +155,10 @@ export default function Profile() {
           <T kind="label" muted style={{ paddingHorizontal: 4 }}>People in your communes see these when they owe you, with the amount filled in. Star one to make it your favourite.</T>
         </Still>
 
-        <Still index={next()} style={{ gap: 10 }}>
-          <SectionHead title="Account" />
+        <Still index={next()}>
           <Panel>
-            <Row first onPress={() => router.push("/account")} left={icon(<User size={17} color={c.ink} />)} title="Name" meta={<T kind="label" muted>{user?.name}</T>} right={<ChevronRight size={17} color={c.ink2} />} />
-            <Row onPress={() => router.push("/account")} left={icon(<Mail size={17} color={c.ink} />)} title="Email" meta={<T kind="label" muted>{user?.email}</T>} right={<ChevronRight size={17} color={c.ink2} />} />
-            <Row onPress={() => router.push("/account")} left={icon(<Settings size={17} color={c.ink} />)} title="Settings"
-              meta={<T kind="label" muted>Hub layout, notifications and sign out</T>} right={<ChevronRight size={17} color={c.ink2} />} />
+            <Row first onPress={() => void askSignOut()} left={icon(<LogOut size={17} color={c.late} />, c.lateSoft)}
+              title={<T kind="body" color={c.late} style={{ fontSize: 15, lineHeight: 20, fontWeight: "600" }}>Sign out</T>} />
           </Panel>
         </Still>
         <T kind="label" muted style={{ textAlign: "center" }}>Commune {Constants.expoConfig?.version ?? ""}</T>

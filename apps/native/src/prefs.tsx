@@ -1,9 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Appearance as RNAppearance, Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { DEFAULT_NOTIFY, readPrefs, type Appearance, type HubTabsAt, type NotifyKind, type Saved } from "./lib/prefsStore";
+import { DEFAULT_SAVED, readPrefs, type Appearance, type HubTabsAt, type NotifyKind, type RemindHour, type Saved } from "./lib/prefsStore";
 
-export type { Appearance, HubTabsAt, NotifyKind } from "./lib/prefsStore";
+export type { Appearance, HubTabsAt, NotifyKind, RemindHour } from "./lib/prefsStore";
 export { NOTIFY_KINDS } from "./lib/prefsStore";
 
 /**
@@ -25,6 +25,8 @@ type Prefs = Saved & {
   setAppearance(value: Appearance): void;
   setFaceId(value: boolean): void;
   setNotify(kind: NotifyKind, on: boolean): void;
+  setRemindHour(value: RemindHour): void;
+  setDisplayName(value: string | null): void;
   firstDay: FirstDay | null;
   /** Starts the checklist, or changes it. Pass null to forget it. */
   setFirstDay(value: FirstDay | null): void;
@@ -32,9 +34,9 @@ type Prefs = Saved & {
 
 const PREFS_STORE = "commune.prefs.v1";
 const FIRST_DAY_STORE = "commune.firstday.v1";
-const DEFAULTS: Saved = { hubTabsAt: "top", appearance: "match", faceId: false, notify: DEFAULT_NOTIFY };
+const DEFAULTS: Saved = DEFAULT_SAVED;
 const noop = () => undefined;
-const Context = createContext<Prefs>({ ...DEFAULTS, loaded: false, setHubTabsAt: noop, setAppearance: noop, setFaceId: noop, setNotify: noop, firstDay: null, setFirstDay: noop });
+const Context = createContext<Prefs>({ ...DEFAULTS, loaded: false, setHubTabsAt: noop, setAppearance: noop, setFaceId: noop, setNotify: noop, setRemindHour: noop, setDisplayName: noop, firstDay: null, setFirstDay: noop });
 
 /** Choices kept on this phone only. They never reach the server. */
 export function PrefsProvider({ children }: { children: ReactNode }) {
@@ -77,6 +79,8 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
     setAppearance: (appearance) => change({ appearance }),
     setFaceId: (faceId) => change({ faceId }),
     setNotify: (kind, on) => change({ notify: { ...saved.notify, [kind]: on } }),
+    setRemindHour: (remindHour) => change({ remindHour }),
+    setDisplayName: (name) => change({ displayName: name && name.trim() ? name.trim().slice(0, 48) : null }),
   }), [saved, loaded, change, firstDay, setFirstDay]);
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }

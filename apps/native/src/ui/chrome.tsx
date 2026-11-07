@@ -79,7 +79,7 @@ export const BAR_HEIGHT = 52;
  * same dark bar and height as the tabs' top bar, with a back chevron and the
  * screen's name. Swiping from the left goes back too.
  */
-export function PushedBar({ title, onBack }: { title: string; onBack?: () => void }) {
+export function PushedBar({ title, onBack, right }: { title: string; onBack?: () => void; right?: ReactNode }) {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
   return <View style={{ backgroundColor: c.frame, paddingTop: insets.top }}>
@@ -91,7 +91,7 @@ export function PushedBar({ title, onBack }: { title: string; onBack?: () => voi
         </PressScale> : null}
       </View>
       <Text accessibilityRole="header" numberOfLines={1} style={{ flex: 1, textAlign: "center", color: c.onFrame, fontSize: 17, fontWeight: "600" }}>{title}</Text>
-      <View style={{ width: 52 }} />
+      <View style={{ width: 52, alignItems: "flex-end" }}>{right}</View>
     </View>
   </View>;
 }

@@ -1,13 +1,14 @@
-import { useEffect, useRef } from "react";
-import { Switch, View } from "react-native";
-import { useRouter } from "expo-router";
+import { useEffect, useRef, useState } from "react";
+import { View } from "react-native";
+import { Stack, useRouter } from "expo-router";
+import { BellOff, Settings } from "lucide-react-native";
 import { memberName } from "../src/lib/derive";
 import { feedTime, firstName, money } from "../src/lib/format";
-import type { Notification } from "../src/lib/types";
+import type { Notification, Snapshot } from "../src/lib/types";
 import { useApp } from "../src/state";
 import { Body, Pad } from "../src/ui/chrome";
-import { Avatar, Button, Kicker, Panel, Row, T } from "../src/ui/kit";
-import { NOTIFY_KINDS, usePrefs } from "../src/prefs";
+import { Avatar, Button, Empty, Kicker, Panel, Row, T } from "../src/ui/kit";
+import { PressScale } from "../src/ui/motion";
 import { useTheme } from "../src/ui/theme";
 
 const WORDS: Record<Notification["kind"], (name: string, amount: string, title: string) => string> = {
@@ -21,11 +22,18 @@ const WORDS: Record<Notification["kind"], (name: string, amount: string, title: 
   "expense-voided": (name, _amount, title) => `${name} voided ${title}.`,
 };
 
+type Item = { snapshot: Snapshot; item: Notification };
+
+/**
+ * Notifications: what needs you first, then today and earlier. Each one has
+ * the thing you'd do next on it. The gear opens notification settings.
+ */
 export default function Notifications() {
   const { c } = useTheme();
   const router = useRouter();
   const { snapshots, today, waiting, markAllRead } = useApp();
-  const { notify, setNotify } = usePrefs();
+  // What was new when the page opened keeps its dot until you leave.
+  const [fresh] = useState(() => new Set(snapshots.flatMap((snapshot) => snapshot.notifications.filter((item) => !item.readAt).map((item) => item.id))));
   // Seeing the list counts as reading it.
   const marked = useRef(false);
   useEffect(() => {
@@ -33,34 +41,73 @@ export default function Notifications() {
     marked.current = true;
     markAllRead().catch(() => undefined);
   }, [markAllRead]);
-  const items = snapshots.flatMap((snapshot) => snapshot.notifications.map((item) => ({ snapshot, item })))
+  const items: Item[] = snapshots.flatMap((snapshot) => snapshot.notifications.map((item) => ({ snapshot, item })))
     .sort((a, b) => b.item.createdAt.localeCompare(a.item.createdAt));
+  const todays = items.filter(({ item }) => item.createdAt.slice(0, 10) >= today);
+  const earlier = items.filter(({ item }) => item.createdAt.slice(0, 10) < today);
   const toConfirm = waiting.flatMap((entry) => entry.debtors.filter((debtor) => debtor.pending).map((debtor) => ({ entry, debtor })));
+  const gear = () => <PressScale scaleTo={0.9} accessibilityRole="button" accessibilityLabel="Notification settings" hitSlop={6}
+    onPress={() => router.push("/notification-settings")}
+    style={({ pressed }) => ({ width: 46, height: 46, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.6 : 1 })}>
+    <Settings size={21} color={c.onFrame} strokeWidth={1.8} />
+  </PressScale>;
+
+  function open({ item }: Item): (() => void) | undefined {
+    if (item.kind === "chase") return () => router.push("/funds");
+    return item.expenseId ? () => router.push(`/expense/${item.expenseId}`) : undefined;
+  }
+  function action({ snapshot, item }: Item) {
+    const name = firstName(memberName(snapshot, item.senderUserId));
+    if (item.kind === "nudge") {
+      const share = snapshot.expenses.flatMap((expense) => expense.shares).find((entry) => entry.id === item.sourceId);
+      if (share && share.settledMinor < share.amountMinor) {
+        return <Button size="sm" label={`Pay ${name} ${money(share.amountMinor - share.settledMinor, snapshot.commune.currency)}`} onPress={() => router.push(`/pay/${share.id}`)} />;
+      }
+    }
+    if (item.kind === "chase") return <Button size="sm" variant="secondary" label="Open Funds" onPress={() => router.push("/funds")} />;
+    if (item.expenseId) return <Button size="sm" variant="secondary" label="Open" onPress={() => router.push(`/expense/${item.expenseId}`)} />;
+    return null;
+  }
+  function list(group: Item[]) {
+    return <Panel>{group.map((entry, index) => {
+      const { snapshot, item } = entry;
+      const name = firstName(memberName(snapshot, item.senderUserId));
+      const amount = item.amountMinor != null ? money(item.amountMinor, snapshot.commune.currency) : "";
+      const title = item.title ?? snapshot.expenses.find((expense) => expense.id === item.expenseId || expense.shares.some((share) => share.id === item.sourceId))?.title ?? "an expense";
+      const next = action(entry);
+      return <Row key={item.id} first={index === 0} onPress={open(entry)}
+        left={<View>
+          <Avatar name={memberName(snapshot, item.senderUserId)} size={40} />
+          {!fresh.has(item.id) ? null : <View accessibilityLabel="New" style={{ position: "absolute", top: -1, right: -1, width: 11, height: 11, borderRadius: 6, backgroundColor: c.dot, borderWidth: 2, borderColor: c.surface }} />}
+        </View>}
+        title={<T kind="body" style={{ fontSize: 15, lineHeight: 20, fontWeight: fresh.has(item.id) ? "600" : "400" }}>{WORDS[item.kind]?.(name, amount, title) ?? item.detail ?? "Something changed."}</T>}
+        meta={<View style={{ gap: 8, marginTop: 2 }}>
+          <T kind="label" muted style={{ fontSize: 12.5, lineHeight: 17 }}>{snapshot.commune.name} · {feedTime(item.createdAt, today)}</T>
+          {next ? <View style={{ alignSelf: "flex-start" }}>{next}</View> : null}
+        </View>} />;
+    })}</Panel>;
+  }
+  const nothing = !items.length && !toConfirm.length;
   return <View style={{ flex: 1, backgroundColor: c.canvas }}>
+    <Stack.Screen options={{ headerRight: gear }} />
     <Body>
-      <Pad>
-        {toConfirm.length ? <Panel>{toConfirm.map(({ entry, debtor }, index) => <Row key={debtor.pending!.id} first={index === 0}
-          left={<Avatar name={debtor.name} size={40} />}
-          title={<T kind="bodyL">{firstName(debtor.name)} says they’ve paid you {money(debtor.pending!.amountMinor, entry.currency)} for {entry.title}.</T>}
-          meta={<View style={{ gap: 8, marginTop: 4 }}><T kind="label" muted>{snapshots.find((s) => s.commune.id === entry.communeId)?.commune.name}</T>
-            <View style={{ alignSelf: "flex-start" }}><Button size="sm" label={`Confirm ${firstName(debtor.name)}’s ${money(debtor.pending!.amountMinor, entry.currency)}`}
-              onPress={() => router.push(`/confirm/${debtor.pending!.id}`)} /></View></View>} />)}</Panel> : null}
-        {items.length ? <Panel>{items.map(({ snapshot, item }, index) => {
-          const name = firstName(memberName(snapshot, item.senderUserId));
-          const amount = item.amountMinor != null ? money(item.amountMinor, snapshot.commune.currency) : "";
-          return <Row key={item.id} first={index === 0}
-            onPress={item.expenseId ? () => router.push(`/expense/${item.expenseId}`) : undefined}
-            left={<Avatar name={memberName(snapshot, item.senderUserId)} size={40} />}
-            title={<T kind="body" style={{ fontWeight: item.readAt ? "400" : "600" }}>{WORDS[item.kind]?.(name, amount, item.title ?? snapshot.expenses.find((expense) => expense.id === item.expenseId || expense.shares.some((share) => share.id === item.sourceId))?.title ?? "an expense") ?? item.detail ?? "Something changed."}</T>}
-            meta={<T kind="label" muted>{snapshot.commune.name} · {feedTime(item.createdAt, today)}</T>} />;
-        })}</Panel> : !toConfirm.length ? <Panel pad><T kind="body" muted>Nothing new. You’ll see payments, nudges and changes to your expenses here.</T></Panel> : null}
-        <View style={{ gap: 10 }}>
-          <Kicker>Send me a notification when</Kicker>
-          <Panel>{NOTIFY_KINDS.map((kind, index) => <Row key={kind.id} first={index === 0} title={kind.label}
-            right={<Switch accessibilityLabel={kind.label} value={notify[kind.id]} onValueChange={(on) => setNotify(kind.id, on)}
-              trackColor={{ true: c.action, false: c.recessed }} ios_backgroundColor={c.recessed} />} />)}</Panel>
-          <T kind="note" muted style={{ paddingHorizontal: 4 }}>These choices are kept on this phone for now. Quiet hours follow your phone’s Focus settings.</T>
-        </View>
+      <Pad gap={18}>
+        {toConfirm.length ? <View style={{ gap: 8 }}>
+          <Kicker>Needs you</Kicker>
+          <Panel>{toConfirm.map(({ entry, debtor }, index) => <Row key={debtor.pending!.id} first={index === 0}
+            left={<Avatar name={debtor.name} size={40} />}
+            title={<T kind="body" style={{ fontSize: 15, lineHeight: 20, fontWeight: "600" }}>{firstName(debtor.name)} says they’ve paid you {money(debtor.pending!.amountMinor, entry.currency)} for {entry.title}.</T>}
+            meta={<View style={{ gap: 8, marginTop: 2 }}>
+              <T kind="label" muted style={{ fontSize: 12.5, lineHeight: 17 }}>{snapshots.find((s) => s.commune.id === entry.communeId)?.commune.name} · Check it arrived, then confirm</T>
+              <View style={{ alignSelf: "flex-start" }}><Button size="sm" label={`Confirm ${money(debtor.pending!.amountMinor, entry.currency)}`}
+                onPress={() => router.push(`/confirm/${debtor.pending!.id}`)} /></View>
+            </View>} />)}</Panel>
+        </View> : null}
+        {todays.length ? <View style={{ gap: 8 }}><Kicker>Today</Kicker>{list(todays)}</View> : null}
+        {earlier.length ? <View style={{ gap: 8 }}><Kicker>Earlier</Kicker>{list(earlier)}</View> : null}
+        {nothing ? <Panel><Empty icon={<BellOff size={18} color={c.onSettled} />} title="You’re all caught up"
+          body="Payments to confirm, nudges and changes to your expenses show up here." /></Panel> : null}
+        <T kind="note" muted style={{ paddingHorizontal: 4, textAlign: "center" }}>Choose what you’re told about with the gear at the top.</T>
       </Pad>
     </Body>
   </View>;

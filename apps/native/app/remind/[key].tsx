@@ -5,6 +5,7 @@ import { ArrowRight, Clock3 } from "lucide-react-native";
 import { money } from "../../src/lib/format";
 import { reminderChoices } from "../../src/lib/remindTimes";
 import { remindMe } from "../../src/lib/reminders";
+import { usePrefs } from "../../src/prefs";
 import { useApp } from "../../src/state";
 import { FITTED, Panel, Row, T, tap } from "../../src/ui/kit";
 import { Sheet } from "../../src/ui/sheet";
@@ -35,7 +36,8 @@ function RemindBody({ close }: { close: (then?: () => void) => void }) {
   const { key } = useLocalSearchParams<{ key: string }>();
   const { needs } = useApp();
   const [need] = useState(() => needs.find((item) => item.key === key));
-  const [choices] = useState(() => reminderChoices(new Date()));
+  const { remindHour } = usePrefs();
+  const [choices] = useState(() => reminderChoices(new Date(), remindHour));
   if (!need) {
     return <View style={[FITTED, { padding: 20, paddingTop: 12, gap: 10 }]}>
       <T kind="title">Already done</T>
