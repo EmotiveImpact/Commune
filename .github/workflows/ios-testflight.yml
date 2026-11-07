@@ -37,6 +37,8 @@ jobs:
         working-directory: apps/native
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      # Google address search stays off until this repository secret exists.
+      EXPO_PUBLIC_GOOGLE_PLACES_KEY: ${{ secrets.GOOGLE_PLACES_KEY }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

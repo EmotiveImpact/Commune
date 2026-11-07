@@ -49,6 +49,19 @@ validated database functions with a request id.
 | `http://127.0.0.1:3005` | A local API (`apps/local-api`). Use a disposable database and port, never 3002 for tests. |
 | `same-origin` | A web build served next to the local API (used for browser checks). |
 
+## Address search
+
+The commune address box (New commune and Commune settings) suggests addresses as you type.
+
+- iPhone: Apple's own search, the one Apple Maps uses, through the local module in
+  `modules/address-search` (MapKit). Free, with no key. It needs a development or
+  TestFlight build; Expo Go and the web build fall back to a plain box.
+- Android and the web build: Google Places, only when `EXPO_PUBLIC_GOOGLE_PLACES_KEY`
+  is set. Until then the box is plain text. Set `EXPO_PUBLIC_ADDRESS_SEARCH=google`
+  to use Google on iPhone too. The TestFlight workflow passes the
+  `GOOGLE_PLACES_KEY` repository secret through, so adding that secret switches it on.
+  Restrict the key in Google Cloud to the Places API (New) and the app's bundle id.
+
 The hosted app (Neon Auth and the Data API) is not connected yet. That needs
 Neon Auth sign-in to work from a phone, which is the next piece of work.
 

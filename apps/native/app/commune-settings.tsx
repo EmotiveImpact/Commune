@@ -3,6 +3,7 @@ import { Image, View } from "react-native";
 import { useRouter } from "expo-router";
 import { failure, useApp } from "../src/state";
 import { Body, Pad } from "../src/ui/chrome";
+import { AddressField } from "../src/ui/addressField";
 import { Chips, Field } from "../src/ui/form";
 import { Button, ErrorText, Panel, Row, T, tap } from "../src/ui/kit";
 import { useConfirm } from "../src/ui/confirm";
@@ -94,7 +95,8 @@ function Settings() {
       {admin ? <>
         <Field label="Name" value={name} onChange={setName} max={48} />
         <Chips<Kind> label="Kind" options={KINDS.map((value) => [value, KIND_NAME[value]])} chosen={[kind]} onPick={setKind} />
-        <Field label={kind === "trip" ? "Where to (optional)" : "Address (optional)"} value={place} onChange={setPlace} max={160} />
+        {kind === "trip" ? <Field label="Where to (optional)" value={place} onChange={setPlace} max={160} />
+          : <AddressField label="Address (optional)" value={place} onChange={setPlace} />}
         {locked ? <Panel>
           <Row first title="Currency" right={<T kind="body" muted>{CURRENCIES.find(([code]) => code === commune.currency)?.[1] ?? commune.currency}</T>} />
         </Panel> : <Chips<Currency> label="Currency" options={CURRENCIES} chosen={[currency]} onPick={setCurrency} />}

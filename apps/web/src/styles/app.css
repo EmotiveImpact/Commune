@@ -3237,3 +3237,46 @@ button.a-item {
 .c-invite-history ul { margin: 8px 0 0; padding-left: 18px; }
 .c-invite-history li { margin: 2px 0; overflow-wrap: anywhere; }
 
+
+/* Address suggestions under an address box, shown only when Google Places is switched on. */
+.a-address-suggestions {
+  display: grid;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--white);
+  overflow: hidden;
+}
+
+.a-address-suggestions button {
+  display: grid;
+  gap: 2px;
+  padding: 8px 12px;
+  border: 0;
+  border-top: 1px solid var(--border);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.a-address-suggestions button:first-child {
+  border-top: 0;
+}
+
+.a-address-suggestions button:hover,
+.a-address-suggestions button:focus-visible {
+  background: var(--paper-2);
+}
+
+.a-address-suggestions span,
+.a-address-suggestions small {
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+
+.a-address-suggestions small {
+  padding: 4px 12px 6px;
+  border-top: 1px solid var(--border);
+}

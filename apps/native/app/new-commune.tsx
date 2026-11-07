@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import { Check, UserPlus } from "lucide-react-native";
 import { failure, useApp } from "../src/state";
 import { Button, ErrorText, Panel, T, tap } from "../src/ui/kit";
+import { AddressField } from "../src/ui/addressField";
 import { Field } from "../src/ui/form";
 import { PressScale } from "../src/ui/motion";
 import { Sheet } from "../src/ui/sheet";
@@ -100,7 +101,8 @@ function Body({ close }: { close(next?: "hub" | "invite"): void }) {
     <View key="name" style={{ gap: 18 }}>
       <Image source={{ uri: KIND_PHOTO[k] }} style={{ height: 120, borderRadius: radius.surface, backgroundColor: c.recessed }} />
       <Field label="Name" value={name} onChange={setName} max={48} placeholder={PLACEHOLDER[k][0]} />
-      <Field label={PLACEHOLDER[k][1]} value={place} onChange={setPlace} max={160} placeholder={PLACEHOLDER[k][2]} />
+      {kind === "trip" ? <Field label={PLACEHOLDER[k][1]} value={place} onChange={setPlace} max={160} placeholder={PLACEHOLDER[k][2]} />
+        : <AddressField label={PLACEHOLDER[k][1]} value={place} onChange={setPlace} placeholder={PLACEHOLDER[k][2]} />}
       <T kind="note" muted>Everyone in the commune sees its name{kind === "trip" ? " and where you’re going" : " and address"}.</T>
     </View>,
     <View key="money" style={{ gap: 12 }}>
