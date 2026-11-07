@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Image, Pressable, StyleSheet, View, useWindowDimensions } from "react-native";
 import Animated, {
-  Easing, cancelAnimation, runOnJS, useAnimatedStyle, useSharedValue, withDelay, withSequence, withTiming,
+  Easing, cancelAnimation, runOnJS, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withTiming,
 } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -15,7 +15,7 @@ import { PressScale, haptic, useCalm } from "../ui/motion";
 import { startScreen } from "./engine";
 import { useActive, useFlow, useClockGroup } from "./flow";
 import { IMAGES, PHOTO_RATIO, type ImageKey } from "./images";
-import { CAST, FOCAL, GROUPS, type Beat, type CastId, type GroupKey } from "./stories";
+import { CAST, CLOUDS, FOCAL, GROUPS, type Beat, type CastId, type GroupKey } from "./stories";
 import { Av, CloseX, Drawer, EASE, EASE_OUT, Glass, Ini, LinkBtn, O, Pill, Rise, Shade, Wordmark, YouAv, FILL, img, type } from "./ui";
 
 /* ---------- launch ---------- */
@@ -212,7 +212,22 @@ function Slide({ k, on }: { k: ImageKey; on: boolean }) {
         <SvgImage href={IMAGES[k]} x={layout.x} y={layout.y} width={layout.imgW} height={layout.imgH} preserveAspectRatio="xMidYMid slice" mask={`url(#${id})`} />
       </Svg>
     </> : <Image source={img(k)} style={{ position: "absolute", left: layout.x, top: layout.y, width: layout.imgW, height: layout.imgH }} />}
+    {CLOUDS[k] && <Clouds k={CLOUDS[k]!} on={on} box={layout} />}
   </Animated.View>;
+}
+
+/** A photo's high clouds on their own layer, drifting slowly sideways (9 s each way). Still under Reduce Motion. */
+function Clouds({ k, on, box }: { k: ImageKey; on: boolean; box: { imgW: number; imgH: number; x: number; y: number } }) {
+  const calm = useCalm();
+  const drift = useSharedValue(-10);
+  useEffect(() => {
+    cancelAnimation(drift);
+    if (on && !calm) drift.value = withRepeat(withTiming(12, { duration: 9000, easing: Easing.inOut(Easing.ease) }), -1, true);
+    else drift.value = withTiming(0, { duration: 400 });
+    return () => cancelAnimation(drift);
+  }, [on, calm, drift]);
+  const a = useAnimatedStyle(() => ({ transform: [{ translateX: drift.value }] }));
+  return <Animated.Image source={img(k)} style={[{ position: "absolute", left: box.x, top: box.y, width: box.imgW, height: box.imgH }, a]} />;
 }
 
 function Bar({ state, progress }: { state: "done" | "now" | "later"; progress: ReturnType<typeof useSharedValue<number>> }) {

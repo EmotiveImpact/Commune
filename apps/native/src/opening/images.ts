@@ -37,6 +37,7 @@ export const IMAGES = {
   "roast-c": require("../../assets/opening/s/roast-c.jpg"),
   "roast-f": require("../../assets/opening/s/roast-f.jpg"),
   "shadowbox": require("../../assets/opening/s/shadowbox.jpg"),
+  "shadowbox-clouds": require("../../assets/opening/s/shadowbox-clouds.png"),
   "taxi-a": require("../../assets/opening/s/taxi-a.jpg"),
   "taxi-b": require("../../assets/opening/s/taxi-b.jpg"),
   "taxi-c": require("../../assets/opening/s/taxi-c.jpg"),
