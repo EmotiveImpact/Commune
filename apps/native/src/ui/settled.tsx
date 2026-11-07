@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { isValidElement, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { StyleSheet, View } from "react-native";
 import Svg, { G, Path, Rect, Text as SvgText } from "react-native-svg";
 import Animated, {
@@ -6,8 +6,9 @@ import Animated, {
 } from "react-native-reanimated";
 import { curve, type DebtWeb, type WebDebt } from "../lib/debtWeb";
 import { claimSettle, listen, newOwner, type Landed, type Settled } from "../lib/settled";
+import { isFresh } from "../lib/fresh";
 import { firstName, money } from "../lib/format";
-import { Avatar, T } from "./kit";
+import { Avatar, T, TextLink } from "./kit";
 import { haptic, PressScale, useCalm } from "./motion";
 import { Text } from "./text";
 import { useTheme } from "./theme";
@@ -225,18 +226,21 @@ export function useInPlace(hold = 2800) {
   if (!owner.current) owner.current = newOwner();
   const [done, setDone] = useState<Landed | null>(null);
   useEffect(() => listen(owner.current, setDone), []);
+  // Timed from when it first shows: changing its words (dropping Undo once saved) does not restart it.
+  const shownId = done ? `${done.id}|${done.slot}` : null;
   useEffect(() => {
-    if (!done) return;
+    if (!shownId) return;
     const timer = setTimeout(() => setDone(null), hold);
     return () => clearTimeout(timer);
-  }, [done, hold]);
-  return { done, claim: (id: string, slot = 0) => claimSettle(id, owner.current, slot), show: (event: Settled) => setDone({ ...event, slot: 0 }) };
+  }, [shownId, hold]);
+  return { done, claim: (id: string, slot = 0) => claimSettle(id, owner.current, slot), show: (event: Settled, slot = 0) => setDone({ ...event, slot }), clear: () => setDone(null) };
 }
 
 /** A card's content once its payment is recorded: the ring, its tick drawing on, and the words. */
 export function InPlaceCard({ done }: { done: Settled }) {
   return <Animated.View key={`done-${done.id}`} entering={FadeIn.duration(220)}>
     <AllSquare compact title={done.title} body={done.body} />
+    {done.action ? <TextLink centred muted label={done.action.label} onPress={done.action.run} /> : null}
   </Animated.View>;
 }
 
@@ -251,6 +255,7 @@ export function InPlaceRow({ done, first }: { done: Settled; first?: boolean }) 
       <T kind="strong" style={{ fontSize: 15.5 }}>{done.title}</T>
       <T kind="label" muted lines={2}>{done.body}</T>
     </View>
+    {done.action ? <TextLink muted label={done.action.label} onPress={done.action.run} /> : null}
   </Animated.View>;
 }
 
@@ -258,5 +263,71 @@ export function InPlaceRow({ done, first }: { done: Settled; first?: boolean }) 
 export function withLanded(rows: ReactNode[], done: Landed | null): ReactNode[] {
   if (!done) return rows;
   const at = Math.max(0, Math.min(done.slot, rows.length));
+  const standIn = done.replaces ? rows.findIndex((row) => isValidElement(row) && row.key === done.replaces) : -1;
+  if (standIn >= 0) return [...rows.slice(0, standIn), <InPlaceRow key={`landed-${done.id}`} done={done} first={standIn === 0} />, ...rows.slice(standIn + 1)];
   return [...rows.slice(0, at), <InPlaceRow key={`landed-${done.id}`} done={done} first={at === 0} />, ...rows.slice(at)];
+}
+
+/**
+ * Something done that can still be taken back: shown at once, saved when
+ * the few seconds are up (or when the screen goes), and Undo before then
+ * simply never saves it.
+ */
+export function useDeferred(hold = 3200) {
+  const pending = useRef<{ commit(): void; timer: ReturnType<typeof setTimeout> } | null>(null);
+  const flush = () => {
+    const job = pending.current;
+    if (!job) return;
+    pending.current = null;
+    clearTimeout(job.timer);
+    job.commit();
+  };
+  useEffect(() => flush, []);
+  return {
+    start(commit: () => void) {
+      flush();
+      pending.current = { commit, timer: setTimeout(flush, hold) };
+    },
+    undo() {
+      if (pending.current) clearTimeout(pending.current.timer);
+      pending.current = null;
+    },
+  };
+}
+
+/**
+ * A button's place once it has done its job, such as "Sent to Jordan": the
+ * small ring with its tick drawing on, at the height the button had.
+ */
+export function Sent({ text, size = "lg" }: { text: string; size?: "lg" | "sm" }) {
+  const big = size === "lg";
+  return <Animated.View entering={FadeIn.duration(200)} accessibilityRole="summary" accessibilityLabel={text} accessibilityLiveRegion="polite"
+    style={{ height: big ? 48 : 34, flexDirection: "row", alignItems: "center", justifyContent: big ? "center" : "flex-end", gap: 8 }}>
+    <TickRing size={big ? 26 : 22} delay={60} />
+    <T kind={big ? "strong" : "label"} style={big ? { fontSize: 15.5 } : { fontWeight: "500" }}>{text}</T>
+  </Animated.View>;
+}
+
+/**
+ * A bill just added from this phone slides into its list from a little above,
+ * with a pale green wash that fades, so you see where it went.
+ */
+export function Arrive({ communeId, title, amountMinor, radius = 0, children }: { communeId: string; title: string; amountMinor?: number; radius?: number; children: ReactNode }) {
+  const { c } = useTheme();
+  const calm = useCalm();
+  const [fresh] = useState(() => isFresh(communeId, title, amountMinor));
+  const shown = useSharedValue(fresh ? 0 : 1);
+  const wash = useSharedValue(fresh ? 1 : 0);
+  useEffect(() => {
+    if (!fresh) return;
+    shown.value = withTiming(1, { duration: calm ? 160 : 420, easing: EASE });
+    wash.value = withDelay(calm ? 0 : 700, withTiming(0, { duration: 900, easing: EASE }));
+  }, [fresh, calm, shown, wash]);
+  const style = useAnimatedStyle(() => ({ opacity: shown.value, transform: [{ translateY: calm ? 0 : (1 - shown.value) * -14 }] }));
+  const tint = useAnimatedStyle(() => ({ opacity: wash.value * 0.45 }));
+  if (!fresh) return <>{children}</>;
+  return <Animated.View style={style}>
+    {children}
+    <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: c.settled, borderRadius: radius }, tint]} />
+  </Animated.View>;
 }

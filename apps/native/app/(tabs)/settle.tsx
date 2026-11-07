@@ -3,7 +3,7 @@ import { View } from "react-native";
 import { useRouter } from "expo-router";
 import { hasAny, payLinksOf } from "../../src/lib/derive";
 import { debtWeb } from "../../src/lib/debtWeb";
-import { AllSquare, DebtFold, useInPlace, withLanded } from "../../src/ui/settled";
+import { AllSquare, DebtFold, Sent, useInPlace, withLanded } from "../../src/ui/settled";
 import type { Landed } from "../../src/lib/settled";
 import { firstName, money, moneyList, shortDate, word } from "../../src/lib/format";
 import type { CurrencyCode } from "../../src/lib/types";
@@ -12,7 +12,7 @@ import { Body, Pad, TopBar } from "../../src/ui/chrome";
 import { Avatar, Button, Kicker, Panel, Row, State, T } from "../../src/ui/kit";
 import { useConfirm } from "../../src/ui/confirm";
 import { useToast } from "../../src/ui/toast";
-import { Still } from "../../src/ui/motion";
+import { haptic, Still } from "../../src/ui/motion";
 import { useRemind } from "../../src/ui/remind";
 import { SwipeRow } from "../../src/ui/swipe";
 import { useTheme } from "../../src/ui/theme";
@@ -39,6 +39,7 @@ export default function Settle() {
   const toast = useToast();
   const remindFor = useRemind();
   const [busy, setBusy] = useState("");
+  const [sent, setSent] = useState("");
   const payTotalCurrencies = Object.keys(owe) as CurrencyCode[];
   const people = new Set(settle.youOwe.map((row) => row.userId)).size;
   const youOweCurrencies = [...new Set(settle.youOwe.map((row) => row.currency))];
@@ -54,11 +55,14 @@ export default function Settle() {
       toast(failure(cause, "Couldn’t send that."));
     } finally { setBusy(""); }
   }
-  async function sendNudge(communeId: string, shareIds: string[], name: string) {
+  async function sendNudge(communeId: string, shareIds: string[], name: string, spot: string) {
     setBusy(`n:${name}`);
     try {
       for (const id of shareIds) await nudge(communeId, id);
-      toast(`Nudged ${firstName(name)}.`);
+      // The button turns into "Sent to Jordan" where it was, then settles to "Nudged today".
+      haptic.light();
+      setSent(spot);
+      setTimeout(() => setSent((value) => (value === spot ? "" : value)), 2600);
     } catch (cause) {
       toast(failure(cause, "Couldn’t send the nudge."));
     } finally { setBusy(""); }
@@ -125,8 +129,9 @@ export default function Settle() {
                 right={<View style={{ alignItems: "flex-end", gap: 6 }}>
                   <T kind="amount">{money(row.amountMinor, currency)}</T>
                   {pending.length ? null
+                    : sent === `${row.userId}-${currency}` ? <Sent size="sm" text={`Sent to ${firstName(row.name)}`} />
                     : nudgeable.length ? <Button size="sm" variant="secondary" label={`Nudge ${firstName(row.name)}`} busy={busy === `n:${row.name}`}
-                      onPress={() => void sendNudge(nudgeable[0].waiting.communeId, nudgeable.map((item) => item.debtor.shareId), row.name)} />
+                      onPress={() => void sendNudge(nudgeable[0].waiting.communeId, nudgeable.map((item) => item.debtor.shareId), row.name, `${row.userId}-${currency}`)} />
                     : <T kind="note" muted>{nudged ? "Nudged today" : nudgeFrom(row.items.map((item) => item.waiting.dueOn))}</T>}
                 </View>} />}</SwipeRow>
               {pending.map(({ waiting: entry, debtor }) => <View key={debtor.pending!.id} style={{ marginHorizontal: 16, marginBottom: 14, padding: 14, borderRadius: 12, backgroundColor: c.attentionSoft, gap: 10 }}>

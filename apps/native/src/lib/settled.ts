@@ -5,7 +5,13 @@
  * one of its buttons is pressed; the sheet hands the result back if the claim
  * is still there, and closes, otherwise it shows the result itself.
  */
-export type Settled = { id: string; title: string; body: string };
+export type Settled = {
+  id: string; title: string; body: string;
+  /** A small link beside the words, such as Undo. */
+  action?: { label: string; run(): void };
+  /** The key of a row still on screen (as after a nudge) that this stands in for, rather than going beside it. */
+  replaces?: string;
+};
 export type Landed = Settled & { slot: number };
 
 type Claim = { id: string; owner: number; slot: number; at: number };

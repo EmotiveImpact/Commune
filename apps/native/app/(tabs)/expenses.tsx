@@ -13,6 +13,7 @@ import { PressScale, Still } from "../../src/ui/motion";
 import { radius, useTheme } from "../../src/ui/theme";
 import { HOLD, useRemind } from "../../src/ui/remind";
 import { SwipeRow } from "../../src/ui/swipe";
+import { Arrive } from "../../src/ui/settled";
 
 type Filter = "all" | "open" | "settled";
 
@@ -53,7 +54,7 @@ export default function Expenses() {
           const open = isOpen(expense);
           const remind = remindFor(`expense:${expense.id}`);
           // Swipe the card left for Remind me, or hold it.
-          return <Still key={`${filter}-${current.commune.id}-${expense.id}`} index={index}><View style={{ borderRadius: radius.surface, overflow: "hidden" }}><SwipeRow label={expense.title} onRemind={remind} background="transparent">{(guard) => <PressScale accessibilityRole="button" accessibilityHint="Hold for a reminder"
+          return <Still key={`${filter}-${current.commune.id}-${expense.id}`} index={index}><Arrive communeId={current.commune.id} title={expense.title} amountMinor={expense.amountMinor} radius={radius.surface}><View style={{ borderRadius: radius.surface, overflow: "hidden" }}><SwipeRow label={expense.title} onRemind={remind} background="transparent">{(guard) => <PressScale accessibilityRole="button" accessibilityHint="Hold for a reminder"
             onLongPress={guard(remind)} delayLongPress={HOLD} onPress={guard(() => router.push(`/expense/${expense.id}`))}>
             <Panel style={{ paddingVertical: 14, paddingHorizontal: 16, gap: 10 }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
@@ -73,7 +74,7 @@ export default function Expenses() {
                 </View>
               </View>
             </Panel>
-          </PressScale>}</SwipeRow></View></Still>;
+          </PressScale>}</SwipeRow></View></Arrive></Still>;
         })}
         {!list.length ? <Panel pad><T kind="body" muted>{filter === "all" ? "Nothing recorded here yet. Add the first expense." : `No ${filter} expenses.`}</T></Panel> : null}
       </Pad>

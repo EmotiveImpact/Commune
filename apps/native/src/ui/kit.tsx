@@ -1,5 +1,5 @@
-import { useId, useRef, type ReactNode } from "react";
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { hiddenButton, lastPress } from "./origin";
 import { ActivityIndicator, Image, View, type GestureResponderEvent, type ImageStyle, type StyleProp, type TextStyle, type ViewStyle } from "react-native";
 import { Text } from "./text";
@@ -7,7 +7,7 @@ import * as Haptics from "expo-haptics";
 import { calParts, initials } from "../lib/format";
 import type { Tone } from "../lib/derive";
 import { radius, useTheme, type Palette } from "./theme";
-import { PressScale } from "./motion";
+import { PressScale, useCalm } from "./motion";
 
 /** Root style for a page sheet screen: it fills the page sheet it opens in. */
 export function useSheetFill(): ViewStyle {
@@ -172,9 +172,38 @@ export function Avatar({ name, size = 32, ring }: { name: string; size?: number;
 }
 export function Faces({ names, size = 24, ring }: { names: string[]; size?: number; ring?: string }) {
   const { c } = useTheme();
+  // Someone new (just joined, or just approved) drops into the row; the faces already there stay put.
+  const counts = new Map<string, number>();
+  const keys = names.slice(0, 5).map((name) => { const n = (counts.get(name) ?? 0) + 1; counts.set(name, n); return `${name}#${n}`; });
+  const isNew = useNewKeys(keys);
   return <View style={{ flexDirection: "row" }}>
-    {names.slice(0, 5).map((name, index) => <View key={`${name}-${index}`} style={{ marginLeft: index ? -7 : 0 }}><Avatar name={name} size={size} ring={ring ?? c.surface} /></View>)}
+    {keys.map((key, index) => <Drop key={key} drop={isNew(key)} style={{ marginLeft: index ? -7 : 0, zIndex: keys.length - index }}>
+      <Avatar name={names[index]} size={size} ring={ring ?? c.surface} />
+    </Drop>)}
   </View>;
+}
+
+const DROP = Easing.bezier(0.32, 0.72, 0, 1);
+
+/** True for keys that were not in the list last time it drew (never on its first draw). */
+export function useNewKeys(keys: string[]): (key: string) => boolean {
+  const seen = useRef<Set<string> | null>(null);
+  const before = seen.current;
+  useEffect(() => { seen.current = new Set(keys); });
+  return (key) => !!before && !before.has(key);
+}
+
+/** Drops in from a little above as it appears, when `drop` is true on its first draw. */
+export function Drop({ drop, style, children }: { drop: boolean; style?: StyleProp<ViewStyle>; children: ReactNode }) {
+  const calm = useCalm();
+  const [play] = useState(drop);
+  const shown = useSharedValue(play ? 0 : 1);
+  useEffect(() => { if (play) shown.value = withTiming(1, { duration: calm ? 160 : 460, easing: DROP }); }, [play, calm, shown]);
+  const look = useAnimatedStyle(() => ({
+    opacity: shown.value,
+    transform: calm ? [] : [{ translateY: (1 - shown.value) * -12 }, { scale: 0.9 + shown.value * 0.1 }],
+  }));
+  return <Animated.View style={[style, look]}>{children}</Animated.View>;
 }
 
 /** A person with the commune's photo at their shoulder. */

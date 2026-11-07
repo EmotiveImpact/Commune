@@ -1,3 +1,4 @@
+import { handBackSoon } from "../../src/lib/settled";
 import { useState } from "react";
 import { ScrollView, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -46,6 +47,8 @@ function NudgeBody({ close }: { close: () => void }) {
     try {
       for (const debtor of picked) { await nudge(entry!.communeId, debtor.shareId); sent.push(firstName(debtor.name)); }
       tap("success");
+      // Nudged from a row: the row itself says Sent, so the sheet just closes.
+      if (await handBackSoon({ id: `nudge:${entry!.expenseId}`, title: "Sent.", body: `Nudged ${joinAnd(sent)}.`, replaces: entry!.key })) { close(); return; }
       toast(`Nudged ${joinAnd(sent)}.`);
       close();
     } catch (cause) {

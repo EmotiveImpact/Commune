@@ -1,3 +1,4 @@
+import { clearFresh, markFresh } from "../src/lib/fresh";
 import { useEffect, useState, type ReactNode } from "react";
 import { ActivityIndicator, Image, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
@@ -105,6 +106,8 @@ function AddBody({ close }: { close: () => void }) {
   async function save() {
     if (!valid || !shares || !minor) return;
     setBusy(true); setError("");
+    // Marked before saving, so the lists that redraw with it can slide it in.
+    markFresh(current!.commune.id, title.trim(), minor);
     try {
       const result = await addExpense(current!.commune.id, { title: title.trim(), amountMinor: minor, category, dueOn: due || null, paidByUserId: payer, shares });
       tap("success");
@@ -113,6 +116,7 @@ function AddBody({ close }: { close: () => void }) {
         : `${title.trim()} added to ${current!.commune.name}.`);
       close();
     } catch (cause) {
+      clearFresh();
       setError(failure(cause, "Couldn’t add it. Try again."));
     } finally { setBusy(false); }
   }
