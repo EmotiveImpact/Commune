@@ -1,3 +1,4 @@
+import { usePrefs } from "../prefs";
 import { Platform, useColorScheme } from "react-native";
 
 /** The design language tokens (docs/DESIGN-LANGUAGE.md, design-language/system/cm.css). */
@@ -69,7 +70,10 @@ const dark: Palette = {
 
 export function useTheme(): { c: Palette; dark: boolean } {
   const scheme = useColorScheme();
-  return scheme === "dark" ? { c: dark, dark: true } : { c: light, dark: false };
+  // Settings > Appearance: Light or Dark wins over the phone; Match phone follows it.
+  const { appearance } = usePrefs();
+  const isDark = appearance === "match" ? scheme === "dark" : appearance === "dark";
+  return isDark ? { c: dark, dark: true } : { c: light, dark: false };
 }
 
 export const radius = { inner: 4, control: 9, surface: 15, pill: 999 };

@@ -11,6 +11,7 @@ import { AppProvider, useApp } from "../src/state";
 import { ConfirmProvider } from "../src/ui/confirm";
 import { HeroFlight } from "../src/ui/hero";
 import { ToastProvider } from "../src/ui/toast";
+import { LockGate } from "../src/ui/lock";
 import { PushedBar } from "../src/ui/chrome";
 import { SHEET_SCREEN } from "../src/ui/sheet";
 import { useTheme } from "../src/ui/theme";
@@ -97,8 +98,10 @@ function Screens() {
       <Stack.Screen name="add-note" options={SHEET_SCREEN} />
       <Stack.Screen name="add-chore" options={SHEET_SCREEN} />
       <Stack.Screen name="announce" options={SHEET_SCREEN} />
+      <Stack.Screen name="appearance" options={SHEET_SCREEN} />
     </Stack>
     <HeroFlight />
+    <LockGate />
   </>;
 }
 
