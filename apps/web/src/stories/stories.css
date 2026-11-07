@@ -1,0 +1,225 @@
+/* In the screens layer (see styles/index.css). The opening stories, where the
+   web app shows them: beside the sign-in, sign-up and invitation forms, on
+   empty screens and under the loading placeholders. */
+@layer screens {
+  /* Beside the form: the story's first photo, its line and the note Commune sent. */
+  .c-story-auth {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 240px;
+    max-height: 460px;
+    width: min(100%, 420px);
+    margin: 28px 0;
+    overflow: hidden;
+    border-radius: var(--radius-surface);
+    background: var(--navy-3);
+    isolation: isolate;
+  }
+  .c-story-auth-photo {
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .c-story-auth::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: linear-gradient(180deg, rgba(10, 18, 30, 0.62) 0%, rgba(10, 18, 30, 0.08) 42%, rgba(10, 18, 30, 0.12) 60%, rgba(10, 18, 30, 0.7) 100%);
+  }
+  .c-story-auth-copy {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 20px;
+    color: var(--white);
+  }
+  .c-story-eyebrow {
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.86);
+  }
+  .c-story-line {
+    margin-top: 8px;
+    max-width: 22rem;
+    font-size: 20px;
+    font-weight: 550;
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+  }
+  .c-story-invite-fact {
+    margin-top: auto;
+    font-size: 14px;
+    line-height: 1.4;
+    color: rgba(255, 255, 255, 0.86);
+  }
+  .c-story-note {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-top: auto;
+    padding: 12px 14px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.92);
+    color: #171b24;
+  }
+  .c-story-note img {
+    flex: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+  .c-story-note > span {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+    font-size: 13px;
+    line-height: 1.3;
+    color: #5f6878;
+  }
+  .c-story-note strong {
+    font-size: 14px;
+    font-weight: 600;
+    color: #171b24;
+  }
+  .c-story-note-top {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 12px;
+  }
+  .c-story-note-top b {
+    font-family: var(--font-display);
+    font-weight: 600;
+    color: #171b24;
+  }
+
+  .c-story-stack {
+    width: 100%;
+    max-width: 440px;
+  }
+
+  /* On a phone the brand panel is hidden, so the story sits above the form, short. */
+  .c-story-strip {
+    display: none;
+  }
+  @media (max-width: 900px) {
+    .c-story-strip {
+      position: relative;
+      display: flex;
+      align-items: flex-end;
+      height: 132px;
+      margin: 0 0 24px;
+      overflow: hidden;
+      border-radius: var(--radius-surface);
+      background: var(--navy-3);
+      isolation: isolate;
+    }
+    .c-story-strip-photo {
+      position: absolute;
+      inset: 0;
+      z-index: -2;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .c-story-strip::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      background: linear-gradient(0deg, rgba(10, 18, 30, 0.74), rgba(10, 18, 30, 0.08) 85%);
+    }
+    .c-story-strip figcaption {
+      display: grid;
+      gap: 4px;
+      padding: 14px 16px;
+      color: var(--white);
+      font-size: 16px;
+      font-weight: 550;
+      line-height: 1.25;
+      letter-spacing: -0.01em;
+    }
+    .c-story-strip figcaption span {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.86);
+    }
+  }
+
+  /* Empty screens: "From the story you saw". */
+  .c-story-card {
+    display: flex;
+    gap: 14px;
+    max-width: 520px;
+    padding: 12px;
+    border-radius: var(--radius-surface);
+    background: var(--white);
+    box-shadow: inset 0 0 0 1px var(--border);
+  }
+  .c-story-card-photo {
+    flex: none;
+    width: 92px;
+    min-height: 128px;
+    border-radius: 16px;
+    object-fit: cover;
+    background: var(--paper-2);
+  }
+  .c-story-card-copy {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    min-width: 0;
+    padding: 4px 4px 2px 0;
+  }
+  .c-story-card-label {
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-green);
+  }
+  .c-story-card h3 {
+    margin: 8px 0 0;
+    font-size: 17px;
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+  }
+  .c-story-card-copy > p:not(.c-story-card-label) {
+    margin: 4px 0 12px;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--ink-soft);
+  }
+  .c-story-card .a-btn {
+    margin-top: auto;
+  }
+  .a-empty + .c-story-card {
+    margin-top: 8px;
+  }
+
+  /* Under the loading placeholders: one of the story's lines at a time. */
+  .c-story-loading {
+    margin: 28px 0 0;
+    font-size: 14px;
+    line-height: 1.4;
+    color: var(--ink-soft);
+    animation: c-story-line-in var(--motion-long) var(--ease-standard);
+  }
+  @keyframes c-story-line-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: none; }
+  }
+}

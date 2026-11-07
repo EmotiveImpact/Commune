@@ -1,6 +1,14 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { calculateEqualSplit } from '../../../packages/core/src/splits';
 import { Icon } from './MobileIcon';
+
+// The concept's own equal split, in pounds. The packages/core/src/splits it
+// once imported was removed with the old app, which stopped this site building.
+function calculateEqualSplit(amount: number, participantCount: number): number[] {
+  const totalCents = Math.round(amount * 100);
+  const baseCents = Math.floor(totalCents / participantCount);
+  const remainder = totalCents - baseCents * participantCount;
+  return Array.from({ length: participantCount }, (_, i) => (baseCents + (i < remainder ? 1 : 0)) / 100);
+}
 
 type Tab = 'today' | 'spaces' | 'money' | 'plans';
 type Space = { id: string; name: string; kind: 'Home' | 'Work' | 'Trip'; image: string; members: string[]; essentials: [string, string][]; fund: number };

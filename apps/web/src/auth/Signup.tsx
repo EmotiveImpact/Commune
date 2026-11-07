@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "wouter";
 import { AuthLayout } from "./AuthLayout";
+import { visitStory } from "../stories/choose";
 import { useApp } from "../state";
 import { LIMITS } from "../data/limits";
 import { keepSearch } from "../nav";
@@ -16,6 +17,7 @@ export function SignupPage() {
   const { error, setError, invalid, messageProps } = useFormError();
   const [verificationPending, setVerificationPending] = useState(false);
   const [code, setCode] = useState("");
+  const [story] = useState(() => visitStory());
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -71,7 +73,7 @@ export function SignupPage() {
   }
 
   return (
-    <AuthLayout>
+    <AuthLayout story={story}>
       <div className="commune-auth-panel">
         <h2>{verificationPending ? "Verify your email" : "Create your account"}</h2>
         <p className="commune-auth-lede">{verificationPending
