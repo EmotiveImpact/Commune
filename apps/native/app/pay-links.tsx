@@ -56,7 +56,7 @@ export default function PayLinks() {
     } catch (cause) { setError(failure(cause, "Couldn’t change your favourite.")); } finally { setBusy(false); }
   }
 
-  const input = { height: 46, borderRadius: radius.control, borderWidth: 1, borderColor: c.outline, backgroundColor: c.surface, paddingHorizontal: 12, fontSize: 16, color: c.ink };
+  const input = { height: 48, borderRadius: radius.control, borderWidth: 1, borderColor: c.outline, backgroundColor: c.surface, paddingHorizontal: 14, fontSize: 16, color: c.ink };
   const field = (label: string, value: string, set: (text: string) => void, extra: object = {}) => <View style={{ gap: 6 }}>
     <T kind="label" style={{ fontWeight: "600" }}>{label}</T>
     <TextInput accessibilityLabel={label} value={value} onChangeText={set} editable={!busy} style={input} autoCapitalize="none" autoCorrect={false} {...extra} />

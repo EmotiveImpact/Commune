@@ -14,7 +14,7 @@ import { useApp } from "../state";
 import { haptic, springs, useCalm, PressScale } from "./motion";
 import { useConfirm } from "./confirm";
 import { useToast } from "./toast";
-import { KIND_NAME, KIND_PHOTO, useTheme } from "./theme";
+import { BAR_HEIGHT, KIND_NAME, KIND_PHOTO, useTheme } from "./theme";
 
 type Menu = { open(): void; close(): void; isOpen: boolean };
 const Context = createContext<Menu>({ open: () => undefined, close: () => undefined, isOpen: false });
@@ -119,10 +119,10 @@ function MenuPanel() {
   const funds = current?.funds.filter((fund) => !fund.archivedAt).length ?? 0;
   const templates = (current?.splitTemplates ?? []).filter((item) => !item.archivedAt).length;
 
-  return <View style={{ flex: 1, paddingTop: insets.top + 6 }}>
-    <View style={{ flexDirection: "row", alignItems: "center", paddingLeft: 24, paddingRight: 10, height: 50 }}>
+  return <View style={{ flex: 1, paddingTop: insets.top }}>
+    <View style={{ flexDirection: "row", alignItems: "center", paddingLeft: 24, paddingRight: 8, height: BAR_HEIGHT }}>
       <Text accessibilityRole="header" style={{ flex: 1, color: c.onFrame2, fontSize: 12.5, fontWeight: "600" }}>Your communes</Text>
-      <PressScale scaleTo={0.9} accessibilityRole="button" accessibilityLabel="Close menu" onPress={close} hitSlop={6} style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}>
+      <PressScale scaleTo={0.9} accessibilityRole="button" accessibilityLabel="Close menu" onPress={close} hitSlop={6} style={{ width: 46, height: 46, alignItems: "center", justifyContent: "center" }}>
         <X size={22} color={c.onFrame} strokeWidth={1.8} />
       </PressScale>
     </View>

@@ -74,7 +74,7 @@ function RecordBody({ close }: { close: () => void }) {
     }
   }
 
-  const input = { height: 46, borderRadius: radius.control, borderWidth: 1, borderColor: c.outline, backgroundColor: c.surface, paddingHorizontal: 12, fontSize: 16, color: c.ink };
+  const input = { height: 48, borderRadius: radius.control, borderWidth: 1, borderColor: c.outline, backgroundColor: c.surface, paddingHorizontal: 14, fontSize: 16, color: c.ink };
   // The Sheet lifts itself above the keyboard and shrinks to the space left;
   // this scroll view then scrolls the fields.
   return <View style={[FITTED, { backgroundColor: c.canvas }]}>

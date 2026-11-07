@@ -76,6 +76,9 @@ export function useTheme(): { c: Palette; dark: boolean } {
   return isDark ? { c: dark, dark: true } : { c: light, dark: false };
 }
 
+/** Height of the top bar under the status bar, the same on every screen, search and the menu included. */
+export const BAR_HEIGHT = 52;
+
 export const radius = { inner: 4, control: 9, surface: 15, pill: 999 };
 export const font = {
   display: Platform.select({ ios: "System", default: undefined }),

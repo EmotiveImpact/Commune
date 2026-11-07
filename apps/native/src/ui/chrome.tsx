@@ -12,7 +12,7 @@ import { useMenu } from "./menu";
 import { useApp } from "../state";
 import { activeMembers } from "../lib/derive";
 import { T } from "./kit";
-import { KIND_NAME, KIND_PHOTO, radius, useTheme } from "./theme";
+import { BAR_HEIGHT, KIND_NAME, KIND_PHOTO, radius, useTheme } from "./theme";
 
 /**
  * The slim dark top bar: the wordmark on every tab, then on the right search,
@@ -71,8 +71,7 @@ function OfflineStrip() {
   </View>;
 }
 
-/** Height of the top bar under the status bar, the same on every screen. */
-export const BAR_HEIGHT = 52;
+export { BAR_HEIGHT };
 
 /**
  * The top bar on inner screens (Notifications, Settings and the rest): the

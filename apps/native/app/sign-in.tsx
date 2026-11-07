@@ -24,7 +24,7 @@ export default function SignIn() {
       router.replace("/");
     } catch (cause) { setError(failure(cause, "Couldn’t sign in.")); } finally { setBusy(false); }
   }
-  const input = { height: 50, borderRadius: radius.control, backgroundColor: c.surface, borderWidth: 1, borderColor: c.outline, paddingHorizontal: 14, fontSize: 16, color: c.ink };
+  const input = { height: 48, borderRadius: radius.control, backgroundColor: c.surface, borderWidth: 1, borderColor: c.outline, paddingHorizontal: 14, fontSize: 16, color: c.ink };
   return <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1, backgroundColor: c.canvas }}>
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexGrow: 1 }}>
       <ImageBackground source={{ uri: KIND_PHOTO.trip }} style={{ height: 300, backgroundColor: c.frame, justifyContent: "flex-end" }}>

@@ -69,7 +69,7 @@ function EditBody({ close }: { close(): void }) {
       <View style={{ justifyContent: "center" }}>
         <Text style={{ position: "absolute", left: 12, fontSize: 15, color: c.ink2 }}>{symbol}</Text>
         <TextInput accessibilityLabel="Amount each time" value={amount} onChangeText={setAmount} keyboardType="decimal-pad" inputMode="decimal"
-          style={{ height: 46, borderRadius: radius.control, borderWidth: 1, borderColor: amount && !minor ? c.late : c.outline, backgroundColor: c.surface, paddingLeft: 26, paddingRight: 12, fontSize: 16, color: c.ink, fontVariant: ["tabular-nums"] }} />
+          style={{ height: 48, borderRadius: radius.control, borderWidth: 1, borderColor: amount && !minor ? c.late : c.outline, backgroundColor: c.surface, paddingLeft: 26, paddingRight: 12, fontSize: 16, color: c.ink, fontVariant: ["tabular-nums"] }} />
       </View>
     </View>
     <View style={{ gap: 6 }}>

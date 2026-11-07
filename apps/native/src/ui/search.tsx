@@ -9,7 +9,7 @@ import { FileText, Receipt, Search as Glass, SquareCheck, UsersRound, X } from "
 import { search, type SearchHit } from "../lib/search";
 import { useApp } from "../state";
 import { useCalm } from "./motion";
-import { useTheme } from "./theme";
+import { BAR_HEIGHT, useTheme } from "./theme";
 
 type Icon = ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
 const HIT_ICON: Record<SearchHit["kind"], Icon> = { expense: Receipt, chore: SquareCheck, note: FileText, person: UsersRound };
@@ -52,13 +52,13 @@ export function SearchScreen({ visible, onClose }: { visible: boolean; onClose: 
   return <Modal visible={visible} transparent animationType="none" onRequestClose={close} statusBarTranslucent onShow={() => input.current?.focus()}>
     <Animated.View entering={calm ? undefined : FadeIn.duration(160)} style={{ flex: 1, backgroundColor: c.canvas }}>
       <View style={{ backgroundColor: c.frame, paddingTop: insets.top }}>
-        <View style={{ height: 56, flexDirection: "row", alignItems: "center", paddingLeft: 16, paddingRight: 4, gap: 4 }}>
-          <Animated.View entering={calm ? undefined : FadeIn.duration(180)} style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 10, height: 42, paddingLeft: 14, paddingRight: 6, borderRadius: 21, backgroundColor: c.canvas }}>
-            <Glass size={19} color={c.ink} strokeWidth={2} />
+        <View style={{ height: BAR_HEIGHT, flexDirection: "row", alignItems: "center", paddingLeft: 16, paddingRight: 8, gap: 4 }}>
+          <Animated.View entering={calm ? undefined : FadeIn.duration(180)} style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 10, height: 38, paddingLeft: 12, paddingRight: 6, borderRadius: 19, backgroundColor: c.canvas }}>
+            <Glass size={18} color={c.ink2} strokeWidth={1.8} />
             <TextInput ref={input} value={query} onChangeText={setQuery} autoFocus placeholder="Search Commune" placeholderTextColor={c.ink2}
               accessibilityLabel="Search bills, chores, notes and people" returnKeyType="search" autoCorrect={false} autoCapitalize="none"
               selectionColor={c.action} cursorColor={c.action} keyboardAppearance="light" underlineColorAndroid="transparent"
-              style={[{ flex: 1, minWidth: 0, height: 42, color: c.ink, fontSize: 17, fontWeight: "500", paddingVertical: 0 }, Platform.OS === "web" ? ({ outlineStyle: "none" } as object) : null]} />
+              style={[{ flex: 1, minWidth: 0, height: 38, color: c.ink, fontSize: 16, fontWeight: "500", paddingVertical: 0 }, Platform.OS === "web" ? ({ outlineStyle: "none" } as object) : null]} />
             {query ? <Pressable accessibilityRole="button" accessibilityLabel="Clear search" onPress={() => { setQuery(""); input.current?.focus(); }} hitSlop={8}
               style={{ width: 30, height: 30, alignItems: "center", justifyContent: "center" }}>
               <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: c.ink2, alignItems: "center", justifyContent: "center" }}>
@@ -67,7 +67,7 @@ export function SearchScreen({ visible, onClose }: { visible: boolean; onClose: 
             </Pressable> : null}
           </Animated.View>
           <Pressable accessibilityRole="button" accessibilityLabel="Cancel search" onPress={close} hitSlop={6}
-            style={({ pressed }) => ({ height: 44, paddingHorizontal: 12, justifyContent: "center", opacity: pressed ? 0.6 : 1 })}>
+            style={({ pressed }) => ({ height: 46, paddingHorizontal: 10, justifyContent: "center", opacity: pressed ? 0.6 : 1 })}>
             <Text style={{ color: c.onFrame, fontSize: 16 }}>Cancel</Text>
           </Pressable>
         </View>
@@ -83,7 +83,7 @@ export function SearchScreen({ visible, onClose }: { visible: boolean; onClose: 
               const heading = hit.kind !== lastKind ? KIND_HEADING[hit.kind] : null;
               lastKind = hit.kind;
               const I = HIT_ICON[hit.kind];
-              return <Animated.View key={`${hit.kind}-${hit.communeId}-${hit.id}`} entering={calm ? undefined : FadeInUp.delay(Math.min(index, 8) * 25).springify().damping(22)}>
+              return <Animated.View key={`${hit.kind}-${hit.communeId}-${hit.id}`} entering={calm ? undefined : FadeInUp.delay(Math.min(index, 8) * 25).duration(220)}>
                 {heading ? <Text accessibilityRole="header" style={{ color: c.ink2, fontSize: 13, fontWeight: "600", paddingHorizontal: 12, paddingTop: index ? 18 : 6, paddingBottom: 4 }}>{heading}</Text> : null}
                 <Pressable accessibilityRole="button" accessibilityLabel={`${hit.title}. ${hit.meta}`} onPress={() => open(hit)}
                   style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 14, minHeight: 58, paddingHorizontal: 12, borderRadius: 12, backgroundColor: pressed ? c.press : "transparent" })}>

@@ -30,7 +30,7 @@ export function Field({ label, value, onChange, placeholder, multiline, max = 80
     <T kind="label" style={{ fontWeight: "600" }}>{label}</T>
     <TextInput accessibilityLabel={label} value={value} onChangeText={onChange} maxLength={max} placeholder={placeholder} placeholderTextColor={c.ink2}
       multiline={multiline} autoFocus={autoFocus}
-      style={{ minHeight: multiline ? 88 : 46, paddingVertical: multiline ? 12 : 0, textAlignVertical: multiline ? "top" : "center", borderRadius: radius.control, borderWidth: 1, borderColor: c.outline, backgroundColor: c.surface, paddingHorizontal: 12, fontSize: 16, color: c.ink }} />
+      style={{ minHeight: multiline ? 96 : 48, paddingVertical: multiline ? 12 : 0, textAlignVertical: multiline ? "top" : "center", borderRadius: radius.control, borderWidth: 1, borderColor: c.outline, backgroundColor: c.surface, paddingHorizontal: 14, fontSize: 16, color: c.ink }} />
   </View>;
 }
 

@@ -236,14 +236,16 @@ function HubPills({ tab, onPick, left, right, floating, scrollY }: {
     const r = edge(boxes.value, right.value, "right");
     return { opacity: boxes.value.length ? 1 : 0, width: Math.max(0, r - l), transform: [{ translateX: l }] };
   });
-  // v7: once the tabs stick under the top bar they gain a hairline and a soft shadow.
+  // Once the tabs stick under the top bar a soft shadow fades in below them
+  // over the last 16 px of scroll. Nothing sits on their top edge, and the
+  // bar keeps its size, so nothing jumps.
   const stuck = useAnimatedStyle(() => {
-    const on = !floating && scrollY.value >= HERO_HEIGHT - 1 ? 1 : 0;
-    return { shadowOpacity: on * 0.35, borderBottomColor: on ? c.outline2 : "transparent", paddingTop: on ? 8 : 12 };
+    const on = floating ? 0 : Math.min(1, Math.max(0, (scrollY.value - (HERO_HEIGHT - 16)) / 16));
+    return { shadowOpacity: on * 0.1 };
   });
   return <Animated.View style={[floating
-    ? { position: "absolute", left: 0, right: 0, bottom: 0, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 10, backgroundColor: c.canvas, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.outline2, shadowColor: "#0a0c12", shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: -6 }, elevation: 8 }
-    : { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 10, backgroundColor: c.canvas, borderBottomWidth: StyleSheet.hairlineWidth, shadowColor: "#0a0c12", shadowRadius: 7, shadowOffset: { width: 0, height: 8 }, zIndex: 2 }, floating ? null : stuck]}>
+    ? { position: "absolute", left: 0, right: 0, bottom: 0, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 10, backgroundColor: c.canvas, shadowColor: "#0a0c12", shadowOpacity: 0.07, shadowRadius: 14, shadowOffset: { width: 0, height: -2 }, elevation: 6 }
+    : { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 10, backgroundColor: c.canvas, shadowColor: "#0a0c12", shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, zIndex: 2 }, floating ? null : stuck]}>
     <View accessibilityRole="tablist" style={{ flexDirection: "row", backgroundColor: c.recessed, borderRadius: 999, padding: 4, borderWidth: StyleSheet.hairlineWidth, borderColor: c.outline }}>
       <Animated.View pointerEvents="none" style={[{ position: "absolute", top: 4, bottom: 4, left: 0, borderRadius: 999, backgroundColor: c.surface, shadowColor: "#1a1e2b", shadowOpacity: 0.12, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 2 }, pill]} />
       {HUB_TABS.map((item, i) => {

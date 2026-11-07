@@ -155,7 +155,7 @@ function SignInStep({ name, error, busy, onSignedIn }: { name: string; error: st
     setWorking(true); setProblem("");
     try { await signIn(email.trim(), password); onSignedIn(); } catch (cause) { setProblem(failure(cause, "Couldn’t sign in.")); } finally { setWorking(false); }
   }
-  const input = { height: 50, borderRadius: radius.control, backgroundColor: c.surface, borderWidth: 1, borderColor: c.outline, paddingHorizontal: 14, fontSize: 16, color: c.ink };
+  const input = { height: 48, borderRadius: radius.control, backgroundColor: c.surface, borderWidth: 1, borderColor: c.outline, paddingHorizontal: 14, fontSize: 16, color: c.ink };
   return <>
     <Head over="Sign in" title={`Sign in to join ${name}`} body={backend.mode === "demo" ? "This build runs on demo data kept on this phone." : "Use your Commune account, or create one on the web app first."} />
     {backend.mode === "demo" ? <Rise index={1}><Button size="lg" block label="Open the demo" busy={working || busy} onPress={() => void go()} /></Rise> : <Rise index={1} style={{ gap: 12 }}>
