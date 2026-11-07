@@ -116,21 +116,26 @@ export function Meta({ children }: { children: ReactNode }) {
   return <T kind="label" muted>{children}</T>;
 }
 
-export function Cal({ iso, today, small }: { iso: string | null; today: string; small?: boolean }) {
+/**
+ * The one date card used everywhere (lists, the week, the expense page):
+ * always 46 by 52, so dates line up the same on every screen. `small` is
+ * kept for old call sites and no longer changes the size.
+ */
+export function Cal({ iso, today }: { iso: string | null; today: string; small?: boolean }) {
   const { c } = useTheme();
-  const width = small ? 44 : 52;
+  const box = { width: 46, height: 52, borderRadius: 10, borderWidth: 1, alignItems: "center", overflow: "hidden" } as const;
   if (!iso) {
-    return <View accessibilityLabel="No date" style={{ width, minHeight: small ? 46 : 52, borderRadius: 10, borderWidth: 1, borderStyle: "dashed", borderColor: c.calEdge, alignItems: "center", justifyContent: "center" }}>
-      <Text style={{ fontSize: 9.5, fontWeight: "500", color: c.ink2 }}>No date</Text>
+    return <View accessibilityLabel="No date" style={[box, { borderStyle: "dashed", borderColor: c.calEdge, justifyContent: "center" }]}>
+      <Text maxFontSizeMultiplier={1} style={{ fontSize: 9.5, fontWeight: "500", color: c.ink2, textAlign: "center" }}>No date</Text>
     </View>;
   }
   const p = calParts(iso, today);
-  return <View accessibilityLabel={`${p.dow} ${p.day} ${p.mon}`} style={{ width, borderRadius: 10, borderWidth: 1, borderColor: c.calEdge, backgroundColor: c.calFace, alignItems: "center", overflow: "hidden", paddingBottom: 3 }}>
-    <View style={{ alignSelf: "stretch", minHeight: 15, alignItems: "center", justifyContent: "center", backgroundColor: p.isToday ? "#2d6a4f" : c.calStrip }}>
-      <Text style={{ fontSize: 9, fontWeight: "800", letterSpacing: 0.7, color: p.isToday ? "#fff" : c.calStripInk }}>{p.dow.toUpperCase()}</Text>
+  return <View accessibilityLabel={`${p.dow} ${p.day} ${p.mon}`} style={[box, { borderColor: c.calEdge, backgroundColor: c.calFace }]}>
+    <View style={{ alignSelf: "stretch", height: 15, alignItems: "center", justifyContent: "center", backgroundColor: p.isToday ? "#2d6a4f" : c.calStrip }}>
+      <Text maxFontSizeMultiplier={1} style={{ fontSize: 9, fontWeight: "800", letterSpacing: 0.7, color: p.isToday ? "#fff" : c.calStripInk }}>{p.dow.toUpperCase()}</Text>
     </View>
-    <Text style={{ fontSize: small ? 18 : 21, fontWeight: "800", letterSpacing: -0.8, color: c.ink, lineHeight: small ? 21 : 24, fontVariant: ["tabular-nums"] }}>{p.day}</Text>
-    <Text style={{ fontSize: 9.5, fontWeight: "700", color: c.calStripInk }}>{p.mon}</Text>
+    <Text maxFontSizeMultiplier={1} style={{ fontSize: 18, fontWeight: "800", letterSpacing: -0.6, color: c.ink, lineHeight: 22, fontVariant: ["tabular-nums"] }}>{p.day}</Text>
+    <Text maxFontSizeMultiplier={1} style={{ fontSize: 9.5, lineHeight: 12, fontWeight: "700", color: c.calStripInk }}>{p.mon}</Text>
   </View>;
 }
 

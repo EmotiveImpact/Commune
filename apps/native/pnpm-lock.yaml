@@ -68,6 +68,9 @@ importers:
       lucide-react-native:
         specifier: 0.525.0
         version: 0.525.0(react-native-svg@15.12.1(react-native@0.81.4(@babel/core@7.29.7)(@types/react@19.1.10)(react@19.1.0))(react@19.1.0))(react-native@0.81.4(@babel/core@7.29.7)(@types/react@19.1.10)(react@19.1.0))(react@19.1.0)
+      qrcode-generator:
+        specifier: 1.4.4
+        version: 1.4.4
       react:
         specifier: 19.1.0
         version: 19.1.0
@@ -3072,6 +3075,9 @@ packages:
   punycode@2.3.1:
     resolution: {integrity: sha512-vYt7UD1U9Wg6138shLtLOvdAu+8DsC/ilFtEVHcH+wydcSpNE20AfSOduf6MkRFahL5FY7X1oU7nKVZFtfq8Fg==}
     engines: {node: '>=6'}
+
+  qrcode-generator@1.4.4:
+    resolution: {integrity: sha512-HM7yY8O2ilqhmULxGMpcHSF1EhJJ9yBj8gvDEuZ6M+KGJ0YY2hKpnXvRD+hZPLrDVck3ExIGhmPtSdcjC+guuw==}
 
   qrcode-terminal@0.11.0:
     resolution: {integrity: sha512-Uu7ii+FQy4Qf82G4xu7ShHhjhGahEpCWc3x8UavY3CTcWV+ufmmCtwkr7ZKsX42jdL0kr1B5FKUeqJvAn51jzQ==}
@@ -7438,6 +7444,8 @@ snapshots:
       sisteransi: 1.0.5
 
   punycode@2.3.1: {}
+
+  qrcode-generator@1.4.4: {}
 
   qrcode-terminal@0.11.0: {}
 

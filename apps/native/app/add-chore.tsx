@@ -52,7 +52,7 @@ function Body({ close }: { close(): void }) {
   const saturday = addDays(today, (6 - new Date(`${today}T12:00:00`).getDay() + 7) % 7 || 7);
   return <ScrollView style={FITTED} keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 20, paddingTop: 12, gap: 16 }}>
     <SheetHead title="Add a chore" sub={current.commune.name} onClose={close} />
-    <Field label="What needs doing" value={title} onChange={setTitle} placeholder="Put the bins out" autoFocus />
+    <Field label="What needs doing" value={title} onChange={setTitle} placeholder="Put the bins out" />
     <Chips label="Whose job" chosen={[who]} onPick={setWho} options={[
       ["turns", "Take turns"], ["anyone", "Anyone"],
       ...people.map((member) => [member.userId, member.userId === user?.id ? "You" : firstName(member.name)] as [string, string]),

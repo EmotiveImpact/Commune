@@ -78,7 +78,7 @@ function InviteBody({ close }: { close: () => void }) {
       <Button block variant="quiet" label="Invite someone else" onPress={() => { setLink(null); setEmail(""); }} />
     </> : <>
       <TextInput accessibilityLabel="Their email" value={email} onChangeText={setEmail} placeholder="name@example.com" placeholderTextColor={c.ink2}
-        autoFocus keyboardType="email-address" autoCapitalize="none" autoCorrect={false} autoComplete="email" textContentType="emailAddress"
+        keyboardType="email-address" autoCapitalize="none" autoCorrect={false} autoComplete="email" textContentType="emailAddress"
         returnKeyType="send" onSubmitEditing={() => void create()} editable={!busy} selectionColor={c.action}
         style={{ height: 50, borderRadius: radius.control, borderWidth: 1, borderColor: c.outline, backgroundColor: c.surface, paddingHorizontal: 14, fontSize: 16.5, color: c.ink }} />
       <Button block size="lg" label="Create invitation link" busy={busy} disabled={!valid} onPress={() => void create()} />

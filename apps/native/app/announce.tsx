@@ -41,7 +41,7 @@ function Body({ close }: { close(): void }) {
 
   return <ScrollView style={FITTED} keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 20, paddingTop: 12, gap: 16 }}>
     <SheetHead title="Announce" sub={`Everyone in ${current.commune.name} sees it on the Hub.`} onClose={close} />
-    <Field label="Headline" value={title} onChange={setTitle} placeholder="Plumber coming Tuesday" autoFocus />
+    <Field label="Headline" value={title} onChange={setTitle} placeholder="Plumber coming Tuesday" />
     <Field label="Message (optional)" value={body} onChange={setBody} max={1000} multiline placeholder="Between 9 and 12. Someone needs to be in." />
     <Chips label="Ask everyone to say they’ve seen it" chosen={[ack]} onPick={(value) => setAck(value as typeof ack)} options={[["no", "No"], ["yes", "Yes"]]} />
     <ErrorText>{error}</ErrorText>

@@ -21,6 +21,12 @@ const DM: Record<string, string> = {
   "700": "DMSans_700Bold", bold: "DMSans_700Bold", "800": "DMSans_700Bold", "900": "DMSans_700Bold",
 };
 
+/**
+ * Larger Text in iOS settings still makes words bigger, but only up to 15%,
+ * so layouts keep their proportions and nothing spills out of its card.
+ */
+const MAX_SCALE = 1.15;
+
 export function face(style: TextStyle | undefined): TextStyle {
   const flat = style ?? {};
   if (flat.fontFamily) return {};
@@ -31,12 +37,12 @@ export function face(style: TextStyle | undefined): TextStyle {
 
 export const Text = forwardRef<RNText, TextProps>(function Text({ style, ...rest }, ref) {
   const flat = StyleSheet.flatten(style) as TextStyle | undefined;
-  return <RNText ref={ref} {...rest} style={[flat, face(flat)]} />;
+  return <RNText ref={ref} maxFontSizeMultiplier={MAX_SCALE} {...rest} style={[flat, face(flat)]} />;
 });
 
 export const TextInput = forwardRef<RNTextInput, TextInputProps>(function TextInput({ style, ...rest }, ref) {
   const flat = StyleSheet.flatten(style) as TextStyle | undefined;
-  return <RNTextInput ref={ref} {...rest} style={[flat, face(flat)]} />;
+  return <RNTextInput ref={ref} maxFontSizeMultiplier={MAX_SCALE} {...rest} style={[flat, face(flat)]} />;
 });
 
 export const FONTS_TO_LOAD = [INTER, DM];

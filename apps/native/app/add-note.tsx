@@ -50,7 +50,7 @@ function Body({ close }: { close(): void }) {
   const set = (index: number, part: 0 | 1, value: string) => setFacts(facts.map((fact, i) => (i === index ? (part === 0 ? [value, fact[1]] : [fact[0], value]) : fact)));
   return <ScrollView style={FITTED} keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 20, paddingTop: 12, gap: 16 }}>
     <SheetHead title="Add a note" sub={`Everyone in ${current.commune.name} can see it.`} onClose={close} />
-    <Field label="Title" value={title} onChange={setTitle} placeholder="Wi-Fi and the router" autoFocus />
+    <Field label="Title" value={title} onChange={setTitle} placeholder="Wi-Fi and the router" />
     <Chips label="What kind" options={KINDS.map((value) => [value, value])} chosen={[kind]} onPick={(value) => setKind(value as typeof kind)} />
     <Field label="A short line (optional)" value={lede} onChange={setLede} max={200} placeholder="Router is behind the TV" />
     <View style={{ gap: 10 }}>

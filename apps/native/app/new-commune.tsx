@@ -48,7 +48,7 @@ function Body({ close }: { close(openedId?: string): void }) {
 
   return <ScrollView style={FITTED} keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 20, paddingTop: 12, gap: 16 }}>
     <SheetHead title="New commune" sub="A home, a team or a trip. You can invite people next." onClose={() => close()} />
-    <Field label="Name" value={name} onChange={setName} max={48} placeholder="22 Elm Road" autoFocus />
+    <Field label="Name" value={name} onChange={setName} max={48} placeholder="22 Elm Road" />
     <Chips label="What is it?" chosen={[kind]} onPick={(value) => setKind(value as Kind)}
       options={[["household", "Household"], ["workspace", "Workspace"], ["trip", "Trip"]]} />
     <Chips label="Currency" chosen={[currency]} onPick={(value) => setCurrency(value as Currency)}
