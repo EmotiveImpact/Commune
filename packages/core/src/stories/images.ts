@@ -9,7 +9,7 @@ export const IMAGE_KEYS = [
   "bday-a", "bday-b", "bday-c", "bench", "chips",
   "fest-a", "fest-b", "fest-c", "foot-a", "foot-b", "foot-c", "fridge", "jeanphil",
   "move-a", "move-b", "move-c", "picnic", "rent-a", "rent-b", "rent-c",
-  "road-a", "road-b", "road-c", "roast-a", "roast-b", "roast-c", "shadowbox",
+  "road-a", "road-b", "road-c", "roast-a", "roast-b", "roast-c", "shadowbox", "shadowbox-clouds",
   "taxi-a", "taxi-b", "taxi-c", "villa-a", "villa-b", "villa-c",
   "work-a", "work-b", "work-c", "xmas-a", "xmas-b", "xmas-c",
   "p-jeanphil", "p-maya", "p-sam", "p-ama", "p-mei", "p-leo",

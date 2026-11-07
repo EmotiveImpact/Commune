@@ -19,8 +19,8 @@
 
 .commune-auth-brand-top {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  align-items: baseline;
+  gap: 14px;
   flex-wrap: wrap;
 }
 
@@ -36,6 +36,12 @@
   font-size: 1.125rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  color: #fff;
+}
+
+.commune-auth-wordmark {
+  font-size: 30px;
+  letter-spacing: -1.6px;
   color: #fff;
 }
 
@@ -335,12 +341,9 @@ a.commune-auth-btn {
     border-radius: 8px;
   }
 
-  .commune-auth-mobile-header span {
-    font-weight: 600;
-    font-size: 0.95rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: #fff;
+  .commune-auth-mobile-header .commune-auth-wordmark {
+    font-size: 24px;
+    letter-spacing: -1.2px;
   }
 
   .commune-auth-mobile-header em {

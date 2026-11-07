@@ -221,14 +221,17 @@ export const FOCAL: Partial<Record<ImageKey, [number, number]>> = {
   "xmas-b": [0.5,0.74],
   "xmas-c": [0.48,0.86],
   "xmas-f": [0.5,0.8],
-  "picnic": [0.55,0],
+  "picnic": [0.53,0.88],
   "fridge": [0.5,0.78],
-  "chips": [0.6,0],
+  "chips": [0.49,0.86],
   "bench": [0.5,0],
   "shadowbox": [0.5,0],
 };
 
 /** Loading lines any commune can show, mixed with the story's own. */
 export const GENERAL_LINES: string[] = [ "Putting the kettle on", "Rounding the pennies kindly", "Untangling who owes who", "Asking who finished the milk", "Agreeing on the thermostat", "Finding the TV remote", "Checking the rota twice", "Sorting the recycling properly", "Defrosting the group chat", "Labelling Ama's oat milk", "Watering Mei's plants", "Waiting for Theo to get you back" ];
+
+/** A moving layer drawn over a photo: high clouds that drift slowly sideways. */
+export const CLOUDS: Partial<Record<ImageKey, ImageKey>> = { shadowbox: "shadowbox-clouds" };
 
 export const CAST_NAMES = ["Jean Phil", "Maya", "Theo", "Ama", "Mei", "Leo"];

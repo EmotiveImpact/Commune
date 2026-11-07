@@ -222,4 +222,189 @@
     from { opacity: 0; transform: translateY(6px); }
     to { opacity: 1; transform: none; }
   }
+
+  /* The whole brand panel on a wide screen: the story edge to edge. */
+  .commune-auth-brand.is-story {
+    position: relative;
+    padding: 0;
+    overflow: hidden;
+    background: var(--navy);
+    isolation: isolate;
+  }
+  .commune-auth-brand.is-story .commune-auth-brand-top {
+    position: absolute;
+    top: 52px;
+    left: 44px;
+    right: 44px;
+    z-index: 3;
+    pointer-events: none;
+  }
+  .commune-auth-brand.is-story .commune-auth-copy {
+    position: absolute;
+    left: 44px;
+    bottom: 22px;
+    z-index: 3;
+    margin: 0;
+    color: rgba(255, 255, 255, 0.72);
+  }
+  .c-story-panel {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    color: var(--white);
+  }
+  .c-story-panel-photos {
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+  }
+  .c-story-panel-photos img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity 0.7s ease;
+  }
+  .c-story-panel-photos img.is-on {
+    opacity: 1;
+    animation: c-story-zoom 6s ease-out both;
+  }
+  .c-story-panel-photos img.c-story-clouds {
+    opacity: 1;
+    animation: c-story-drift 9s ease-in-out infinite alternate;
+  }
+  .c-story-panel::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: linear-gradient(180deg, rgba(10, 18, 30, 0.7) 0%, rgba(10, 18, 30, 0.18) 34%, transparent 50%, rgba(10, 18, 30, 0.24) 68%, rgba(10, 18, 30, 0.82) 100%);
+  }
+  .c-story-panel-bars {
+    position: absolute;
+    top: 24px;
+    left: 44px;
+    right: 44px;
+    z-index: 3;
+    display: flex;
+    gap: 5px;
+  }
+  .c-story-panel-bars span {
+    flex: 1 1 0;
+    height: 3px;
+    overflow: hidden;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.34);
+  }
+  .c-story-panel-bars i {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--white);
+    transform: scaleX(0);
+    transform-origin: left;
+  }
+  .c-story-panel-bars i.is-done { transform: scaleX(1); }
+  .c-story-panel-bars i.is-now {
+    animation-name: c-story-bar;
+    animation-timing-function: linear;
+    animation-fill-mode: forwards;
+  }
+  .c-story-panel-copy {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 132px 44px 64px;
+    pointer-events: none;
+  }
+  .c-story-panel-text {
+    display: flex;
+    flex-direction: column;
+    max-width: 30rem;
+    animation: c-story-line-in 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+  .c-story-panel-line {
+    margin-top: 12px;
+    font-family: var(--font-display);
+    font-size: clamp(30px, 3.1vw, 44px);
+    font-weight: 500;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    text-shadow: 0 1px 14px rgba(8, 20, 35, 0.45);
+  }
+  .c-story-panel .c-story-eyebrow { text-shadow: 0 1px 8px rgba(8, 20, 35, 0.5); }
+  .c-story-panel-foot {
+    display: block;
+    max-width: 26rem;
+    animation: c-story-line-in 0.6s 0.25s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+  .c-story-panel-foot .c-story-note { margin-top: 0; }
+  .c-story-panel-foot .c-story-invite-fact { font-size: 16px; }
+  .c-story-cast {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+  }
+  .c-story-cast > span {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    text-shadow: 0 1px 8px rgba(8, 20, 35, 0.6);
+  }
+  .c-story-face {
+    flex: none;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+  .c-story-cast .c-story-face { box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.92); }
+  .c-story-panel-controls {
+    position: absolute;
+    right: 32px;
+    bottom: 14px;
+    z-index: 3;
+    display: flex;
+    gap: 4px;
+  }
+  .c-story-panel-controls button {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--white);
+    cursor: pointer;
+  }
+  .c-story-panel-controls button:hover { background: rgba(255, 255, 255, 0.16); }
+  .c-story-panel-controls button:focus-visible { outline: 2px solid var(--white); outline-offset: 2px; }
+  @keyframes c-story-zoom {
+    from { transform: scale(1.05); }
+    to { transform: scale(1); }
+  }
+  @keyframes c-story-bar {
+    from { transform: scaleX(0); }
+    to { transform: scaleX(1); }
+  }
+  @keyframes c-story-drift {
+    from { translate: -10px 0; }
+    to { translate: 12px 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .c-story-panel-photos img { transition: none; }
+    .c-story-panel-photos img.is-on,
+    .c-story-panel-photos img.c-story-clouds,
+    .c-story-panel-text,
+    .c-story-panel-foot { animation: none; }
+    .c-story-panel-bars i.is-now { animation: none; transform: scaleX(1); }
+  }
 }
