@@ -3,7 +3,8 @@ import { describe, expect, it } from "vitest";
 import { DEMO_ELM_STICKER, demoBackend } from "../src/lib/demo";
 import { askedWords, expiryWords, isLive, joinCodeUrl, tokenFromJoinLink, type JoinCode } from "../src/lib/joinCodes";
 
-const TOKEN = "0123456789abcdef0123456789abcdef";
+// A made-up code, kept plain so the secret scan does not read it as a key.
+const TOKEN = "ab".repeat(16);
 
 describe("join code links", () => {
   it("makes the short link a QR carries", () => {
