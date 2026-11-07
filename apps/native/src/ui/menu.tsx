@@ -12,7 +12,6 @@ import { standing } from "../lib/derive";
 import { useApp } from "../state";
 import { haptic, springs, useCalm, PressScale } from "./motion";
 import { useConfirm } from "./confirm";
-import { sheetDepth } from "./origin";
 import { useToast } from "./toast";
 import { KIND_NAME, KIND_PHOTO, useTheme } from "./theme";
 
@@ -51,13 +50,10 @@ export function MenuShell({ children }: { children: ReactNode }) {
     runOnJS(shut ? close : open)();
   });
 
-  // The menu pushes the screen left; a sheet makes it step back into a card.
+  // The menu pushes the screen left, flat, with no shrinking or rounding
+  // (Edem, 7 Nov: clean animation, no morphs). Sheets leave the screen as it is.
   const main = useAnimatedStyle(() => ({
-    borderRadius: Math.max(interpolate(progress.value, [0, 1], [0, 26]), 22 * sheetDepth.value),
-    transform: calm ? [] : [
-      { translateX: -travel * progress.value },
-      { scale: interpolate(progress.value, [0, 1], [1, 0.93]) * (1 - 0.06 * sheetDepth.value) },
-    ],
+    transform: calm ? [] : [{ translateX: -travel * progress.value }],
     opacity: calm ? interpolate(progress.value, [0, 1], [1, 0]) : 1,
   }));
   const dim = useAnimatedStyle(() => ({ opacity: progress.value * 0.35 }));

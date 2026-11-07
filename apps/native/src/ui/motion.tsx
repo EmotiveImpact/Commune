@@ -8,17 +8,17 @@ import * as Haptics from "expo-haptics";
 
 /**
  * The app's motion, in one place so every screen moves the same way.
- * Springs, not timed curves: smooth for screens, sheets and the hero,
- * snappy for presses and toggles, bouncy for things that land.
+ * Springs with no overshoot: smooth for screens and sheets, snappy for
+ * presses and toggles. Nothing bounces or wobbles when it lands.
  */
 export const springs = {
-  // The v7 prototype's springs: smooth lands with a small overshoot (about 4%),
-  // snappy with almost none. Together they do almost everything.
-  smooth: { duration: 880, dampingRatio: 0.74 },
-  snappy: { duration: 670, dampingRatio: 0.86 },
-  bouncy: { duration: 600, dampingRatio: 0.7 },
-  // For releasing a swipe (Hub pages, the menu), where a long spring drags.
-  release: { duration: 550, dampingRatio: 0.85 },
+  // Clean, with no overshoot and no settle wobble: every spring is critically
+  // damped (Edem, 7 Nov: "just clean animation", no jiggle). Kept as springs so
+  // a swipe's speed still carries into the release.
+  smooth: { duration: 420, dampingRatio: 1 },
+  snappy: { duration: 260, dampingRatio: 1 },
+  bouncy: { duration: 420, dampingRatio: 1 },
+  release: { duration: 380, dampingRatio: 1 },
 } satisfies Record<string, WithSpringConfig>;
 
 /** Gap between rows arriving one after another, and how many rows get a stagger. */

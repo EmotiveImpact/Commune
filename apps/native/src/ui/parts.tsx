@@ -1,16 +1,14 @@
 import { SwipeRow } from "./swipe";
 import { useRef, useState } from "react";
 import Svg, { Path } from "react-native-svg";
-import { Image, View, useWindowDimensions } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Image, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Check, ChevronDown } from "lucide-react-native";
 import { standing, tilePulse, type Need, type Waiting } from "../lib/derive";
 import { firstName, joinAnd, money } from "../lib/format";
 import { failure, useApp } from "../state";
 import type { Snapshot } from "../lib/types";
-import { BAR_HEIGHT, photoOf } from "./chrome";
-import { HERO_HEIGHT, flyHero } from "./hero";
+import { photoOf } from "./chrome";
 import type { Rect as Box } from "./origin";
 import { Avatar, Button, Cal, Faces, Group, Meta, Row, State, T, Who, tap } from "./kit";
 import { PayPrimary, usePayable } from "./pay";
@@ -132,18 +130,14 @@ export function CommuneTiles() {
   const { c } = useTheme();
   const router = useRouter();
   const { snapshots, needs, waiting, recorded, setCurrent, user, today, current } = useApp();
-  const calm = useCalm();
-  const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
   const rows: Snapshot[][] = [];
   snapshots.forEach((snapshot, index) => { if (index % 3 === 0) rows.push([]); rows[rows.length - 1].push(snapshot); });
   return <View style={{ gap: 16 }}>
     {rows.map((row, index) => <View key={index} style={{ flexDirection: "row", gap: 10 }}>
       {row.map((snapshot) => <Tile key={snapshot.commune.id} snapshot={snapshot}
         info={standing(snapshot, needs, waiting, recorded)} pulse={tilePulse(snapshot, user?.id ?? "", today)}
-        onPress={(from) => {
-          // The photo flies from the tile into the Hub's hero (v7), then the Hub opens under it.
-          if (from && !calm) flyHero(from, { x: 0, y: insets.top + BAR_HEIGHT, w: width, h: HERO_HEIGHT }, photoOf(snapshot.commune.kind));
+        onPress={() => {
+          // No photo flight into the Hub (Edem, 7 Nov: no morphs); the Hub simply opens.
           setCurrent(snapshot.commune.id); router.push("/hub");
         }} c={c.ink2} placeholder={c.recessed}
         isCurrent={snapshots.length > 1 && current?.commune.id === snapshot.commune.id} />)}

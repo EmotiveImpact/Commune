@@ -61,11 +61,10 @@ export default function Hub() {
 
   const movePill = useCallback((to: number) => {
     "worklet";
-    const forward = to > left.value;
     if (calm) { left.value = withTiming(to, { duration: 180 }); right.value = withTiming(to, { duration: 180 }); return; }
-    // The leading edge moves on the snappy spring and the trailing edge on the smooth one, so the pill stretches as it travels.
-    left.value = withSpring(to, forward ? springs.smooth : springs.snappy);
-    right.value = withSpring(to, forward ? springs.snappy : springs.smooth);
+    // Both edges move together, so the pill slides cleanly without stretching.
+    left.value = withSpring(to, springs.smooth);
+    right.value = withSpring(to, springs.smooth);
   }, [calm, left, right]);
 
   const choose = useCallback((next: HubTab, slid = false) => {
@@ -86,7 +85,7 @@ export default function Hub() {
     if (j < 0 || j >= HUB_TABS.length) f *= 0.25; // Past the first or last tab it only gives a little.
     pager.value = -i * width - f * width;
     if (j < 0 || j >= HUB_TABS.length || f === 0) return;
-    const amount = Math.abs(f), lead = Math.min(1, amount * 1.3), trail = Math.max(0, (amount - 0.3) / 0.7);
+    const amount = Math.abs(f), lead = amount, trail = amount;
     const forward = j > i;
     left.value = i + (j - i) * (forward ? trail : lead);
     right.value = i + (j - i) * (forward ? lead : trail);
