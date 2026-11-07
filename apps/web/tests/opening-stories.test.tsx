@@ -36,13 +36,25 @@ describe("opening stories in the web app", () => {
     expect(visitStory(friday).id).not.toBe("taxi");
   });
 
-  it("shows the story's first photo, line and note beside the sign-in form", () => {
-    const { container } = render(<AuthStory story={storyById("taxi")!} />);
+  it("plays every slide of the story across the sign-in panel", () => {
+    const story = storyById("taxi")!;
+    const { container } = render(<AuthStory story={story} />);
     expect(screen.getByText("Friday, 11:52pm")).toBeTruthy();
     expect(screen.getByText("Friday night. Nobody is thinking about money.")).toBeTruthy();
-    expect(screen.getByText("Maya added Taxi home")).toBeTruthy();
-    expect(screen.getByText("£38.00 between five. £7.60 each.")).toBeTruthy();
-    expect(container.querySelector("img")?.getAttribute("alt")).toBe("");
+    expect(container.querySelectorAll(".c-story-panel-bars span")).toHaveLength(story.beats.length);
+    for (const img of container.querySelectorAll("img")) expect(img.getAttribute("alt")).toBe("");
+    const note = story.beats.find((beat) => beat.note)!.note!;
+    const to = story.beats.findIndex((beat) => beat.note);
+    for (let i = 0; i < to; i++) fireEvent.click(screen.getByRole("button", { name: "Next slide" }));
+    expect(screen.getByText(note.t)).toBeTruthy();
+    expect(screen.getByText(note.s)).toBeTruthy();
+  });
+
+  it("lays the drifting clouds over the crisps story's last photo", () => {
+    const story = storyById("crisps")!;
+    const { container } = render(<AuthStory story={story} />);
+    for (let i = 0; i < story.beats.length - 1; i++) fireEvent.click(screen.getByRole("button", { name: "Next slide" }));
+    expect(container.querySelector(".c-story-clouds")).toBeTruthy();
   });
 
   it("offers the story's bill on an empty screen", () => {

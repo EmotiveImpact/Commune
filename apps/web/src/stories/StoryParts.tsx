@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { CAST, FOCAL, firstBillCard, loadingLines, type ImageKey, type Story } from "@commune/core/stories";
+import { CAST, CLOUDS, FOCAL, firstBillCard, loadingLines, shortFace, type Beat, type CastId, type ImageKey, type Story } from "@commune/core/stories";
 import { storyImage } from "./images";
 import "./stories.css";
 
@@ -14,15 +14,74 @@ function Photo({ image, className }: { image: ImageKey; className: string }) {
   return <img className={className} src={storyImage(image)} alt="" style={{ objectPosition: focus(image) }} loading="lazy" decoding="async" />;
 }
 
+/** How long each slide of the sign-in story stays, as on the website. */
+const SLIDE_MS = 5500;
+
+function useReducedMotion(): boolean {
+  const query = typeof window !== "undefined" && window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : null;
+  const [reduced, setReduced] = useState(() => Boolean(query?.matches));
+  useEffect(() => {
+    if (!query) return;
+    const update = () => setReduced(query.matches);
+    query.addEventListener?.("change", update);
+    return () => query.removeEventListener?.("change", update);
+  }, [query]);
+  return reduced;
+}
+
+function Face({ who, size }: { who: CastId; size: number }) {
+  return <img className="c-story-face" src={storyImage(CAST[who].av)} alt="" width={size} height={size} />;
+}
+
+/** A slide's notification: the group chat asking, or Commune sorting it. */
+function Toast({ beat }: { beat: Beat }) {
+  if (beat.chat) {
+    return (
+      <span className="c-story-note">
+        <Face who={beat.chat.who} size={36} />
+        <span>
+          <span className="c-story-note-top"><span>{beat.chat.from}</span><span>now</span></span>
+          <strong>{CAST[beat.chat.who].n}</strong>
+          <span>{beat.chat.t}</span>
+        </span>
+      </span>
+    );
+  }
+  if (beat.note) {
+    return (
+      <span className="c-story-note">
+        <Face who={beat.note.who} size={36} />
+        <span>
+          <span className="c-story-note-top"><b>commune.</b><span>{beat.note.w ?? "now"}</span></span>
+          <strong>{beat.note.t}</strong>
+          <span>{beat.note.s}</span>
+        </span>
+      </span>
+    );
+  }
+  return null;
+}
+
 /**
- * The opening story on the sign-in, sign-up and invitation pages: its first
- * photo and line, and the moment Commune sorted it, as the notification it
- * sent. Beside the form on a wide screen; a short strip above it on a phone.
+ * The opening story on the sign-in and sign-up pages. On a wide screen it
+ * fills the whole brand panel and plays every slide, as the website does:
+ * the photo edge to edge, a bar per slide, the line, and the cast or the
+ * notification. Hover or the pause button stops it; reduced motion shows one
+ * slide at a time and moves on only when asked. On a phone it is a short
+ * strip above the form.
  */
 export function AuthStory({ story, compact = false }: { story: Story; compact?: boolean }) {
-  const [opening] = story.beats;
-  const sorted = story.beats.find((beat) => beat.note && !beat.cast)?.note;
+  const beats = story.beats;
+  const reduced = useReducedMotion();
+  const [index, setIndex] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const beat = beats[Math.min(index, beats.length - 1)];
+  const photos = [...new Set(beats.map((item) => item.img))];
+  const next = () => setIndex((current) => (current + 1) % beats.length);
+
   if (compact) {
+    const [opening] = beats;
     return (
       <figure className="c-story-strip">
         <Photo image={opening.img} className="c-story-strip-photo" />
@@ -31,22 +90,45 @@ export function AuthStory({ story, compact = false }: { story: Story; compact?: 
     );
   }
   return (
-    <figure className="c-story-auth">
-      <Photo image={opening.img} className="c-story-auth-photo" />
-      <figcaption className="c-story-auth-copy">
-        <span className="c-story-eyebrow">{opening.e}</span>
-        <span className="c-story-line">{opening.h}</span>
-        {sorted ? (
-          <span className="c-story-note">
-            <img src={storyImage(CAST[sorted.who].av)} alt="" width={36} height={36} />
-            <span>
-              <span className="c-story-note-top"><b>commune.</b><span>{sorted.w ?? "now"}</span></span>
-              <strong>{sorted.t}</strong>
-              <span>{sorted.s}</span>
-            </span>
+    <figure className="c-story-panel" aria-roledescription="story" aria-label={story.title}
+      onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}>
+      <div className="c-story-panel-photos" aria-hidden="true">
+        {photos.map((key) => (
+          <img key={key} className={key === beat.img ? "is-on" : ""} src={storyImage(key)} alt=""
+            style={{ objectPosition: focus(key) }} loading={key === beats[0].img ? "eager" : "lazy"} decoding="async" />
+        ))}
+        {CLOUDS[beat.img] ? <img className="c-story-clouds" src={storyImage(CLOUDS[beat.img]!)} alt="" style={{ objectPosition: focus(beat.img) }} decoding="async" /> : null}
+      </div>
+      <div className="c-story-panel-bars" aria-hidden="true">
+        {beats.map((_, i) => (
+          <span key={i}>
+            <i key={i === index ? `now-${index}` : i} className={i < index ? "is-done" : i === index ? "is-now" : ""}
+              style={i === index ? { animationDuration: `${SLIDE_MS}ms`, animationPlayState: paused || hovered || reduced ? "paused" : "running" } : undefined}
+              onAnimationEnd={i === index && !reduced ? next : undefined} />
           </span>
-        ) : null}
+        ))}
+      </div>
+      <figcaption className="c-story-panel-copy">
+        <span className="c-story-panel-text" key={index}>
+          <span className="c-story-eyebrow">{beat.e}</span>
+          <span className="c-story-panel-line">{beat.h}</span>
+        </span>
+        <span className="c-story-panel-foot" key={`foot-${index}`}>
+          {beat.cast
+            ? <span className="c-story-cast">{story.cast.map((who) => <span key={who}><Face who={who} size={44} />{shortFace(who)}</span>)}</span>
+            : <Toast beat={beat} />}
+        </span>
       </figcaption>
+      <span className="c-story-panel-controls">
+        <button type="button" onClick={() => setPaused(!paused)} aria-pressed={paused} aria-label={paused ? "Play the story" : "Pause the story"} hidden={reduced}>
+          {paused
+            ? <svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l12.5-7.5z" fill="currentColor" /></svg>
+            : <svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h3.5v16H7zM13.5 4H17v16h-3.5z" fill="currentColor" /></svg>}
+        </button>
+        <button type="button" onClick={next} aria-label="Next slide">
+          <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        </button>
+      </span>
     </figure>
   );
 }
@@ -68,12 +150,16 @@ export function InviteScene({ communeName, role, compact = false }: { communeNam
     );
   }
   return (
-    <figure className="c-story-auth">
-      <Photo image="inv-home" className="c-story-auth-photo" />
-      <figcaption className="c-story-auth-copy">
-        <span className="c-story-eyebrow">You're invited</span>
-        <span className="c-story-line">{line}</span>
-        <span className="c-story-invite-fact">{fact}</span>
+    <figure className="c-story-panel is-invite">
+      <div className="c-story-panel-photos" aria-hidden="true">
+        <img className="is-on" src={storyImage("inv-home")} alt="" style={{ objectPosition: focus("inv-home") }} decoding="async" />
+      </div>
+      <figcaption className="c-story-panel-copy">
+        <span className="c-story-panel-text">
+          <span className="c-story-eyebrow">You're invited</span>
+          <span className="c-story-panel-line">{line}</span>
+        </span>
+        <span className="c-story-panel-foot"><span className="c-story-invite-fact">{fact}</span></span>
       </figcaption>
     </figure>
   );
