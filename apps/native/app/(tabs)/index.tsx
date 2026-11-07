@@ -10,7 +10,7 @@ import { useApp } from "../../src/state";
 import { Body, TopBar, photoOf } from "../../src/ui/chrome";
 import { Avatar, Cal, Faces, Panel, Row, SectionHead, T } from "../../src/ui/kit";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { CommuneTiles, NeedsList, NextStep, TaskCheck, WaitingRow } from "../../src/ui/parts";
+import { CommuneTiles, NeedsList, NextStep, TaskCheck, WaitingList } from "../../src/ui/parts";
 import { useTheme } from "../../src/ui/theme";
 import { Still } from "../../src/ui/motion";
 import { useRemind } from "../../src/ui/remind";
@@ -121,7 +121,7 @@ export default function Home() {
         </Still> : null}
         {waiting.length ? <Still index={4} style={{ gap: 12 }}>
           <SectionHead title="Waiting on others" count={waiting.length} />
-          <Panel>{waiting.map((entry, index) => <WaitingRow key={entry.key} entry={entry} first={index === 0} />)}</Panel>
+          <Panel><WaitingList items={waiting} /></Panel>
         </Still> : null}
         <Still index={5}><Feed /></Still>
       </View>

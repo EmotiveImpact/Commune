@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import Svg, { G, Path, Rect, Text as SvgText } from "react-native-svg";
 import Animated, {
   Easing, FadeIn, useAnimatedProps, useAnimatedStyle, useSharedValue, withDelay, withTiming,
 } from "react-native-reanimated";
 import { curve, type DebtWeb, type WebDebt } from "../lib/debtWeb";
+import { claimSettle, listen, newOwner, type Landed, type Settled } from "../lib/settled";
 import { firstName, money } from "../lib/format";
 import { Avatar, T } from "./kit";
 import { haptic, PressScale, useCalm } from "./motion";
@@ -212,4 +213,50 @@ export function SheetDone({ title, body, onDone }: { title: string; body: string
       <T kind="body" style={{ fontWeight: "600" }}>Done</T>
     </PressScale>
   </View>;
+}
+
+/**
+ * For a card or list that ends a payment in place: `claim(id, slot)` as its
+ * button is pressed, then `done` holds the result for a few seconds, with the
+ * slot (row position) it came from.
+ */
+export function useInPlace(hold = 2800) {
+  const owner = useRef(0);
+  if (!owner.current) owner.current = newOwner();
+  const [done, setDone] = useState<Landed | null>(null);
+  useEffect(() => listen(owner.current, setDone), []);
+  useEffect(() => {
+    if (!done) return;
+    const timer = setTimeout(() => setDone(null), hold);
+    return () => clearTimeout(timer);
+  }, [done, hold]);
+  return { done, claim: (id: string, slot = 0) => claimSettle(id, owner.current, slot), show: (event: Settled) => setDone({ ...event, slot: 0 }) };
+}
+
+/** A card's content once its payment is recorded: the ring, its tick drawing on, and the words. */
+export function InPlaceCard({ done }: { done: Settled }) {
+  return <Animated.View key={`done-${done.id}`} entering={FadeIn.duration(220)}>
+    <AllSquare compact title={done.title} body={done.body} />
+  </Animated.View>;
+}
+
+/** A list row once its payment is recorded, in the place the row was. */
+export function InPlaceRow({ done, first }: { done: Settled; first?: boolean }) {
+  const { c } = useTheme();
+  return <Animated.View key={`row-${done.id}`} entering={FadeIn.duration(220)} accessibilityRole="summary" accessibilityLabel={`${done.title} ${done.body}`}
+    style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingVertical: 12, minHeight: 64,
+      borderTopWidth: first ? 0 : StyleSheet.hairlineWidth, borderTopColor: c.outline, backgroundColor: c.surface }}>
+    <TickRing size={36} delay={120} />
+    <View style={{ flex: 1, minWidth: 0 }}>
+      <T kind="strong" style={{ fontSize: 15.5 }}>{done.title}</T>
+      <T kind="label" muted lines={2}>{done.body}</T>
+    </View>
+  </Animated.View>;
+}
+
+/** Puts the settled row back where the paid row was, for a few seconds. */
+export function withLanded(rows: ReactNode[], done: Landed | null): ReactNode[] {
+  if (!done) return rows;
+  const at = Math.max(0, Math.min(done.slot, rows.length));
+  return [...rows.slice(0, at), <InPlaceRow key={`landed-${done.id}`} done={done} first={at === 0} />, ...rows.slice(at)];
 }

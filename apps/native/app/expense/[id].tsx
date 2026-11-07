@@ -10,6 +10,7 @@ import { failure, useApp } from "../../src/state";
 import { Body, Pad, photoOf } from "../../src/ui/chrome";
 import { Avatar, Badge, Button, Cal, Panel, Row, State, T } from "../../src/ui/kit";
 import { PayPrimary } from "../../src/ui/pay";
+import { InPlaceCard, useInPlace } from "../../src/ui/settled";
 import { ToastLift, useToast } from "../../src/ui/toast";
 import { useTheme } from "../../src/ui/theme";
 import { useRemind } from "../../src/ui/remind";
@@ -22,6 +23,8 @@ export default function ExpenseDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { snapshots, user, today, withdrawReport } = useApp();
   const [busy, setBusy] = useState(false);
+  // Paid from the dock: the dock itself says All square, as in the opening flow.
+  const place = useInPlace();
   const remindFor = useRemind();
   const router = useRouter();
   const snapshot = snapshots.find((item) => item.expenses.some((expense) => expense.id === id));
@@ -110,14 +113,14 @@ export default function ExpenseDetail() {
         </View> : null}
       </Pad>
     </Body>
-    {iOwe && mine ? <View style={{ padding: 16, paddingTop: 10, paddingBottom: Math.max(insets.bottom, 16), gap: 8, backgroundColor: c.canvas }}>
+    {(iOwe && mine) || place.done ? <View style={{ padding: 16, paddingTop: 10, paddingBottom: Math.max(insets.bottom, 16), gap: 8, backgroundColor: c.canvas }}>
       {/* v7's dock: the page fades into it instead of meeting a hard line. */}
       <Svg pointerEvents="none" style={{ position: "absolute", left: 0, right: 0, top: -28, height: 28 }} width="100%" height={28} preserveAspectRatio="none">
         <Defs><LinearGradient id="dockFade" x1="0" y1="0" x2="0" y2="1"><Stop offset="0" stopColor={c.canvas} stopOpacity={0} /><Stop offset="1" stopColor={c.canvas} stopOpacity={1} /></LinearGradient></Defs>
         <Rect x="0" y="0" width="100%" height="100%" fill="url(#dockFade)" />
       </Svg>
       <ToastLift />
-      <PayPrimary target={{ shareId: mine.id, communeId: snapshot.commune.id, payerId: expense.paidByUserId, payerName: memberName(snapshot, expense.paidByUserId), amountMinor: outstanding(mine), currency, title: expense.title }} />
+      {place.done || !mine ? place.done ? <InPlaceCard done={place.done} /> : null : <PayPrimary onStart={() => place.claim(mine.id)} target={{ shareId: mine.id, communeId: snapshot.commune.id, payerId: expense.paidByUserId, payerName: memberName(snapshot, expense.paidByUserId), amountMinor: outstanding(mine), currency, title: expense.title }} />}
     </View> : null}
   </View>;
 }

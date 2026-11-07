@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ScrollView, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { handBackSoon } from "../../src/lib/settled";
 import { leftFrom, memberName, pendingReport } from "../../src/lib/derive";
 import { SheetDone } from "../../src/ui/settled";
 import { addDays, firstName, money, shortDate } from "../../src/lib/format";
@@ -55,9 +56,10 @@ function ConfirmBody({ close }: { close: () => void }) {
         await resolveReport(snapshot.commune.id, report.id, "confirm");
         tap("success");
         const rest = leftFrom(snapshot, user?.id ?? "", share.userId, share.id) + Math.max(0, share.amountMinor - share.settledMinor - report.amountMinor);
-        setFinished(rest > 0
+        const end = rest > 0
           ? { title: "Confirmed.", body: `${name}’s ${amount} is recorded against their share. They still owe you ${money(rest, currency)}.` }
-          : { title: `All square with ${name}.`, body: `${name}’s ${amount} is recorded. Nothing is owed between you in ${snapshot.commune.name}.` });
+          : { title: `All square with ${name}.`, body: `${name}’s ${amount} is recorded. Nothing is owed between you in ${snapshot.commune.name}.` };
+        if (await handBackSoon({ id: report.id, ...end })) close(); else setFinished(end);
         return;
       }
       await resolveReport(snapshot.commune.id, report.id, "decline", "Not received yet");

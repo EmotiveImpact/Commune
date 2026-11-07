@@ -5,7 +5,7 @@ import { Text, TextInput } from "../../src/ui/text";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Clipboard from "expo-clipboard";
 import { Copy, ExternalLink, Landmark, X } from "lucide-react-native";
-import { handBack } from "../../src/lib/settled";
+import { handBackSoon } from "../../src/lib/settled";
 import { paidOutcome, memberName, outstanding, payLinksOf, pendingReport } from "../../src/lib/derive";
 import { SheetDone } from "../../src/ui/settled";
 import { addDays, firstName, money, parseAmount, shortDate } from "../../src/lib/format";
@@ -68,7 +68,7 @@ function RecordBody({ close }: { close: () => void }) {
       const queued = result === "queued" ? ` It sends when you’re back online.` : "";
       const end = paidOutcome(snapshot, user?.id ?? "", shareId, expense.paidByUserId, name, minor, left - minor);
       const shown = { ...end, body: end.body + queued };
-      if (handBack({ shareId, ...shown })) close(); else setFinished(shown);
+      if (await handBackSoon({ id: shareId, ...shown })) close(); else setFinished(shown);
     } catch (cause) {
       setError(failure(cause, "Couldn’t record it. Try again."));
     } finally {

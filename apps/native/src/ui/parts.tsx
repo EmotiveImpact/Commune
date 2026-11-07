@@ -1,6 +1,6 @@
 import { SwipeRow } from "./swipe";
 import { HOLD, useRemind } from "./remind";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import Svg, { Path } from "react-native-svg";
 import { Pressable, View } from "react-native";
 import { useRouter } from "expo-router";
@@ -13,12 +13,11 @@ import { photoOf } from "./chrome";
 import type { Rect as Box } from "./origin";
 import { Avatar, Button, Cal, FadeImage, Faces, Group, Meta, Row, State, T, Who, tap } from "./kit";
 import { PayPrimary, usePayable } from "./pay";
-import { AllSquare } from "./settled";
-import { claimSettle, onSettled, type Settled } from "../lib/settled";
+import { InPlaceCard, useInPlace, withLanded } from "./settled";
 import { Rolling, Swap } from "./rolling";
 import { useToast } from "./toast";
 import { useTheme } from "./theme";
-import Animated, { Easing, FadeIn, FadeOut, useAnimatedProps, useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from "react-native-reanimated";
+import Animated, { Easing, FadeOut, useAnimatedProps, useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from "react-native-reanimated";
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 import { PressScale, springs, useCalm } from "./motion";
@@ -72,7 +71,7 @@ export function useClaimTask() {
   return { busy, claim };
 }
 
-export function NeedRow({ need, first }: { need: Need; first?: boolean }) {
+export function NeedRow({ need, first, onClaim }: { need: Need; first?: boolean; onClaim?(id: string): void }) {
   const router = useRouter();
   const { today } = useApp();
   const task = useCompleteTask();
@@ -90,8 +89,8 @@ export function NeedRow({ need, first }: { need: Need; first?: boolean }) {
     </>}
     right={need.kind === "share"
       ? payable
-        ? <Button size="sm" variant="secondary" label="Pay" accessibilityLabel={`Pay ${need.payerName} for ${need.title}`} onPress={() => router.push(`/pay/${need.shareId}`)} />
-        : <Button size="sm" variant="secondary" label="I’ve paid" accessibilityLabel={`I’ve paid ${need.payerName} for ${need.title}`} onPress={() => router.push(`/record/${need.shareId}`)} />
+        ? <Button size="sm" variant="secondary" label="Pay" accessibilityLabel={`Pay ${need.payerName} for ${need.title}`} onPress={() => { onClaim?.(need.shareId); router.push(`/pay/${need.shareId}`); }} />
+        : <Button size="sm" variant="secondary" label="I’ve paid" accessibilityLabel={`I’ve paid ${need.payerName} for ${need.title}`} onPress={() => { onClaim?.(need.shareId); router.push(`/record/${need.shareId}`); }} />
       : <Button size="sm" variant="secondary" label="Mark done" busy={task.busy === need.key} onPress={() => void task.run(need)} />}
   />}</SwipeRow>;
 }
@@ -101,6 +100,7 @@ export function NeedsList({ items, initial = Infinity }: { items: Need[]; initia
   const { c } = useTheme();
   const [open, setOpen] = useState(false);
   const shown = open ? items : items.slice(0, initial);
+  const { done, claim } = useInPlace();
   const rows: React.ReactNode[] = [];
   let band = "";
   shown.forEach((need, index) => {
@@ -109,10 +109,11 @@ export function NeedsList({ items, initial = Infinity }: { items: Need[]; initia
       band = need.band;
       rows.push(<Group key={`band-${band}`} first={index === 0} label={band} late={band === "Overdue"} count={items.filter((item) => item.band === need.band).length} />);
     }
-    rows.push(<NeedRow key={need.key} need={need} first={starts} />);
+    const slot = rows.length;
+    rows.push(<NeedRow key={need.key} need={need} first={starts} onClaim={(id) => claim(id, slot)} />);
   });
   return <>
-    {rows}
+    {withLanded(rows, done)}
     {items.length > initial
       ? <PressScale scaleTo={0.985} accessibilityRole="button" onPress={() => setOpen(!open)} style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, borderTopWidth: 1, borderTopColor: c.outline }}>
         <T kind="label" style={{ fontWeight: "500" }}>{open ? "Show less" : `Show ${items.length - initial} more`}</T>
@@ -122,7 +123,7 @@ export function NeedsList({ items, initial = Infinity }: { items: Need[]; initia
   </>;
 }
 
-export function WaitingRow({ entry, first }: { entry: Waiting; first?: boolean }) {
+export function WaitingRow({ entry, first, onClaim }: { entry: Waiting; first?: boolean; onClaim?(id: string): void }) {
   const router = useRouter();
   const total = entry.debtors.reduce((sum, debtor) => sum + debtor.amountMinor, 0);
   const toConfirm = entry.debtors.filter((debtor) => debtor.pending);
@@ -142,11 +143,18 @@ export function WaitingRow({ entry, first }: { entry: Waiting; first?: boolean }
     </>}
     right={toConfirm.length === 1 && toConfirm[0].pending
       ? <Button size="sm" label={`Confirm ${money(toConfirm[0].pending.amountMinor, entry.currency)}`} 
-        accessibilityLabel={`Confirm ${firstName(toConfirm[0].name)} paid ${money(toConfirm[0].pending.amountMinor, entry.currency)} for ${entry.title}`} onPress={() => router.push(`/confirm/${toConfirm[0].pending!.id}`)} />
+        accessibilityLabel={`Confirm ${firstName(toConfirm[0].name)} paid ${money(toConfirm[0].pending.amountMinor, entry.currency)} for ${entry.title}`} onPress={() => { onClaim?.(toConfirm[0].pending!.id); router.push(`/confirm/${toConfirm[0].pending!.id}`); }} />
       : toConfirm.length ? <Button size="sm" label="Review" onPress={() => router.push("/settle")} />
       : nudgeable.length ? <Button size="sm" variant="secondary" label="Nudge" onPress={() => router.push(`/nudge/${entry.expenseId}`)} />
       : nudged ? <T kind="note" muted>Nudged today</T> : null}
   />}</SwipeRow>;
+}
+
+/** Waiting rows; a payment confirmed from one shows All square where it was. */
+export function WaitingList({ items }: { items: Waiting[] }) {
+  const { done, claim } = useInPlace();
+  return <>{withLanded(items.map((entry, index) => <WaitingRow key={entry.key} entry={entry} first={index === 0 && !(done && done.slot === 0)}
+    onClaim={(id) => claim(id, index)} />), done)}</>;
 }
 
 export function CommuneTiles() {
@@ -227,18 +235,8 @@ export function NextStep({ need, total }: { need: Need | undefined; total: numbe
   const remind = need ? remindFor(need.key) : undefined;
   const card = { backgroundColor: c.surface, borderRadius: 15, padding: 18, paddingBottom: 20, gap: 16, shadowColor: "#121622", shadowOpacity: 0.18, shadowRadius: 20, shadowOffset: { width: 0, height: 12 }, elevation: 6 };
   // Paid from this card: the card itself says All square, as in the opening flow, then moves on.
-  const [done, setDone] = useState<Settled | null>(null);
-  useEffect(() => onSettled((event) => setDone(event)), []);
-  useEffect(() => {
-    if (!done) return;
-    const timer = setTimeout(() => setDone(null), 2800);
-    return () => clearTimeout(timer);
-  }, [done]);
-  if (done) {
-    return <Animated.View key={`done-${done.shareId}`} entering={FadeIn.duration(220)} style={card} accessibilityLabel="Your next step">
-      <AllSquare compact title={done.title} body={done.body} />
-    </Animated.View>;
-  }
+  const { done, claim } = useInPlace();
+  if (done) return <View style={card} accessibilityLabel="Your next step"><InPlaceCard done={done} /></View>;
   if (!need) {
     const late = waiting.find((entry) => entry.status.tone === "attention");
     return <View style={card} accessibilityLabel="Your next step">
@@ -278,7 +276,7 @@ export function NextStep({ need, total }: { need: Need | undefined; total: numbe
     <View style={{ gap: 10 }}>
       {need.kind === "share"
         ? <>
-          <PayPrimary onStart={() => claimSettle(need.shareId)} target={{ shareId: need.shareId, communeId: need.communeId, payerId: need.payerId, payerName: need.payerName, amountMinor: need.amountMinor, currency: need.currency, title: need.title }} />
+          <PayPrimary onStart={() => claim(need.shareId)} target={{ shareId: need.shareId, communeId: need.communeId, payerId: need.payerId, payerName: need.payerName, amountMinor: need.amountMinor, currency: need.currency, title: need.title }} />
         </>
         : <Button size="lg" block label="Mark done" busy={task.busy === need.key} onPress={() => void task.run(need)} />}
     </View>

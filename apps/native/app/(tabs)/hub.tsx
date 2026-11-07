@@ -1,4 +1,4 @@
-import { TickRing } from "../../src/ui/settled";
+import { InPlaceCard, TickRing, useInPlace } from "../../src/ui/settled";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { ImageBackground, Linking, Platform, RefreshControl, StyleSheet, View, useWindowDimensions } from "react-native";
@@ -19,7 +19,7 @@ import { failure, useApp } from "../../src/state";
 import { Body, Ground, Pad, PULL_SHOWN, TopBar, photoOf, usePull } from "../../src/ui/chrome";
 import { Avatar, Button, Cal, Empty, Faces, Panel, Row, SectionHead, State, T, tap, TextLink } from "../../src/ui/kit";
 import { haptic, PressScale, springs, useCalm } from "../../src/ui/motion";
-import { NeedsList, TaskCheck, WaitingRow } from "../../src/ui/parts";
+import { NeedsList, TaskCheck, WaitingList } from "../../src/ui/parts";
 import { JoinWaitingCard } from "../../src/ui/joins";
 import { HOLD, useRemind } from "../../src/ui/remind";
 import { SwipeRow } from "../../src/ui/swipe";
@@ -277,6 +277,8 @@ function YourPart({ onMore }: { onMore(): void }) {
   const toast = useToast();
   const [busy, setBusy] = useState(false);
   const remindFor = useRemind();
+  // Paying or confirming here ends here: the white box turns into All square, as in the opening flow.
+  const place = useInPlace();
   if (!current) return null;
   const { commune } = current;
   const owe = oweTotals(needs, commune.id)[commune.currency] ?? 0;
@@ -289,9 +291,15 @@ function YourPart({ onMore }: { onMore(): void }) {
     if (!toConfirm?.debtor.pending) return;
     setBusy(true);
     try {
-      await resolveReport(commune.id, toConfirm.debtor.pending.id, "confirm");
+      const { debtor } = toConfirm;
+      const pending = debtor.pending!;
+      await resolveReport(commune.id, pending.id, "confirm");
       tap("success");
-      toast(`Confirmed. ${firstName(toConfirm.debtor.name)}’s ${money(toConfirm.debtor.pending.amountMinor, commune.currency)} is recorded.`);
+      const name = firstName(debtor.name);
+      const rest = debtor.amountMinor - pending.amountMinor;
+      place.show(rest > 0
+        ? { id: pending.id, title: "Confirmed.", body: `${name}’s ${money(pending.amountMinor, commune.currency)} is recorded. They still owe you ${money(rest, commune.currency)} for ${toConfirm.entry.title}.` }
+        : { id: pending.id, title: `${name} paid.`, body: `${name}’s ${money(pending.amountMinor, commune.currency)} for ${toConfirm.entry.title} is recorded.` });
     } catch (cause) {
       toast(failure(cause, "Couldn’t confirm it. Try again."));
     } finally {
@@ -309,7 +317,8 @@ function YourPart({ onMore }: { onMore(): void }) {
         : <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}><TickRing size={34} /><Text style={big}>You’re all square here.</Text></View>}
     </View>
     <T kind="label" muted style={{ fontSize: 14, lineHeight: 20 }}>{hubMoneyLine(owe, owed, commune.currency)}</T>
-    {first ? <View style={{ backgroundColor: c.surface, borderRadius: 12, padding: 12, gap: 10 }}>
+    {place.done ? <View style={{ backgroundColor: c.surface, borderRadius: 12, padding: 12 }}><InPlaceCard done={place.done} /></View>
+    : first ? <View style={{ backgroundColor: c.surface, borderRadius: 12, padding: 12, gap: 10 }}>
       <PressScale scaleTo={0.985} accessibilityRole="button" accessibilityHint="Hold for a reminder" onLongPress={remindFor(first.key)} delayLongPress={HOLD}
         onPress={() => router.push(`/expense/${first.expenseId}`)} style={{ flexDirection: "row", gap: 8, alignItems: "flex-start" }}>
         <View style={{ flex: 1, minWidth: 0 }}>
@@ -321,7 +330,7 @@ function YourPart({ onMore }: { onMore(): void }) {
         </View>
         <T kind="amount" style={{ fontSize: 19, lineHeight: 24 }}>{money(first.amountMinor, first.currency)}</T>
       </PressScale>
-      <PayPrimary size="md" target={{ shareId: first.shareId, communeId: first.communeId, payerId: first.payerId, payerName: first.payerName, amountMinor: first.amountMinor, currency: first.currency, title: first.title }} />
+      <PayPrimary size="md" onStart={() => place.claim(first.shareId)} target={{ shareId: first.shareId, communeId: first.communeId, payerId: first.payerId, payerName: first.payerName, amountMinor: first.amountMinor, currency: first.currency, title: first.title }} />
       {shares.length > 1 ? <TextLink centred label={`${shares.length - 1} more to settle`} onPress={onMore} /> : null}
     </View> : toConfirm?.debtor.pending ? <View style={{ backgroundColor: c.surface, borderRadius: 12, padding: 12, gap: 10 }}>
       <View style={{ flexDirection: "row", gap: 8 }}>
@@ -522,7 +531,7 @@ function OwedHere() {
   const total = owedTotals(mine, current.commune.id)[current.commune.currency] ?? 0;
   return <View style={{ gap: 12 }}>
     <SectionHead title="Owed to you here" right={mine.length ? <T kind="label" muted>{money(total, current.commune.currency)}</T> : undefined} />
-    <Panel>{mine.length ? mine.map((entry, index) => <WaitingRow key={entry.key} entry={entry} first={index === 0} />)
+    <Panel>{mine.length ? <WaitingList items={mine} />
       : <Empty icon={<Check size={18} color={c.onSettled} />} title="Nobody owes you here" />}</Panel>
   </View>;
 }

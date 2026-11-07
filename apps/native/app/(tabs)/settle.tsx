@@ -3,7 +3,8 @@ import { View } from "react-native";
 import { useRouter } from "expo-router";
 import { hasAny, payLinksOf } from "../../src/lib/derive";
 import { debtWeb } from "../../src/lib/debtWeb";
-import { AllSquare, DebtFold } from "../../src/ui/settled";
+import { AllSquare, DebtFold, useInPlace, withLanded } from "../../src/ui/settled";
+import type { Landed } from "../../src/lib/settled";
 import { firstName, money, moneyList, shortDate, word } from "../../src/lib/format";
 import type { CurrencyCode } from "../../src/lib/types";
 import { failure, useApp } from "../../src/state";
@@ -19,11 +20,19 @@ import { useTheme } from "../../src/ui/theme";
 const CURRENCY_WORD: Record<CurrencyCode, string> = { GBP: "pounds", EUR: "euros", USD: "dollars" };
 
 
+/** The settled row for one currency's panel: slots count 1000 per panel. */
+function inPanel(done: Landed | null, panel: number): Landed | null {
+  return done && Math.floor(done.slot / 1000) === panel ? { ...done, slot: done.slot % 1000 } : null;
+}
+
 export default function Settle() {
   const askCard = useConfirm();
   const ask = (title: string, message: string, yes: string) => askCard({ title, message, yes });
   const { c } = useTheme();
   const router = useRouter();
+  // Paying or confirming from a row ends in that row's place, as in the opening flow.
+  const owePlace = useInPlace();
+  const owedPlace = useInPlace();
   const { settle, owe, owed, recorded, resolveReport, nudge, snapshots, current, user } = useApp();
   const web = useMemo(() => (current && user ? debtWeb(current, user.id) : null), [current, user]);
   const payable = (communeId: string, userId: string) => payLinksOf(snapshots.find((item) => item.commune.id === communeId), userId).length > 0;
@@ -69,9 +78,9 @@ export default function Settle() {
           <DebtFold web={web} viewerId={user?.id ?? ""} />
         </Still> : null}
 
-        {youOweCurrencies.map((currency, index) => <Still key={`owe-${currency}`} index={1 + index} style={{ gap: 10 }}>
+        {youOweCurrencies.map((currency, panel) => <Still key={`owe-${currency}`} index={1 + panel} style={{ gap: 10 }}>
           <Kicker>You owe · {CURRENCY_WORD[currency]}</Kicker>
-          <Panel>{settle.youOwe.filter((row) => row.currency === currency).map((row, index) => <SwipeRow key={`${row.userId}-${currency}`} label={row.name} onRemind={remindFor(`share:${row.items[0].shareId}`)}>{(guard) => <Row first={index === 0}
+          <Panel>{withLanded(settle.youOwe.filter((row) => row.currency === currency).map((row, index) => <SwipeRow key={`${row.userId}-${currency}`} label={row.name} onRemind={remindFor(`share:${row.items[0].shareId}`)}>{(guard) => <Row first={index === 0}
             onLongPress={guard(remindFor(`share:${row.items[0].shareId}`))}
             left={<Avatar name={row.name} size={40} />}
             title={row.name}
@@ -80,12 +89,17 @@ export default function Settle() {
               <T kind="amount">{money(row.amountMinor, currency)}</T>
               {payable(row.items[0].communeId, row.userId)
                 ? <View style={{ flexDirection: "row", gap: 6 }}>
-                  <Button size="sm" variant="secondary" label="Already paid" accessibilityLabel={`Already paid ${row.name}`} onPress={() => router.push(`/record/${row.items[0].shareId}`)} />
-                  <Button size="sm" label="Pay" accessibilityLabel={`Pay ${row.name}`} onPress={() => router.push(`/pay/${row.items[0].shareId}`)} />
+                  <Button size="sm" variant="secondary" label="Already paid" accessibilityLabel={`Already paid ${row.name}`} onPress={() => { owePlace.claim(row.items[0].shareId, panel * 1000 + index); router.push(`/record/${row.items[0].shareId}`); }} />
+                  <Button size="sm" label="Pay" accessibilityLabel={`Pay ${row.name}`} onPress={() => { owePlace.claim(row.items[0].shareId, panel * 1000 + index); router.push(`/pay/${row.items[0].shareId}`); }} />
                 </View>
-                : <Button size="sm" variant="secondary" label="I’ve paid" accessibilityLabel={`I’ve paid ${row.name}`} onPress={() => router.push(`/record/${row.items[0].shareId}`)} />}
-            </View>} />}</SwipeRow>)}</Panel>
+                : <Button size="sm" variant="secondary" label="I’ve paid" accessibilityLabel={`I’ve paid ${row.name}`} onPress={() => { owePlace.claim(row.items[0].shareId, panel * 1000 + index); router.push(`/record/${row.items[0].shareId}`); }} />}
+            </View>} />}</SwipeRow>), inPanel(owePlace.done, panel))}</Panel>
         </Still>)}
+
+        {/* The row's panel went with it (nothing left in that currency): show it on its own. */}
+        {[owePlace.done, owedPlace.done].map((done, which) => done && Math.floor(done.slot / 1000) >= (which ? owedCurrencies : youOweCurrencies).length
+          && (youOweCurrencies.length || owedCurrencies.length || recorded.length)
+          ? <Panel key={`landed-${which}`}>{withLanded([], { ...done, slot: 0 })}</Panel> : null)}
 
         {recorded.length ? <Still index={1 + youOweCurrencies.length} style={{ gap: 10 }}>
           <Kicker>Waiting for them to confirm</Kicker>
@@ -95,9 +109,9 @@ export default function Settle() {
             meta={<State text={`You recorded ${money(item.amountMinor, item.currency)} on ${shortDate(item.report.sentOn)}. ${firstName(item.payerName)} confirms it.`} />} />)}</Panel>
         </Still> : null}
 
-        {owedCurrencies.map((currency, index) => <Still key={`owed-${currency}`} index={2 + youOweCurrencies.length + index} style={{ gap: 10 }}>
+        {owedCurrencies.map((currency, panel) => <Still key={`owed-${currency}`} index={2 + youOweCurrencies.length + panel} style={{ gap: 10 }}>
           <Kicker>Owed to you · {CURRENCY_WORD[currency]}</Kicker>
-          <Panel>{settle.owedToYou.filter((row) => row.currency === currency).map((row, index) => {
+          <Panel>{withLanded(settle.owedToYou.filter((row) => row.currency === currency).map((row, index) => {
             const pending = row.items.filter((item) => item.debtor.pending);
             const nudgeable = row.items.filter((item) => item.debtor.canNudge && !item.debtor.nudgedToday && !item.debtor.pending);
             const nudged = row.items.some((item) => item.debtor.nudgedToday);
@@ -119,13 +133,13 @@ export default function Settle() {
                 <T kind="body">{firstName(row.name)} says they’ve paid you {money(debtor.pending!.amountMinor, currency)} for {entry.title}, sent {shortDate(debtor.pending!.sentOn)}{debtor.pending!.reference ? `, reference “${debtor.pending!.reference}”` : ""}.</T>
                 <View style={{ flexDirection: "row", gap: 10, flexWrap: "wrap" }}>
                   <Button size="sm" label={`Confirm ${money(debtor.pending!.amountMinor, currency)}`} busy={busy === debtor.pending!.id}
-                    onPress={() => router.push(`/confirm/${debtor.pending!.id}`)} />
+                    onPress={() => { owedPlace.claim(debtor.pending!.id, panel * 1000 + index); router.push(`/confirm/${debtor.pending!.id}`); }} />
                   <Button size="sm" variant="secondary" label="Not received" disabled={busy === debtor.pending!.id}
                     onPress={() => void decline(entry.communeId, debtor.pending!.id, row.name)} />
                 </View>
               </View>)}
             </View>;
-          })}</Panel>
+          }), inPanel(owedPlace.done, panel))}</Panel>
         </Still>)}
 
         {!youOweCurrencies.length && !owedCurrencies.length && !recorded.length

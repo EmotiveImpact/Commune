@@ -1,27 +1,42 @@
 /**
- * When a payment starts from the next step card on Home, the card itself
- * turns into "All square." once it is recorded, as in the opening flow,
- * instead of the sheet showing it. The card claims the share when one of its
- * buttons is pressed; the sheet hands the result back if the claim is there.
+ * Paying or confirming from a card or row ends in that same place, as in the
+ * opening flow: the card itself turns into "All square." instead of a sheet
+ * showing it. The card or row claims the payment (by share or report id) when
+ * one of its buttons is pressed; the sheet hands the result back if the claim
+ * is still there, and closes, otherwise it shows the result itself.
  */
-export type Settled = { shareId: string; title: string; body: string };
+export type Settled = { id: string; title: string; body: string };
+export type Landed = Settled & { slot: number };
 
-let claimed: string | null = null;
-let claimedAt = 0;
+type Claim = { id: string; owner: number; slot: number; at: number };
+
 const FRESH = 10 * 60 * 1000;
-const listeners = new Set<(event: Settled) => void>();
+let claim: Claim | null = null;
+let owners = 0;
+const listeners = new Map<number, (event: Landed) => void>();
 
-export function claimSettle(shareId: string) { claimed = shareId; claimedAt = Date.now(); }
+export function newOwner() { owners += 1; return owners; }
 
-/** True when the card took it, so the sheet should just close. */
+export function listen(owner: number, listener: (event: Landed) => void) {
+  listeners.set(owner, listener);
+  return () => { listeners.delete(owner); };
+}
+
+/** Called by a card or row as one of its pay or confirm buttons is pressed. */
+export function claimSettle(id: string, owner: number, slot = 0) { claim = { id, owner, slot, at: Date.now() }; }
+
+/** Sends the result back to the card or row that started it. True when it took it, so the sheet just closes. */
 export function handBack(event: Settled): boolean {
-  if (claimed !== event.shareId || Date.now() - claimedAt > FRESH || !listeners.size) return false;
-  claimed = null;
-  listeners.forEach((listener) => listener(event));
+  if (!claim || claim.id !== event.id || Date.now() - claim.at > FRESH) return false;
+  const listener = listeners.get(claim.owner);
+  if (!listener) return false;
+  const slot = claim.slot;
+  claim = null;
+  listener({ ...event, slot });
   return true;
 }
 
-export function onSettled(listener: (event: Settled) => void) {
-  listeners.add(listener);
-  return () => { listeners.delete(listener); };
+/** As handBack, after the screen underneath has redrawn with the new figures, so a row that has gone is not handed it. */
+export function handBackSoon(event: Settled): Promise<boolean> {
+  return new Promise((done) => setTimeout(() => done(handBack(event)), 60));
 }
