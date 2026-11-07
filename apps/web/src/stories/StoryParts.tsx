@@ -120,11 +120,13 @@ export function AuthStory({ story, compact = false }: { story: Story; compact?: 
         </span>
       </figcaption>
       <span className="c-story-panel-controls">
-        <button type="button" onClick={() => setPaused(!paused)} aria-pressed={paused} aria-label={paused ? "Play the story" : "Pause the story"} hidden={reduced}>
-          {paused
-            ? <svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l12.5-7.5z" fill="currentColor" /></svg>
-            : <svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h3.5v16H7zM13.5 4H17v16h-3.5z" fill="currentColor" /></svg>}
-        </button>
+        {reduced ? null : (
+          <button type="button" onClick={() => setPaused(!paused)} aria-pressed={paused} aria-label={paused ? "Play the story" : "Pause the story"}>
+            {paused
+              ? <svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l12.5-7.5z" fill="currentColor" /></svg>
+              : <svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h3.5v16H7zM13.5 4H17v16h-3.5z" fill="currentColor" /></svg>}
+          </button>
+        )}
         <button type="button" onClick={next} aria-label="Next slide">
           <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </button>
