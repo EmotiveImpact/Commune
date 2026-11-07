@@ -27,6 +27,8 @@ const TOP_RADIUS = 22;
  * flick and it closes on the same spring, otherwise it springs back. Set
  * `closing` to send it away; `onClosed` runs after.
  */
+const GROW_FROM_BUTTON = false;
+
 export function Sheet({ children, closing = false, onClosed }: { children: ReactNode; closing?: boolean; onClosed: () => void }) {
   const { c } = useTheme();
   const calm = useCalm();
@@ -40,10 +42,14 @@ export function Sheet({ children, closing = false, onClosed }: { children: React
     lastSheet.swapping = false;
     if (calm) return { kind: "rise" as const };
     if (swap) return { kind: "swap" as const, from: { x: 0, y: height - lastSheet.height, w: width, h: lastSheet.height } as Rect, color: "", radius: TOP_RADIUS };
-    const press = recentPress();
-    if (press?.rect) {
-      hiddenButton.value = press.id;
-      return { kind: "grow" as const, from: press.rect, color: press.color, radius: press.radius };
+    // Edem prefers the plain drawer rising from the bottom to the button morph,
+    // so a sheet always rises; the grow path is kept for a later change of mind.
+    if (GROW_FROM_BUTTON) {
+      const press = recentPress();
+      if (press?.rect) {
+        hiddenButton.value = press.id;
+        return { kind: "grow" as const, from: press.rect, color: press.color, radius: press.radius };
+      }
     }
     return { kind: "rise" as const };
   });
