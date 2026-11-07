@@ -1,5 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Linking } from "react-native";
+import { Linking, Platform } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import NetInfo from "@react-native-community/netinfo";
 import { type Backend, serverBackend } from "./lib/backend";
 import { demoBackend } from "./lib/demo";
 import {
@@ -7,6 +9,7 @@ import {
   type FeedItem, type Need, type Recorded, type Settle, type Totals, type Waiting,
 } from "./lib/derive";
 import { requestId, todayIso } from "./lib/format";
+import { OUTBOX_STORE, enqueue, flush, isNetworkError, parseOutbox, type Queued } from "./lib/outbox";
 import type { PayLink, PayLinkInput, PayProvider } from "./lib/payLinks";
 import type { Commune, Snapshot, User } from "./lib/types";
 
@@ -43,7 +46,8 @@ type App = {
   refresh(): Promise<void>;
   signIn(email: string, password: string): Promise<void>;
   signOut(): Promise<void>;
-  reportPayment(communeId: string, shareId: string, amountMinor: number, sentOn: string, reference: string | null): Promise<void>;
+  /** "queued" when there is no signal: it is saved on the phone and sends when back online. */
+  reportPayment(communeId: string, shareId: string, amountMinor: number, sentOn: string, reference: string | null, label?: string): Promise<"sent" | "queued">;
   resolveReport(communeId: string, reportId: string, decision: "confirm" | "decline", note?: string): Promise<void>;
   withdrawReport(communeId: string, reportId: string): Promise<void>;
   /** Returns the completion's id, for Undo. */
@@ -51,7 +55,13 @@ type App = {
   undoCompletion(communeId: string, occurrenceId: string): Promise<void>;
   /** "I'll do it" on a chore nobody has yet. */
   claimTask(communeId: string, operationId: string, expectedDate: string): Promise<void>;
-  addExpense(communeId: string, input: Parameters<Backend["addExpense"]>[1]): Promise<void>;
+  addExpense(communeId: string, input: Parameters<Backend["addExpense"]>[1]): Promise<"sent" | "queued">;
+  /** False with no signal. */
+  online: boolean;
+  /** Records made offline, waiting to send. */
+  outbox: Queued[];
+  /** True while the outbox is sending. */
+  sending: boolean;
   nudge(communeId: string, shareId: string): Promise<void>;
   /** Marks what you've now seen as read, so the bell stops showing new. */
   markAllRead(): Promise<void>;
@@ -84,6 +94,15 @@ export function AppProvider({ children, backend: given }: { children: ReactNode;
   const [myPayLinks, setMyPayLinks] = useState<PayLink[] | null>(null);
   const [today, setToday] = useState(todayIso());
   const userRef = useRef<User | null>(null);
+  const [online, setOnline] = useState(true);
+  const [outbox, setOutbox] = useState<Queued[]>([]);
+  const [sending, setSending] = useState(false);
+  const outboxRef = useRef<Queued[]>([]);
+  const keepOutbox = useCallback((next: Queued[]) => {
+    outboxRef.current = next;
+    setOutbox(next);
+    AsyncStorage.setItem(OUTBOX_STORE, JSON.stringify(next)).catch(() => undefined);
+  }, []);
 
   const loadAll = useCallback(async (viewer: User) => {
     setStatus((value) => (value === "ready" ? value : "loading"));
@@ -111,6 +130,41 @@ export function AppProvider({ children, backend: given }: { children: ReactNode;
   }, [backend, loadAll]);
 
   useEffect(() => { void refresh(); }, [refresh]);
+
+  // Records saved with no signal survive the app closing.
+  useEffect(() => {
+    AsyncStorage.getItem(OUTBOX_STORE).then((raw) => {
+      const saved = parseOutbox(raw);
+      if (saved.length) { outboxRef.current = saved; setOutbox(saved); }
+    }).catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    const stop = NetInfo.addEventListener((state) => {
+      setOnline(state.isConnected !== false && state.isInternetReachable !== false);
+    });
+    // In a browser NetInfo only hears connection-type changes, so also listen for going on and off line.
+    if (Platform.OS !== "web" || typeof window === "undefined") return stop;
+    const change = () => setOnline(navigator.onLine);
+    window.addEventListener("online", change);
+    window.addEventListener("offline", change);
+    return () => { stop(); window.removeEventListener("online", change); window.removeEventListener("offline", change); };
+  }, []);
+
+  // Back online: send what waited, oldest first, each once.
+  const flushing = useRef(false);
+  useEffect(() => {
+    if (!online || !outbox.length || !user || flushing.current) return;
+    flushing.current = true;
+    setSending(true);
+    void flush(outboxRef.current, (item) => item.kind === "report"
+      ? backend.reportPayment(item.shareId, item.input)
+      : backend.addExpense(item.communeId, item.input)).then(async (result) => {
+      const done = new Set([...result.sent, ...result.failed.map((entry) => entry.item)].map((item) => item.id));
+      keepOutbox(outboxRef.current.filter((item) => !done.has(item.id)));
+      if (result.sent.length || result.failed.length) await refresh();
+    }).finally(() => { flushing.current = false; setSending(false); });
+  }, [online, outbox, user, backend, keepOutbox, refresh]);
 
   // A command changes one commune; reload just that one.
   const reload = useCallback(async (communeId: string) => {
@@ -151,9 +205,13 @@ export function AppProvider({ children, backend: given }: { children: ReactNode;
         setUser(null); setCommunes([]); setSnapshots([]); setMyPayLinks(null); setCurrentId(null);
         setStatus("signed-out");
       },
-      async reportPayment(communeId, shareId, amountMinor, sentOn, reference) {
-        await backend.reportPayment(shareId, { amountMinor, sentOn, reference, requestId: requestId() });
+      async reportPayment(communeId, shareId, amountMinor, sentOn, reference, label = "") {
+        const input = { amountMinor, sentOn, reference, requestId: requestId() };
+        const save = () => { keepOutbox(enqueue(outboxRef.current, { id: input.requestId, kind: "report", communeId, shareId, input, label })); return "queued" as const; };
+        if (!online) return save();
+        try { await backend.reportPayment(shareId, input); } catch (cause) { if (isNetworkError(cause)) return save(); throw cause; }
         await reload(communeId);
+        return "sent";
       },
       async resolveReport(communeId, reportId, decision, note) {
         await backend.resolveReport(reportId, decision, requestId(), note);
@@ -176,10 +234,17 @@ export function AppProvider({ children, backend: given }: { children: ReactNode;
         await backend.undoCompletion(occurrenceId);
         await reload(communeId);
       },
-      async addExpense(communeId, input) {
-        await backend.addExpense(communeId, input);
+      async addExpense(communeId, given) {
+        const input = { ...given, requestId: given.requestId ?? requestId() };
+        const save = () => { keepOutbox(enqueue(outboxRef.current, { id: input.requestId, kind: "expense", communeId, input, label: input.title })); return "queued" as const; };
+        if (!online) return save();
+        try { await backend.addExpense(communeId, input); } catch (cause) { if (isNetworkError(cause)) return save(); throw cause; }
         await reload(communeId);
+        return "sent";
       },
+      online,
+      outbox,
+      sending,
       async nudge(communeId, shareId) {
         await backend.nudge(shareId, requestId());
         await reload(communeId);
@@ -211,7 +276,7 @@ export function AppProvider({ children, backend: given }: { children: ReactNode;
       payingAway,
       clearPayingAway() { setPayingAway(null); },
     };
-  }, [backend, status, error, user, today, communes, snapshots, currentId, myPayLinks, payingAway, refresh, loadAll, reload, loadMyPayLinks]);
+  }, [backend, status, error, user, today, communes, snapshots, currentId, myPayLinks, payingAway, refresh, loadAll, reload, loadMyPayLinks, online, outbox, sending, keepOutbox]);
 
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }

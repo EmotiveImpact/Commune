@@ -391,5 +391,9 @@ export function demoBackend(now: () => string = todayIso): Backend {
       });
       return "demo-elm";
     },
+    async readReceipt() {
+      // The demo pretends to read the receipt, so the filled-in sheet can be seen.
+      return { amountMinor: 2340, title: "Big Tesco shop", date: now() };
+    },
   };
 }

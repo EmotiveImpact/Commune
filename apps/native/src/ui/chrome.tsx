@@ -5,7 +5,8 @@ import { Text } from "./text";
 import Animated, { useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { Bell, ChevronDown, ChevronLeft, Menu, Search } from "lucide-react-native";
+import { Bell, ChevronDown, ChevronLeft, LoaderCircle, Menu, Search, WifiOff } from "lucide-react-native";
+import { cap, word } from "../lib/format";
 import { SearchScreen } from "./search";
 import { useMenu } from "./menu";
 import { useApp } from "../state";
@@ -44,8 +45,29 @@ export function TopBar({ title, children, clear }: { title?: string; children?: 
         <Menu size={23} color={c.onFrame} strokeWidth={1.7} />
       </PressScale>
     </View>
+    <OfflineStrip />
     {children}
     <SearchScreen visible={searching} onClose={() => setSearching(false)} />
+  </View>;
+}
+
+/**
+ * v7's strip under the top bar when there is no signal, or while records
+ * saved offline are sending.
+ */
+function OfflineStrip() {
+  const { c } = useTheme();
+  const { online, outbox, sending } = useApp();
+  if (online && !outbox.length && !sending) return null;
+  const n = outbox.length;
+  const words = !online
+    ? `No signal.${n ? ` ${cap(word(n))} ${n === 1 ? "record is" : "records are"} saved on this phone and will send when you’re back.` : " You can still record. It sends when you’re back."}`
+    : "Sending…";
+  return <View accessibilityLiveRegion="polite" style={{ paddingHorizontal: 12, paddingBottom: 10 }}>
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12, backgroundColor: c.frameRaised }}>
+      {online ? <LoaderCircle size={17} color={c.onFrame2} /> : <WifiOff size={17} color={c.onFrame2} />}
+      <Text style={{ flex: 1, color: c.onFrame, fontSize: 14, lineHeight: 20 }}>{words}</Text>
+    </View>
   </View>;
 }
 
