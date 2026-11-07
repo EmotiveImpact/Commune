@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "npm install --no-audit --no-fund --no-package-lock",
-  "buildCommand": "npm run build && cp dist/editorial.html dist/index.html",
+  "buildCommand": "npm run build && cp dist/editorial.html dist/index.html && cp -r green-third/. dist/",
   "outputDirectory": "dist",
   "cleanUrls": true,
   "headers": [
