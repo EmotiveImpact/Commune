@@ -101,11 +101,11 @@ function MenuPanel() {
 
   const row = (key: string, icon: Icon, label: string, onPress: () => void, sub?: string, badge?: string) =>
     <PressScale scaleTo={0.985} key={key} accessibilityRole="button" accessibilityLabel={[label, sub, badge].filter(Boolean).join(". ")} onPress={onPress}
-      style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 16, minHeight: sub ? 58 : 50, paddingHorizontal: 12, borderRadius: 12, backgroundColor: pressed ? c.frameRaised : "transparent" })}>
-      {(() => { const I = icon; return <I size={20} color={c.onFrame2} strokeWidth={1.7} />; })()}
+      style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, minHeight: 52, paddingHorizontal: 8, borderRadius: 12, backgroundColor: pressed ? c.frameRaised : "transparent" })}>
+      <View style={{ width: 36, height: 36, alignItems: "center", justifyContent: "center" }}>{(() => { const I = icon; return <I size={19} color={c.onFrame2} strokeWidth={1.7} />; })()}</View>
       <View style={{ flex: 1, minWidth: 0 }}>
-        <Text style={{ color: c.onFrame, fontSize: 16.5, fontWeight: "500" }}>{label}</Text>
-        {sub ? <Text numberOfLines={1} style={{ color: c.onFrame2, fontSize: 13.5, marginTop: 1 }}>{sub}</Text> : null}
+        <Text style={{ color: c.onFrame, fontSize: 15, lineHeight: 20, fontWeight: "500" }}>{label}</Text>
+        {sub ? <Text numberOfLines={1} style={{ color: c.onFrame2, fontSize: 12.5, lineHeight: 17 }}>{sub}</Text> : null}
       </View>
       {badge ? <View style={{ backgroundColor: c.dot, borderRadius: 11, paddingHorizontal: 9, height: 22, justifyContent: "center" }}>
         <Text style={{ color: "#1a1e2b", fontSize: 12.5, fontWeight: "600" }}>{badge}</Text>
@@ -120,7 +120,7 @@ function MenuPanel() {
 
   return <View style={{ flex: 1, paddingTop: insets.top + 6 }}>
     <View style={{ flexDirection: "row", alignItems: "center", paddingLeft: 24, paddingRight: 10, height: 50 }}>
-      <Text accessibilityRole="header" style={{ flex: 1, color: c.onFrame2, fontSize: 14.5, fontWeight: "600" }}>Your communes</Text>
+      <Text accessibilityRole="header" style={{ flex: 1, color: c.onFrame2, fontSize: 12.5, fontWeight: "600" }}>Your communes</Text>
       <PressScale scaleTo={0.9} accessibilityRole="button" accessibilityLabel="Close menu" onPress={close} hitSlop={6} style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}>
         <X size={22} color={c.onFrame} strokeWidth={1.8} />
       </PressScale>
@@ -132,21 +132,21 @@ function MenuPanel() {
         return <PressScale scaleTo={0.985} key={snapshot.commune.id} accessibilityRole="button" accessibilityState={{ selected: on }}
           accessibilityLabel={`${snapshot.commune.name}. ${KIND_NAME[snapshot.commune.kind]}. ${line}.`}
           onPress={() => { setCurrent(snapshot.commune.id); haptic.select(); close(); router.navigate("/hub"); toast(`Showing ${snapshot.commune.name}`); }}
-          style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 14, padding: 8, borderRadius: 14, backgroundColor: on || pressed ? c.frameRaised : "transparent" })}>
-          <Image source={{ uri: KIND_PHOTO[snapshot.commune.kind] }} style={{ width: 44, height: 44, borderRadius: 10, backgroundColor: c.frameRaised }} />
+          style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, padding: 8, minHeight: 60, borderRadius: 14, backgroundColor: on || pressed ? c.frameRaised : "transparent" })}>
+          <Image source={{ uri: KIND_PHOTO[snapshot.commune.kind] }} style={{ width: 44, height: 44, borderRadius: 11, backgroundColor: c.frameRaised }} />
           <View style={{ flex: 1, minWidth: 0 }}>
-            <Text numberOfLines={1} style={{ color: c.onFrame, fontSize: 16.5, fontWeight: "600" }}>{snapshot.commune.name}</Text>
-            <Text numberOfLines={1} style={{ color: c.onFrame2, fontSize: 13.5 }}>{KIND_NAME[snapshot.commune.kind]} · {line}</Text>
+            <Text numberOfLines={1} style={{ color: c.onFrame, fontSize: 14.5, lineHeight: 19, fontWeight: "600" }}>{snapshot.commune.name}</Text>
+            <Text numberOfLines={1} style={{ color: c.onFrame2, fontSize: 12.5, lineHeight: 17 }}>{KIND_NAME[snapshot.commune.kind]} · {line}</Text>
           </View>
           {on ? <Check size={18} color={c.onFrame} /> : null}
         </PressScale>;
       })}
       <PressScale scaleTo={0.985} accessibilityRole="button" onPress={() => go("/new-commune")}
         style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 14, padding: 8, borderRadius: 14, backgroundColor: pressed ? c.frameRaised : "transparent" })}>
-        <View style={{ width: 44, height: 44, borderRadius: 10, borderWidth: 1, borderColor: "rgba(245,241,234,0.3)", alignItems: "center", justifyContent: "center" }}>
+        <View style={{ width: 44, height: 44, borderRadius: 11, borderWidth: 1, borderColor: "rgba(245,241,234,0.3)", alignItems: "center", justifyContent: "center" }}>
           <Plus size={18} color={c.onFrame} />
         </View>
-        <Text style={{ color: c.onFrame, fontSize: 16.5, fontWeight: "600" }}>New commune</Text>
+        <Text style={{ color: c.onFrame, fontSize: 14.5, fontWeight: "600" }}>New commune</Text>
       </PressScale>
 
       <Divider />

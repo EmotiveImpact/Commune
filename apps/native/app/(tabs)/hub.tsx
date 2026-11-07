@@ -102,7 +102,7 @@ export default function Hub() {
   const track = useAnimatedStyle(() => ({ transform: [{ translateX: pager.value }] }));
 
   if (!current) return <View style={{ flex: 1 }}><TopBar title="Hub" /><Body><Pad><T kind="body" muted>You’re not in a commune yet.</T></Pad></Body></View>;
-  const pills = <HubPills tab={tab} onPick={(next) => choose(next)} left={left} right={right} floating={hubTabsAt === "bottom"} />;
+  const pills = <HubPills tab={tab} onPick={(next) => choose(next)} left={left} right={right} floating={hubTabsAt === "bottom"} scrollY={pull.y} />;
   const pages: Record<HubTab, ReactNode[]> = {
     overview: [<Notice key="notice" />, <YourPart key="part" onMore={() => choose("money")} />, <WeekPanel key="week" onAll={() => choose("chores")} />, <PeoplePanel key="people" />],
     money: moneySections(),
@@ -224,8 +224,8 @@ function edge(boxes: number[], at: number, side: "left" | "right"): number {
 }
 
 /** The four Hub tabs as pills, with one white pill that slides and stretches between them. */
-function HubPills({ tab, onPick, left, right, floating }: {
-  tab: HubTab; onPick(tab: HubTab): void; left: SharedValue<number>; right: SharedValue<number>; floating: boolean;
+function HubPills({ tab, onPick, left, right, floating, scrollY }: {
+  tab: HubTab; onPick(tab: HubTab): void; left: SharedValue<number>; right: SharedValue<number>; floating: boolean; scrollY: SharedValue<number>;
 }) {
   const { c } = useTheme();
   const boxes = useSharedValue<number[]>([]);
@@ -236,9 +236,14 @@ function HubPills({ tab, onPick, left, right, floating }: {
     const r = edge(boxes.value, right.value, "right");
     return { opacity: boxes.value.length ? 1 : 0, width: Math.max(0, r - l), transform: [{ translateX: l }] };
   });
-  return <View style={floating
-    ? { position: "absolute", left: 0, right: 0, bottom: 0, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 10, backgroundColor: c.canvas + "f2", borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.outline }
-    : { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 10, backgroundColor: c.canvas }}>
+  // v7: once the tabs stick under the top bar they gain a hairline and a soft shadow.
+  const stuck = useAnimatedStyle(() => {
+    const on = !floating && scrollY.value >= HERO_HEIGHT - 1 ? 1 : 0;
+    return { shadowOpacity: on * 0.35, borderBottomColor: on ? c.outline2 : "transparent", paddingTop: on ? 8 : 12 };
+  });
+  return <Animated.View style={[floating
+    ? { position: "absolute", left: 0, right: 0, bottom: 0, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 10, backgroundColor: c.canvas, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.outline2, shadowColor: "#0a0c12", shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: -6 }, elevation: 8 }
+    : { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 10, backgroundColor: c.canvas, borderBottomWidth: StyleSheet.hairlineWidth, shadowColor: "#0a0c12", shadowRadius: 7, shadowOffset: { width: 0, height: 8 }, zIndex: 2 }, floating ? null : stuck]}>
     <View accessibilityRole="tablist" style={{ flexDirection: "row", backgroundColor: c.recessed, borderRadius: 999, padding: 4, borderWidth: StyleSheet.hairlineWidth, borderColor: c.outline }}>
       <Animated.View pointerEvents="none" style={[{ position: "absolute", top: 4, bottom: 4, left: 0, borderRadius: 999, backgroundColor: c.surface, shadowColor: "#1a1e2b", shadowOpacity: 0.12, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 2 }, pill]} />
       {HUB_TABS.map((item, i) => {
@@ -251,11 +256,11 @@ function HubPills({ tab, onPick, left, right, floating }: {
           }}
           onPress={() => onPick(item.id)}
           style={{ flex: 1, height: 40, alignItems: "center", justifyContent: "center" }}>
-          <Text style={{ fontSize: 15, fontWeight: on ? "600" : "500", color: on ? c.ink : c.ink2 }}>{item.label}</Text>
+          <Text style={{ fontSize: 14, fontWeight: on ? "600" : "500", color: on ? c.ink : c.ink2 }}>{item.label}</Text>
         </PressScale>;
       })}
     </View>
-  </View>;
+  </Animated.View>;
 }
 
 /** Where you stand here, and the one payment to record next. */
