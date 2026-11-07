@@ -30,7 +30,8 @@
       "name": "Commune"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "./plugins/no-push.js"
     ],
     "experiments": {
       "typedRoutes": false
