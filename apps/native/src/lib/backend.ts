@@ -14,6 +14,8 @@ export interface Backend {
   me(): Promise<User | null>;
   signIn(email: string, password: string): Promise<User>;
   signOut(): Promise<void>;
+  /** Demo only: the next sign-in starts an empty account, as a new person would have, not the sample one. */
+  startFresh?(name?: string): void;
   communes(): Promise<Commune[]>;
   snapshot(commune: Commune): Promise<Snapshot>;
   /** "I've sent it": a claim the bill payer confirms. It changes no balance by itself. */

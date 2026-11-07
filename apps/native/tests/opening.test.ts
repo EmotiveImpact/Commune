@@ -91,3 +91,20 @@ describe("story slides", () => {
     }
   });
 });
+
+describe("signing out", () => {
+  it("remembers a sign-out and starts a new person's demo empty", async () => {
+    const { readOpening } = await import("../src/opening/store");
+    expect(readOpening(JSON.stringify({ done: false, signedOut: true })).signedOut).toBe(true);
+    expect(readOpening(null).signedOut).toBe(false);
+    const { demoBackend } = await import("../src/lib/demo");
+    const demo = demoBackend();
+    await demo.signOut();
+    demo.startFresh?.();
+    await demo.signIn("", "");
+    expect(await demo.communes()).toHaveLength(0);
+    await demo.signOut();
+    await demo.signIn("", "");
+    expect((await demo.communes()).length).toBeGreaterThan(0);
+  });
+});

@@ -16,6 +16,7 @@ import { Rise } from "../src/ui/motion";
 import { Segmented } from "../src/ui/segmented";
 import { useToast } from "../src/ui/toast";
 import { useTheme } from "../src/ui/theme";
+import { useSignOut } from "../src/opening/useSignOut";
 
 const HUB_TABS: Array<{ value: HubTabsAt; label: string }> = [
   { value: "top", label: "Under the photo" },
@@ -33,12 +34,13 @@ export default function Account() {
   const toast = useToast();
   const confirm = useConfirm();
   const { hubTabsAt, setHubTabsAt, appearance, faceId, setFaceId, notify, remindHour } = usePrefs();
-  const { user, myPayLinks, loadMyPayLinks, signOut, backend } = useApp();
+  const { user, myPayLinks, loadMyPayLinks, backend } = useApp();
+  const signOut = useSignOut();
   useEffect(() => { loadMyPayLinks().catch(() => undefined); }, [loadMyPayLinks]);
 
   async function askSignOut() {
     if (!(await confirm({ title: "Sign out of Commune on this phone?", message: "Your records stay in Commune. You’ll sign in again to see them.", yes: "Sign out", destructive: true }))) return;
-    void signOut().then(() => router.replace("/sign-in"));
+    void signOut();
   }
   async function toggleFaceId(on: boolean) {
     if (!on) { setFaceId(false); toast("Commune opens without Face ID now."); return; }

@@ -15,6 +15,7 @@ import { haptic, springs, useCalm, PressScale } from "./motion";
 import { useConfirm } from "./confirm";
 import { useToast } from "./toast";
 import { BAR_HEIGHT, KIND_NAME, KIND_PHOTO, useTheme } from "./theme";
+import { useSignOut } from "../opening/useSignOut";
 
 type Menu = { open(): void; close(): void; isOpen: boolean };
 const Context = createContext<Menu>({ open: () => undefined, close: () => undefined, isOpen: false });
@@ -92,11 +93,12 @@ function MenuPanel() {
   const toast = useToast();
   const confirm = useConfirm();
   const { close } = useMenu();
-  const { snapshots, current, setCurrent, needs, waiting, recorded, user, signOut } = useApp();
+  const { snapshots, current, setCurrent, needs, waiting, recorded, user } = useApp();
+  const signOut = useSignOut();
   const go = (href: Href) => { close(); router.push(href); };
   async function askSignOut() {
     if (!(await confirm({ title: "Sign out of Commune on this phone?", message: "Your records stay in Commune. You’ll sign in again to see them.", yes: "Sign out", destructive: true }))) return;
-    close(); void signOut().then(() => router.replace("/sign-in"));
+    close(); void signOut();
   }
   const name = current?.commune.name ?? "your commune";
 

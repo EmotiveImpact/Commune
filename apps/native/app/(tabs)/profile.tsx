@@ -15,6 +15,7 @@ import { PayMark } from "../../src/ui/marks";
 import { haptic, Still, PressScale } from "../../src/ui/motion";
 import { useToast } from "../../src/ui/toast";
 import { useTheme } from "../../src/ui/theme";
+import { useSignOut } from "../../src/opening/useSignOut";
 
 const CURRENCY_WORD: Record<CurrencyCode, string> = { GBP: "pounds", EUR: "euros", USD: "dollars" };
 const CURRENCY_MARK: Record<CurrencyCode, string> = { GBP: "£", EUR: "€", USD: "$" };
@@ -38,11 +39,12 @@ export default function Profile() {
   const { c } = useTheme();
   const router = useRouter();
   const toast = useToast();
-  const { user, snapshots, owe, owed, myPayLinks, loadMyPayLinks, setPreferredPayLink, signOut, today, needs } = useApp();
+  const { user, snapshots, owe, owed, myPayLinks, loadMyPayLinks, setPreferredPayLink, today, needs } = useApp();
+  const signOut = useSignOut();
   const confirm = useConfirm();
   async function askSignOut() {
     if (!(await confirm({ title: "Sign out of Commune on this phone?", message: "Your records stay in Commune. You’ll sign in again to see them.", yes: "Sign out", destructive: true }))) return;
-    void signOut().then(() => router.replace("/sign-in"));
+    void signOut();
   }
   const stats = activity(snapshots, user?.id ?? "", today);
   const toPay = needs.filter((need) => need.kind === "share").length;

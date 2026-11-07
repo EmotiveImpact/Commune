@@ -66,6 +66,8 @@ type Flow = FlowData & {
   set(patch: Partial<FlowData>): void;
   go(id: ScreenId, opt?: { fade?: boolean; noStack?: boolean }): void;
   back(): void;
+  /** Goes back to an earlier screen, even one this visit skipped (an ad link opens on the story, with no pick before it). */
+  backTo(id: ScreenId): void;
   /** Sets the story and everything that follows from it. */
   applyStory(story: Story, choice?: GroupKey | null): void;
   choose(g: GroupKey | null): void;
@@ -147,6 +149,11 @@ export function OpeningFlow({ arrived, screens, onFinish, backendMode }: { arriv
     });
   }, []);
   const back = useCallback(() => { const p = history.current.pop(); if (p) go(p, { back: true }); }, [go]);
+  const backTo = useCallback((id: ScreenId) => {
+    const at = history.current.lastIndexOf(id);
+    history.current = at >= 0 ? history.current.slice(0, at) : [];
+    go(id, { back: true });
+  }, [go]);
   const gone = useCallback((k: number) => setLayers((ls) => ls.filter((l) => l.k !== k)), []);
 
   const finishing = useRef(false);
@@ -158,9 +165,9 @@ export function OpeningFlow({ arrived, screens, onFinish, backendMode }: { arriv
 
   const first = data.name.trim() || "there";
   const value = useMemo<Flow>(() => ({
-    ...data, cur, backendMode, ctx, inv, seen: seenRef.current, set, go, back, applyStory, choose, finish, first,
+    ...data, cur, backendMode, ctx, inv, seen: seenRef.current, set, go, back, backTo, applyStory, choose, finish, first,
     communeOrDefault: data.communeName.trim() || "Our commune",
-  }), [data, cur, backendMode, ctx, inv, set, go, back, applyStory, choose, finish, first]);
+  }), [data, cur, backendMode, ctx, inv, set, go, back, backTo, applyStory, choose, finish, first]);
 
   return <FlowContext.Provider value={value}>
     <StatusBar style={LIGHT_BAR.includes(cur) ? "light" : "dark"} />

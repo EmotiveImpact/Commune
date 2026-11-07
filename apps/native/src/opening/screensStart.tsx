@@ -7,6 +7,7 @@ import { Image, Pressable, StyleSheet, View, useWindowDimensions } from "react-n
 import Animated, {
   Easing, cancelAnimation, runOnJS, useAnimatedStyle, useSharedValue, withDelay, withSequence, withTiming,
 } from "react-native-reanimated";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Defs, Image as SvgImage, LinearGradient, Mask, Rect, Stop } from "react-native-svg";
 import { Text } from "../ui/text";
@@ -15,7 +16,7 @@ import { startScreen } from "./engine";
 import { useActive, useFlow, useClockGroup } from "./flow";
 import { IMAGES, PHOTO_RATIO, type ImageKey } from "./images";
 import { CAST, FOCAL, GROUPS, type Beat, type CastId, type GroupKey } from "./stories";
-import { Av, CloseX, Drawer, EASE, EASE_OUT, Glass, Ini, LinkBtn, O, Pill, Rise, Shade, Wordmark, YouAv, FILL, img, type } from "./ui";
+import { Av, Chevron, CloseX, Drawer, EASE, EASE_OUT, Glass, Ini, LinkBtn, O, Pill, Rise, Shade, Wordmark, YouAv, FILL, img, type } from "./ui";
 
 /* ---------- launch ---------- */
 
@@ -321,6 +322,20 @@ export function Intro() {
 
   const pause = () => { if (paused.current) return; paused.current = true; cancelAnimation(progress); };
   const resume = () => { if (!paused.current) return; paused.current = false; run(progress.value); };
+
+  // Not the one they wanted? Swipe right, or the back button, to pick again.
+  const { width: SW } = useWindowDimensions();
+  const canPick = flow.mode !== "invite";
+  const dragX = useSharedValue(0);
+  const pickAgain = () => { pause(); haptic.select(); flow.backTo("pick"); };
+  const swipe = Gesture.Pan().enabled(canPick).activeOffsetX(16).failOffsetY([-14, 14])
+    .onStart(() => { runOnJS(pause)(); })
+    .onUpdate((e) => { dragX.value = Math.max(0, e.translationX); })
+    .onEnd((e) => {
+      if (e.translationX > SW * 0.3 || (e.velocityX > 800 && e.translationX > 40)) runOnJS(pickAgain)();
+      else { dragX.value = withTiming(0, { duration: 340, easing: EASE_OUT }); runOnJS(resume)(); }
+    });
+  const dragStyle = useAnimatedStyle(() => ({ transform: [{ translateX: dragX.value }] }));
   const st = beats[si];
   const held = useRef(false);
   const tap = (dir: 1 | -1) => ({
@@ -331,14 +346,20 @@ export function Intro() {
     delayLongPress: 260,
   });
 
-  return <View style={{ flex: 1, backgroundColor: O.stage2 }}>
+  return <GestureDetector gesture={swipe}><Animated.View style={[{ flex: 1, backgroundColor: O.stage2 }, dragStyle]}>
     {imgs.map((k) => <Slide key={k} k={k} on={st.img === k} />)}
     <Shade stops={[[0, "rgba(10,30,70,0.38)"], [0.34, "rgba(10,30,70,0)"], [0.52, "rgba(0,0,0,0)"], [0.74, "rgba(9,14,10,0.55)"], [1, "rgba(9,14,10,0.88)"]]} />
     <View style={{ zIndex: 3, marginTop: Math.max(insets.top, 20) + 10, paddingHorizontal: 18, gap: 14 }}>
       <View style={{ flexDirection: "row", gap: 5 }}>
         {beats.map((_, k) => <Bar key={k} state={k < si ? "done" : k === si ? "now" : "later"} progress={progress} />)}
       </View>
-      <Wordmark size={27} />
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+        {canPick ? <PressScale accessibilityRole="button" accessibilityLabel="Pick a different story" hitSlop={8} onPress={pickAgain}
+          style={{ width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.16)" }}>
+          <Chevron color="#fff" />
+        </PressScale> : null}
+        <Wordmark size={27} />
+      </View>
     </View>
     <View key={`copy-${si}-${flow.story.id}`} style={{ zIndex: 3, paddingTop: 14, paddingHorizontal: 22 }}>
       <Rise delay={first ? 500 : 120}><Text style={[type.eyebrow, { color: "#fff", opacity: 0.85, marginBottom: 12 }]}>{st.e}</Text></Rise>
@@ -357,5 +378,5 @@ export function Intro() {
       <LinkBtn text="I already have an account." strong="Sign in" color="#fff" onPress={() => { pause(); flow.go("signin"); }} style={{ padding: 10 }} />
     </View>
     <Profile who={meet} onClose={() => { setMeet(null); if (!calm || true) resume(); }} />
-  </View>;
+  </Animated.View></GestureDetector>;
 }

@@ -18,10 +18,12 @@ export type OpeningSaved = {
   plan: string | null;
   /** The story card was closed. */
   storyCardClosed: boolean;
+  /** Signed out on this phone: the opening shows again and its end signs in. */
+  signedOut: boolean;
 };
 
 const KEY = "commune.opening.v1";
-const EMPTY: OpeningSaved = { done: false, seen: [], storyId: null, communeId: null, trialStart: null, plan: null, storyCardClosed: false };
+const EMPTY: OpeningSaved = { done: false, seen: [], storyId: null, communeId: null, trialStart: null, plan: null, storyCardClosed: false, signedOut: false };
 
 export function readOpening(raw: string | null): OpeningSaved {
   if (!raw) return EMPTY;
@@ -35,6 +37,7 @@ export function readOpening(raw: string | null): OpeningSaved {
       trialStart: typeof v.trialStart === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v.trialStart) ? v.trialStart : null,
       plan: typeof v.plan === "string" ? v.plan : null,
       storyCardClosed: !!v.storyCardClosed,
+      signedOut: !!v.signedOut,
     };
   } catch { return EMPTY; }
 }

@@ -29,16 +29,22 @@ const KINDS: Record<Kind, "household" | "trip" | "workspace"> = { "A home": "hou
 export default function Opening() {
   const router = useRouter();
   const { from } = useLocalSearchParams<{ from?: string }>();
-  const { backend, status, refresh, setCurrent } = useApp();
+  const { backend, status, refresh, setCurrent, signIn } = useApp();
   const { setDisplayName } = usePrefs();
   const opening = useOpening();
 
   const onFinish = useCallback(async (d: FlowData) => {
     // A live server signs in with the real sign-in screen.
     if (backend.mode === "server" && status === "signed-out") {
-      opening.save({ done: true });
+      opening.save({ done: true, signedOut: false });
       router.replace("/sign-in");
       return;
+    }
+    // The demo after signing out: a new person gets an empty account of their
+    // own; "I already have an account" opens the sample one.
+    if (backend.mode === "demo" && (status === "signed-out" || opening.signedOut)) {
+      if (d.mode === "new" && !d.returning) backend.startFresh?.(d.name);
+      try { await signIn("", ""); } catch { /* the tabs show sign-in */ }
     }
     if (d.name.trim() && !d.returning) setDisplayName(d.name.trim());
     if (d.mode === "new" && !d.returning) {
@@ -48,12 +54,12 @@ export default function Opening() {
         await refresh();
         setCurrent(communeId);
       } catch { /* Home still opens; the commune can be made from the menu. */ }
-      opening.save({ done: true, storyId: d.story.id, communeId, trialStart: todayIso(), plan: d.plan.n, storyCardClosed: false });
+      opening.save({ done: true, signedOut: false, storyId: d.story.id, communeId, trialStart: todayIso(), plan: d.plan.n, storyCardClosed: false });
     } else {
-      opening.save({ done: true });
+      opening.save({ done: true, signedOut: false });
     }
     router.replace("/(tabs)");
-  }, [backend, status, refresh, setCurrent, setDisplayName, opening, router]);
+  }, [backend, status, refresh, setCurrent, setDisplayName, opening, router, signIn]);
 
   if (!opening.loaded) return null;
   return <OpeningFlow arrived={arrivalFrom(typeof from === "string" ? from : null)} screens={SCREENS} onFinish={onFinish} backendMode={backend.mode} />;

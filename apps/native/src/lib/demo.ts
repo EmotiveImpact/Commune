@@ -154,6 +154,9 @@ export const DEMO_ELM_STICKER = "e1a2000000000000000000000000e1a2";
 export function demoBackend(now: () => string = todayIso): Backend {
   let signedIn = true;
   let data = demoData(now());
+  let fresh = false;
+  // A new person's empty account carries the name they typed.
+  let name: string | null = null;
   // What a completion changed, so Undo can put it back.
   const undone = new Map<string, { snapshot: Snapshot; before: Operation; events: NonNullable<Snapshot["activityEvents"]> }>();
   const find = (shareId: string) => {
@@ -197,11 +200,13 @@ export function demoBackend(now: () => string = todayIso): Backend {
     for (const snapshot of data) snapshot.payLinks = { ...snapshot.payLinks, [MAYA.id]: links };
     return links;
   };
+  const viewer = (): User => (name ? { ...MAYA, name } : MAYA);
   return {
     mode: "demo",
-    async me() { return signedIn ? MAYA : null; },
-    async signIn() { signedIn = true; data = demoData(now()); return MAYA; },
+    async me() { return signedIn ? viewer() : null; },
+    async signIn() { signedIn = true; if (!fresh) name = null; data = fresh ? [] : demoData(now()); fresh = false; return viewer(); },
     async signOut() { signedIn = false; },
+    startFresh(as) { fresh = true; name = as?.trim() || null; },
     async communes() { return data.map((snapshot) => clone(snapshot.commune)); },
     async snapshot(commune) {
       const found = data.find((snapshot) => snapshot.commune.id === commune.id);
@@ -346,7 +351,7 @@ export function demoBackend(now: () => string = todayIso): Backend {
       data.push({
         commune: { id, name: input.name, kind: input.kind, currency: input.currency, role: "admin", memberCount: 1,
           address: input.address ?? undefined, destination: input.destination ?? undefined },
-        members: [{ ...PEOPLE.maya, role: "admin", active: true }],
+        members: [{ ...PEOPLE.maya, name: viewer().name, role: "admin", active: true }],
         expenses: [], funds: [], notifications: [], reminderTargets: [], notes: [], operations: [],
         recurringBills: [], splitTemplates: [], payLinks: {}, activityEvents: [],
       });
