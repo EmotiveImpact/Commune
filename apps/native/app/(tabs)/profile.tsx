@@ -85,7 +85,7 @@ export default function Profile() {
             <T kind="label" muted style={{ textAlign: "center" }}>{user?.email}</T>
             <T kind="label" muted style={{ textAlign: "center" }}>In {word(snapshots.length)} {snapshots.length === 1 ? "commune" : "communes"}</T>
           </View>
-          <View style={{ alignSelf: "stretch", flexDirection: "row", justifyContent: "center" }}>
+          <View style={{ alignSelf: "stretch", alignItems: "center" }}>
             <Button size="sm" variant="secondary" label="Edit profile" icon={<Pencil size={14} color={c.ink} />} onPress={() => router.push("/edit-profile")} />
           </View>
         </Still>
