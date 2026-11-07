@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { CAST, FOCAL, shortFace, type Beat, type ImageKey, type Story } from '@commune/core/stories';
+import { CAST, CLOUDS, FOCAL, shortFace, type Beat, type ImageKey, type Story } from '@commune/core/stories';
 import { storyImage } from './images';
 
 /** How long each slide stays, as in the prototype. */
@@ -76,6 +76,7 @@ export function StoryPlayer({ story, variant, onEnd, children }: {
     onMouseEnter={variant === 'hero' ? () => setHovered(true) : undefined} onMouseLeave={variant === 'hero' ? () => setHovered(false) : undefined}>
     <div className="s-player__photos" aria-hidden="true">
       {photos.map(key => <img key={key} className={key === beat.img ? 'is-on' : ''} src={storyImage(key)} alt="" style={{ objectPosition: focus(key) }} loading={key === beats[0].img ? 'eager' : 'lazy'} decoding="async" />)}
+      {CLOUDS[beat.img] ? <img className="s-player__clouds" src={storyImage(CLOUDS[beat.img]!)} alt="" style={{ objectPosition: focus(beat.img) }} decoding="async" /> : null}
     </div>
     <div className="s-player__bars" aria-hidden="true">
       {beats.map((_, i) => <span key={i}><i key={i === index ? `now-${index}` : i}

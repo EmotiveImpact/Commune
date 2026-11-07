@@ -11,6 +11,9 @@
 .s-player__photos img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .7s ease}
 .s-player__photos img.is-on{opacity:1;animation:s-zoom 6s ease-out both}
 .s-player::after{content:'';position:absolute;inset:0;z-index:-1;pointer-events:none;background:linear-gradient(180deg,rgba(10,20,30,.62) 0%,rgba(10,20,30,.16) 30%,transparent 46%,rgba(10,20,30,.22) 66%,rgba(10,20,30,.74) 100%)}
+/* High clouds over a photo, drifting slowly sideways. */
+.s-player__photos img.s-player__clouds{opacity:1;animation:s-drift 9s ease-in-out infinite alternate}
+@keyframes s-drift{from{translate:-10px 0}to{translate:12px 0}}
 @keyframes s-zoom{from{transform:scale(1.06)}to{transform:scale(1)}}
 .s-player__bars{position:absolute;top:14px;left:14px;right:48px;display:flex;gap:4px;z-index:3}
 .s-player__bars span{flex:1;height:3px;border-radius:3px;background:rgba(255,255,255,.34);overflow:hidden}
@@ -45,7 +48,7 @@
 .s-player__tap:focus-visible{outline:3px solid #83ad83;outline-offset:-4px;border-radius:26px}
 @keyframes s-in{from{opacity:0;transform:translateY(14px);filter:blur(5px)}to{opacity:1;transform:none;filter:blur(0)}}
 @keyframes s-rise{from{opacity:0;transform:translateY(16px) scale(.97)}to{opacity:1;transform:none}}
-@media(prefers-reduced-motion:reduce){.s-player__photos img{transition:none}.s-player__photos img.is-on,.s-player__copy,.s-player__cast>span,.s-player__toast{animation:none}}
+@media(prefers-reduced-motion:reduce){.s-player__photos img{transition:none}.s-player__photos img.is-on,.s-player__photos img.s-player__clouds,.s-player__copy,.s-player__cast>span,.s-player__toast{animation:none}}
 
 /* In the hero: beside the headline on a wide screen, the hero's design unchanged around it. */
 .l-hero__body{position:relative}
