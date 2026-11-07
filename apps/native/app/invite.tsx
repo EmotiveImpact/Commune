@@ -11,7 +11,7 @@ import {
   type JoinCode, type JoinCodeKind, type JoinMode,
 } from "../src/lib/joinCodes";
 import { failure, useApp } from "../src/state";
-import { Avatar, Button, ErrorText, FITTED, Panel, Row, T } from "../src/ui/kit";
+import { Avatar, Button, ErrorText, FITTED, Panel, Row, T, TextLink } from "../src/ui/kit";
 import { haptic, PressScale, useCalm } from "../src/ui/motion";
 import { photoOf } from "../src/ui/chrome";
 import { QrCode as QrImage } from "../src/ui/qr";
@@ -52,6 +52,7 @@ function InviteBody({ close }: { close: () => void }) {
   const [codeError, setCodeError] = useState("");
   const [made, setMade] = useState<Made | null>(null);
   const [sent, setSent] = useState<string[]>([]);
+  const [emailed, setEmailed] = useState<string | null>(null);
   const [step, setStep] = useState<Step>("start");
   const [shown, setShown] = useState<JoinCode | null>(null);
   const name = current?.commune.name ?? "your commune";
@@ -97,6 +98,7 @@ function InviteBody({ close }: { close: () => void }) {
     setBusy(true); setError("");
     try {
       await backend.emailInvitation(token);
+      setEmailed(email.trim());
       haptic.success();
       toast(`Emailed ${email.trim()}, with a link and a QR code.`);
     } catch (cause) {
@@ -106,10 +108,6 @@ function InviteBody({ close }: { close: () => void }) {
   async function shareUrl(url: string, text = message(url)) {
     if (Platform.OS === "web") { await copyText(url); return; }
     try { await Share.share({ message: text }); } catch { /* closed the share sheet */ }
-  }
-  async function share() {
-    const url = await link();
-    if (url) await shareUrl(url);
   }
   async function copy() {
     const url = await link();
@@ -121,9 +119,28 @@ function InviteBody({ close }: { close: () => void }) {
     toast("Link copied.");
   }
 
+  /**
+   * QR codes, the join link and the sticker all need joining by code on. When
+   * an admin has turned it off, tapping any of them offers to turn it back on
+   * with Ask, then approve, instead of doing nothing.
+   */
+  async function codesOn(): Promise<boolean> {
+    if (join.joinMode !== "off") return true;
+    if (!(await confirm({ title: "Turn on QR codes?", message: `Joining by code is off for ${name}. Turn it on so anyone who scans asks to join and an admin approves them?`, yes: "Turn on" }))) return false;
+    setBusy(true); setCodeError("");
+    try {
+      await setJoinMode(communeId, "approve");
+      return true;
+    } catch (cause) {
+      setCodeError(failure(cause, "Couldn’t turn QR codes on. Try again."));
+      return false;
+    } finally { setBusy(false); }
+  }
+
   /** Opens a QR: the working one when there is one, otherwise a new one. */
   async function openCode(kind: JoinCodeKind, fresh = false) {
     if (!communeId || busy) return;
+    if (!(await codesOn())) return;
     setCodeError("");
     // A code shown now is reused only while it has ten minutes or more left.
     const soon = new Date(Date.now() + 10 * 60000);
@@ -146,6 +163,7 @@ function InviteBody({ close }: { close: () => void }) {
    */
   async function joinLink(): Promise<string | null> {
     if (!communeId || busy) return null;
+    if (!(await codesOn())) return null;
     setCodeError("");
     if (sticker) return joinCodeUrl(sticker.token);
     setBusy(true);
@@ -185,6 +203,8 @@ function InviteBody({ close }: { close: () => void }) {
   }
   async function chooseMode(mode: JoinMode) {
     if (mode === join.joinMode || busy) return;
+    // Turning codes off throws away every code, so a stray tap must not do it.
+    if (mode === "off" && !(await confirm({ title: "Turn off QR codes?", message: `Every QR code, join link and sticker for ${name} stops working. Turning them on again makes new ones.`, yes: "Turn off", destructive: true }))) return;
     setBusy(true); setCodeError("");
     try {
       await setJoinMode(communeId, mode);
@@ -248,7 +268,6 @@ function InviteBody({ close }: { close: () => void }) {
 
   const icon = (node: ReactNode) => <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: c.recessed, alignItems: "center", justifyContent: "center" }}>{node}</View>;
   const chevron = <ChevronRight size={18} color={c.ink2} />;
-  const ready = made && made.email === email.trim();
   const codesOff = join.joinMode === "off";
 
   return <Animated.View entering={step === "start" && (made || shown) ? fade : undefined} style={FITTED}>
@@ -265,17 +284,17 @@ function InviteBody({ close }: { close: () => void }) {
       {admin ? <View style={{ gap: 8 }}>
         <T kind="label" style={{ fontWeight: "600", paddingHorizontal: 4 }}>No email needed</T>
         <Panel>
-          <Row first onPress={busy || codesOff ? undefined : () => void openCode("now")} left={icon(<QrCode size={17} color={c.ink} />)} title="Show a QR now"
-            meta={<T kind="label" muted>For someone next to you. Stops working after an hour.</T>} right={codesOff ? undefined : chevron} />
-          <Row onPress={busy || codesOff ? undefined : () => void shareJoin()} left={icon(<Share2 size={17} color={c.ink} />)} title="Share a join link"
-            meta={<T kind="label" muted>{join.joinMode === "instant" ? "Messages, WhatsApp. They join when they tap it." : "Messages, WhatsApp. They ask, you approve."}</T>} right={codesOff ? undefined : chevron} />
-          <Row onPress={busy || codesOff ? undefined : () => void copyJoin()} left={icon(<Link2 size={17} color={c.ink} />)} title="Copy join link"
-            meta={<T kind="label" muted>Paste it anywhere</T>} right={codesOff ? undefined : chevron} />
-          <Row onPress={busy || codesOff ? undefined : () => void openCode("sticker")} left={icon(<StickyNote size={17} color={c.ink} />)} title="Sticker for the fridge"
-            meta={<T kind="label" muted>{sticker ? "Working, with the same code as the join link. Tap to show, share or turn it off." : "A card to print. Works until you turn it off."}</T>} right={codesOff ? undefined : chevron} />
+          <Row first onPress={busy ? undefined : () => void openCode("now")} left={icon(<QrCode size={17} color={c.ink} />)} title="Show a QR now"
+            meta={<T kind="label" muted>For someone next to you. Stops working after an hour.</T>} right={chevron} />
+          <Row onPress={busy ? undefined : () => void shareJoin()} left={icon(<Share2 size={17} color={c.ink} />)} title="Share a join link"
+            meta={<T kind="label" muted>{join.joinMode === "instant" ? "Messages, WhatsApp. They join when they tap it." : "Messages, WhatsApp. They ask, you approve."}</T>} right={chevron} />
+          <Row onPress={busy ? undefined : () => void copyJoin()} left={icon(<Link2 size={17} color={c.ink} />)} title="Copy join link"
+            meta={<T kind="label" muted>Paste it anywhere</T>} right={chevron} />
+          <Row onPress={busy ? undefined : () => void openCode("sticker")} left={icon(<StickyNote size={17} color={c.ink} />)} title="Sticker for the fridge"
+            meta={<T kind="label" muted>{sticker ? "Working, with the same code as the join link. Tap to show, share or turn it off." : "A card to print. Works until you turn it off."}</T>} right={chevron} />
         </Panel>
         {codeError ? <ErrorText>{codeError}</ErrorText>
-          : codesOff ? <T kind="label" muted style={{ paddingHorizontal: 4 }}>QR codes are off for {name}. Turn them on under How a scan joins.</T> : null}
+          : codesOff ? <T kind="label" muted style={{ paddingHorizontal: 4 }}>QR codes are off for {name}. Tap any of these to turn them back on.</T> : null}
       </View> : null}
 
       <View style={{ gap: 8 }}>
@@ -290,14 +309,11 @@ function InviteBody({ close }: { close: () => void }) {
         </View>
         {error ? <ErrorText>{error}</ErrorText>
           : <T kind="label" muted style={{ paddingHorizontal: 4 }}>For one person. It works for 7 days, once they sign in with this email.</T>}
-        <Button block size="lg" label="Email the invitation" busy={busy} icon={<Mail size={17} color={c.onAction} />} onPress={() => void sendEmail()} />
-        <T kind="label" muted style={{ paddingHorizontal: 4 }}>The email has a Join button for their phone and a QR code to scan if they open it on a computer.</T>
-        <Panel>
-          <Row first onPress={busy ? undefined : () => void share()} left={icon(<Share2 size={17} color={c.ink} />)} title="Or share it yourself"
-            meta={<T kind="label" muted>Messages, WhatsApp. Only works for the email above</T>} right={chevron} />
-          <Row onPress={busy ? undefined : () => void copy()} left={icon(<Link2 size={17} color={c.ink} />)} title="Copy their invitation link"
-            meta={<T kind="label" muted>{ready ? made!.url.replace("https://", "") : "Only works for the email above"}</T>} right={chevron} />
-        </Panel>
+        <Button block size="lg" label="Email the invitation" busy={busy} disabled={!valid} icon={<Mail size={17} color={valid ? c.onAction : c.ink2} />} onPress={() => void sendEmail()} />
+        {emailed && emailed === email.trim() ? <View style={{ gap: 2, paddingHorizontal: 4 }}>
+          <T kind="label" style={{ fontWeight: "500" }}>Sent to {emailed}. It has a Join button for their phone and a QR code for a computer.</T>
+          <TextLink label="Copy their link instead" onPress={() => void copy()} />
+        </View> : <T kind="label" muted style={{ paddingHorizontal: 4 }}>The email has a Join button for their phone and a QR code to scan if they open it on a computer.</T>}
       </View>
       {busy ? <T kind="label" muted style={{ textAlign: "center" }}>Working on it…</T> : null}
 
