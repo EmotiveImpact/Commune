@@ -44,7 +44,20 @@ export interface Backend {
   addTask(communeId: string, input: TaskInput): Promise<void>;
   /** Posts an announcement to everyone in the commune. */
   announce(communeId: string, input: { title: string; body: string; needsAcknowledgement: boolean }): Promise<void>;
+  /** Records money you put into a shared pot against your pledge. Returns the contribution, so it can be undone. */
+  contribute(commitmentId: string, amountMinor: number, requestId: string): Promise<string>;
+  /** Takes a contribution back off the record, keeping it with a reason. */
+  voidContribution(contributionId: string, reason: string): Promise<void>;
+  /** Pauses or resumes a repeating bill. Bills already added stay as they are. */
+  setRecurringPaused(billId: string, paused: boolean): Promise<void>;
+  /** Saves changes to a repeating bill from the version you opened. */
+  saveRecurring(communeId: string, input: RecurringInput): Promise<void>;
 }
+
+export type RecurringInput = {
+  id: string; expectedVersion: number; title: string; amountMinor: number; paidByUserId: string;
+  allocations: Array<{ userId: string; amountMinor: number }>; frequency: "weekly" | "monthly"; nextDueOn: string;
+};
 
 export type NoteInput = { title: string; pill: string | null; lede: string | null; body: string | null; facts: Array<[string, string]> };
 export type TaskInput = { title: string; date: string; assigneeId: string | null; rotationIds: string[] | null; repeat: "none" | "weekly" | "monthly"; notes: string | null };
@@ -114,6 +127,12 @@ export function serverBackend(base: string): Backend {
     async announce(communeId, input) {
       await post(`/communes/${communeId}/announcements`, { ...input, requestId: requestId() });
     },
+    async contribute(commitmentId, amountMinor, request) {
+      return (await post<{ id: string }>(`/commitments/${commitmentId}/contributions`, { amountMinor, requestId: request })).id;
+    },
+    async voidContribution(contributionId, reason) { await post(`/contributions/${contributionId}/void`, { reason }); },
+    async setRecurringPaused(billId, paused) { await post(`/recurring/${billId}/pause`, { paused }); },
+    async saveRecurring(communeId, input) { await post(`/communes/${communeId}/recurring`, input); },
     async invite(communeId, email, role = "member") {
       const result = await post<{ url: string }>(`/communes/${communeId}/invites`, { email, role });
       return { url: result.url };

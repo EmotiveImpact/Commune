@@ -60,6 +60,9 @@ function demoData(today: string): Snapshot[] {
   const pick = (people: Person[]) => Object.fromEntries(people.map((p) => [id(p), links[id(p)]]));
 
   const everyone: Person[] = ["maya", "jordan", "alex", "sam"];
+  const equal = (amountMinor: number, people: Person[]) => people.map((p, index) => ({
+    userId: id(p), amountMinor: Math.floor(amountMinor / people.length) + (index < amountMinor % people.length ? 1 : 0),
+  }));
   const parkExpenses = [
     expense("Broadband", "Bills", "alex", 4800, -1, -10, everyone, { jordan: "all", sam: "all" }),
     expense("British Gas", "Bills", "jordan", 16800, 4, -2, everyone, { alex: "all" }),
@@ -83,7 +86,15 @@ function demoData(today: string): Snapshot[] {
       commune: commune("demo-park", "14 Park Street", "household", "GBP", everyone, { address: "Walthamstow, London" }),
       members: members(everyone, "maya"),
       expenses: parkExpenses,
-      funds: [], notifications: [], reminderTargets: nudges(parkExpenses),
+      funds: [{
+        id: "fund-kitty", name: "Holiday kitty", targetMinor: 40000,
+        commitments: everyone.map((p, index) => {
+          const paid = p === "maya" ? [2000, 2000] : [2000, 2000, 2000];
+          return { id: `commit-${p}`, userId: id(p), amountMinor: 10000, dueOn: addDays(today, 40), contributedMinor: paid.reduce((a, b) => a + b, 0),
+            contributions: paid.map((amountMinor, k) => ({ id: `contrib-${p}-${k}`, amountMinor, contributedAt: at(-30 * (k + 1) + index), voidedAt: null })) };
+        }),
+      }],
+      notifications: [], reminderTargets: nudges(parkExpenses),
       notes: [
         { id: "note-bins", title: "Bin days", pill: "Bins", lede: "Black bin Thursday, recycling every other Monday.", facts: [["Black", "Thursday"], ["Recycling", "Every other Monday"]] },
         { id: "note-wifi", title: "Wi-Fi", pill: "Wi-Fi", lede: "ParkStreet-5G. The password is on the router.", facts: [["Network", "ParkStreet-5G"], ["Password", "plantpot-42"]] },
@@ -96,9 +107,9 @@ function demoData(today: string): Snapshot[] {
         op("op-gutters", "Clear the gutters", 5, null, [], "none"),
       ],
       recurringBills: [
-        { id: "rb-netflix", title: "Netflix", amountMinor: 1799, paidByUserId: id("maya"), allocations: [], frequency: "monthly", nextDueOn: addDays(today, 3), paused: false },
-        { id: "rb-council", title: "Council tax", amountMinor: 15600, paidByUserId: id("maya"), allocations: [], frequency: "monthly", nextDueOn: addDays(today, 9), paused: false },
-        { id: "rb-broadband", title: "Broadband", amountMinor: 4800, paidByUserId: id("alex"), allocations: [], frequency: "monthly", nextDueOn: addDays(today, 30), paused: false },
+        { id: "rb-netflix", title: "Netflix", amountMinor: 1799, paidByUserId: id("maya"), allocations: equal(1799, everyone), frequency: "monthly", nextDueOn: addDays(today, 3), paused: false, version: 1 },
+        { id: "rb-council", title: "Council tax", amountMinor: 15600, paidByUserId: id("maya"), allocations: equal(15600, everyone), frequency: "monthly", nextDueOn: addDays(today, 9), paused: false, version: 1 },
+        { id: "rb-broadband", title: "Broadband", amountMinor: 4800, paidByUserId: id("alex"), allocations: equal(4800, everyone), frequency: "monthly", nextDueOn: addDays(today, 30), paused: false, version: 1 },
       ],
       splitTemplates: [
         { id: "tpl-1", name: "Everyone equally", method: "Equal", participants: everyone.map((p) => ({ userId: id(p), value: "1" })), archivedAt: null },
@@ -243,6 +254,43 @@ export function demoBackend(now: () => string = todayIso): Backend {
       const assigneeId = input.assigneeId ?? input.rotationIds?.[0] ?? null;
       snapshot.operations = [...(snapshot.operations ?? []), { id: `op-${newId()}`, kind: "task", title: input.title, date: input.date, allDay: true,
         assigneeId, rotationIds: input.rotationIds, repeat: input.repeat, status: "open", notes: input.notes ?? undefined }];
+    },
+    async contribute(commitmentId, amountMinor) {
+      for (const snapshot of data) for (const fund of snapshot.funds) {
+        const commitment = fund.commitments.find((item) => item.id === commitmentId);
+        if (!commitment) continue;
+        if (commitment.userId !== MAYA.id) throw new ApiError("You can only record your own contributions", 403);
+        if (amountMinor <= 0 || commitment.contributedMinor + amountMinor > commitment.amountMinor) throw new ApiError("That is more than is left on your pledge", 400);
+        const contributionId = `contrib-${newId()}`;
+        commitment.contributions = [{ id: contributionId, amountMinor, contributedAt: new Date().toISOString(), voidedAt: null }, ...(commitment.contributions ?? [])];
+        commitment.contributedMinor += amountMinor;
+        return contributionId;
+      }
+      throw new ApiError("Pledge not found", 404);
+    },
+    async voidContribution(contributionId) {
+      for (const snapshot of data) for (const fund of snapshot.funds) for (const commitment of fund.commitments) {
+        const item = commitment.contributions?.find((candidate) => candidate.id === contributionId);
+        if (!item || item.voidedAt) continue;
+        item.voidedAt = new Date().toISOString();
+        commitment.contributedMinor -= item.amountMinor;
+        return;
+      }
+      throw new ApiError("Contribution not found", 404);
+    },
+    async setRecurringPaused(billId, paused) {
+      const bill = data.flatMap((snapshot) => snapshot.recurringBills ?? []).find((item) => item.id === billId);
+      if (!bill) throw new ApiError("Bill not found", 404);
+      if (bill.paused !== paused) { bill.paused = paused; bill.version = (bill.version ?? 1) + 1; }
+    },
+    async saveRecurring(communeId, input) {
+      const snapshot = data.find((candidate) => candidate.commune.id === communeId);
+      const bill = snapshot?.recurringBills?.find((item) => item.id === input.id);
+      if (!bill) throw new ApiError("Bill not found", 404);
+      if ((bill.version ?? 1) !== input.expectedVersion) throw new ApiError("Someone changed this bill while you were editing. Open it again.", 409);
+      if (input.allocations.reduce((sum, item) => sum + item.amountMinor, 0) !== input.amountMinor) throw new ApiError("The shares must add up to the amount", 400);
+      Object.assign(bill, { title: input.title, amountMinor: input.amountMinor, paidByUserId: input.paidByUserId, allocations: input.allocations,
+        frequency: input.frequency, nextDueOn: input.nextDueOn, version: (bill.version ?? 1) + 1 });
     },
     async announce(communeId, input) {
       const snapshot = data.find((candidate) => candidate.commune.id === communeId);

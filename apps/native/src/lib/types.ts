@@ -59,8 +59,10 @@ export type Expense = {
   shares: Share[];
 };
 
+export type Contribution = { id: string; amountMinor: number; contributedAt: string; voidedAt?: string | null };
 export type Commitment = {
   id: string; userId: string; amountMinor: number; dueOn: string; contributedMinor: number; cancelledAt?: string | null;
+  contributions?: Contribution[];
 };
 export type Fund = {
   id: string; name: string; targetMinor: number | null; commitments: Commitment[]; archivedAt?: string | null;
@@ -69,6 +71,9 @@ export type RecurringBill = {
   id: string; title: string; amountMinor: number; paidByUserId: string;
   allocations: Array<{ userId: string; amountMinor: number }>;
   frequency: "weekly" | "monthly"; nextDueOn: string; paused: boolean;
+  /** The version an edit is based on; a stale one is refused. */
+  version?: number;
+  archivedAt?: string | null;
 };
 export type SplitTemplate = {
   id: string; name: string; method: "Equal" | "Exact" | "Percentage" | "Shares";
