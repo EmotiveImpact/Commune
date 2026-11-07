@@ -16,7 +16,7 @@ import { startScreen } from "./engine";
 import { useActive, useFlow, useClockGroup } from "./flow";
 import { IMAGES, PHOTO_RATIO, type ImageKey } from "./images";
 import { CAST, FOCAL, GROUPS, type Beat, type CastId, type GroupKey } from "./stories";
-import { Av, Chevron, CloseX, Drawer, EASE, EASE_OUT, Glass, Ini, LinkBtn, O, Pill, Rise, Shade, Wordmark, YouAv, FILL, img, type } from "./ui";
+import { Av, CloseX, Drawer, EASE, EASE_OUT, Glass, Ini, LinkBtn, O, Pill, Rise, Shade, Wordmark, YouAv, FILL, img, type } from "./ui";
 
 /* ---------- launch ---------- */
 
@@ -353,12 +353,12 @@ export function Intro() {
       <View style={{ flexDirection: "row", gap: 5 }}>
         {beats.map((_, k) => <Bar key={k} state={k < si ? "done" : k === si ? "now" : "later"} progress={progress} />)}
       </View>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-        {canPick ? <PressScale accessibilityRole="button" accessibilityLabel="Pick a different story" hitSlop={8} onPress={pickAgain}
-          style={{ width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.16)" }}>
-          <Chevron color="#fff" />
-        </PressScale> : null}
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
         <Wordmark size={27} />
+        {canPick ? <PressScale accessibilityRole="button" accessibilityLabel="Pick a different story" hitSlop={8} onPress={pickAgain}
+          style={{ height: 34, paddingHorizontal: 14, borderRadius: 17, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.16)" }}>
+          <Text style={{ color: "#fff", fontSize: 14, fontWeight: "600" }}>Other stories</Text>
+        </PressScale> : null}
       </View>
     </View>
     <View key={`copy-${si}-${flow.story.id}`} style={{ zIndex: 3, paddingTop: 14, paddingHorizontal: 22 }}>
