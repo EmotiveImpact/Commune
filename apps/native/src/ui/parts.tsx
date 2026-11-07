@@ -10,9 +10,10 @@ import type { Snapshot } from "../lib/types";
 import { photoOf } from "./chrome";
 import { Avatar, Button, Cal, Faces, Group, Meta, Row, State, T, Who, tap } from "./kit";
 import { PayPrimary, usePayable } from "./pay";
+import { Rolling, Swap } from "./rolling";
 import { useToast } from "./toast";
 import { useTheme } from "./theme";
-import Animated, { Easing, FadeOut, LinearTransition, useAnimatedProps, useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from "react-native-reanimated";
+import Animated, { Easing, FadeOut, useAnimatedProps, useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from "react-native-reanimated";
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 import { PressScale, springs, useCalm } from "./motion";
@@ -172,9 +173,9 @@ function Tile({ snapshot, info, pulse, onPress, c, placeholder }: {
     <Image source={{ uri: photoOf(snapshot.commune.kind) }} style={{ width: "100%", aspectRatio: 1 / 0.9, borderRadius: 12, backgroundColor: placeholder }} />
     <View>
       <T kind="label" style={{ fontWeight: "600", lineHeight: 17 }} lines={2}>{snapshot.commune.name}</T>
-      <T kind="note" color={c} style={{ marginTop: 1 }}>{info.line}</T>
+      <View style={{ marginTop: 1 }}><Rolling text={info.line} style={{ fontSize: 12, lineHeight: 16, color: c }} /></View>
       {info.state && info.state.tone !== "late" ? <View style={{ marginTop: 3 }}><State text={info.state.text} tone={info.state.tone} /></View> : null}
-      <T kind="note" color={pulse.late ? palette.late : palette.action} style={{ marginTop: 3, fontWeight: "500" }}>{pulse.text}</T>
+      <Swap value={pulse.text}><T kind="note" color={pulse.late ? palette.late : palette.action} style={{ marginTop: 3, fontWeight: "500" }}>{pulse.text}</T></Swap>
     </View>
   </PressScale>;
 }
@@ -207,11 +208,11 @@ export function NextStep({ need, total }: { need: Need | undefined; total: numbe
     <PressScale scaleTo={0.985} accessibilityRole="button" onPress={() => router.push(need.kind === "share" ? `/expense/${need.expenseId}` : "/tasks")} style={{ flexDirection: "row", gap: 14, alignItems: "center" }}>
       {need.kind === "share" && commune ? <Who name={need.payerName} photo={photoOf(commune.kind)} /> : <Cal iso={need.dueOn} today={today} small />}
       <View style={{ flex: 1, minWidth: 0 }}>
-        <T kind="strong" style={{ fontSize: 17, lineHeight: 23 }}>{need.title}</T>
+        <Swap value={need.key}><T kind="strong" style={{ fontSize: 17, lineHeight: 23 }}>{need.title}</T></Swap>
         <T kind="label" muted>{commune?.name} · {need.kind === "task" ? "your turn" : "your share"}</T>
         <View style={{ marginTop: 6 }}><State text={need.status.text} tone={need.status.tone} /></View>
       </View>
-      {need.kind === "share" ? <T kind="amount" style={{ fontSize: 22, lineHeight: 26 }}>{money(need.amountMinor, need.currency)}</T> : null}
+      {need.kind === "share" ? <Rolling text={money(need.amountMinor, need.currency)} style={{ fontSize: 22, lineHeight: 26, fontWeight: "600", letterSpacing: -0.15, fontVariant: ["tabular-nums"], color: c.ink }} /> : null}
     </PressScale>
     <View style={{ gap: 10 }}>
       {need.kind === "share"
@@ -256,7 +257,9 @@ export function TaskCheck({ communeId, operationId, date, title, assigneeId, ass
     fillBox.value = withTiming(1, { duration: calm ? 120 : 200 });
     drawn.value = calm ? 1 : withDelay(50, withTiming(1, { duration: 300, easing: Easing.out(Easing.quad) }));
     if (!calm) shut.value = withDelay(300, withSpring(1, { ...springs.snappy, overshootClamping: true }));
-    void task.complete(key, communeId, operationId, date, title, doneBy ?? (assigneeId ? undefined : "me")).then((ok) => {
+    // Save once the row has closed, so the list reloading does not cut the motion short.
+    const save = () => task.complete(key, communeId, operationId, date, title, doneBy ?? (assigneeId ? undefined : "me"));
+    void (calm ? save() : new Promise<boolean>((resolve) => setTimeout(() => resolve(save()), 620))).then((ok) => {
       if (ok) return;
       setTicked(false);
       shut.value = withSpring(0, springs.snappy);
@@ -265,7 +268,7 @@ export function TaskCheck({ communeId, operationId, date, title, assigneeId, ass
     });
   };
   const on = ticked || task.busy === key;
-  return <Animated.View exiting={calm ? FadeOut.duration(150) : undefined} layout={calm ? undefined : LinearTransition.springify().duration(springs.smooth.duration).dampingRatio(springs.smooth.dampingRatio)}
+  return <Animated.View exiting={calm ? FadeOut.duration(150) : undefined}
     onLayout={(event) => { if (!ticked) rowH.value = event.nativeEvent.layout.height; }}
     style={[{ borderTopWidth: first ? 0 : 1, borderTopColor: c.outline2, backgroundColor: late ? c.lateSoft : "transparent" }, rowStyle]}>
     <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10, paddingLeft: 16, paddingRight: 6 }}>
