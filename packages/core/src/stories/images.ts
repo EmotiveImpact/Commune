@@ -16,6 +16,7 @@ export const IMAGE_KEYS = [
   "av-jeanphil", "av-maya", "av-sam", "av-ama", "av-mei", "av-leo",
   "t-home", "t-trip", "t-work", "t-else",
   "inv-home", "inv-trip", "inv-work",
+  "taxi-f", "villa-f", "work-f", "fest-f", "bday-f", "rent-f", "roast-f", "foot-f", "road-f", "xmas-f", "move-f",
 ] as const;
 
 export type ImageKey = (typeof IMAGE_KEYS)[number];
