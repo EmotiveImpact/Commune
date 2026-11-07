@@ -1,12 +1,13 @@
 import { useEffect, useRef } from "react";
-import { View } from "react-native";
+import { Switch, View } from "react-native";
 import { useRouter } from "expo-router";
 import { memberName } from "../src/lib/derive";
 import { feedTime, firstName, money } from "../src/lib/format";
 import type { Notification } from "../src/lib/types";
 import { useApp } from "../src/state";
 import { Body, Pad } from "../src/ui/chrome";
-import { Avatar, Button, Panel, Row, T } from "../src/ui/kit";
+import { Avatar, Button, Kicker, Panel, Row, T } from "../src/ui/kit";
+import { NOTIFY_KINDS, usePrefs } from "../src/prefs";
 import { useTheme } from "../src/ui/theme";
 
 const WORDS: Record<Notification["kind"], (name: string, amount: string, title: string) => string> = {
@@ -24,6 +25,7 @@ export default function Notifications() {
   const { c } = useTheme();
   const router = useRouter();
   const { snapshots, today, waiting, markAllRead } = useApp();
+  const { notify, setNotify } = usePrefs();
   // Seeing the list counts as reading it.
   const marked = useRef(false);
   useEffect(() => {
@@ -41,7 +43,8 @@ export default function Notifications() {
           left={<Avatar name={debtor.name} size={40} />}
           title={<T kind="bodyL">{firstName(debtor.name)} says they’ve paid you {money(debtor.pending!.amountMinor, entry.currency)} for {entry.title}.</T>}
           meta={<View style={{ gap: 8, marginTop: 4 }}><T kind="label" muted>{snapshots.find((s) => s.commune.id === entry.communeId)?.commune.name}</T>
-            <Button size="sm" label="Review in Settle" onPress={() => router.push("/settle")} /></View>} />)}</Panel> : null}
+            <View style={{ alignSelf: "flex-start" }}><Button size="sm" label={`Confirm ${firstName(debtor.name)}’s ${money(debtor.pending!.amountMinor, entry.currency)}`}
+              onPress={() => router.push(`/confirm/${debtor.pending!.id}`)} /></View></View>} />)}</Panel> : null}
         {items.length ? <Panel>{items.map(({ snapshot, item }, index) => {
           const name = firstName(memberName(snapshot, item.senderUserId));
           const amount = item.amountMinor != null ? money(item.amountMinor, snapshot.commune.currency) : "";
@@ -51,7 +54,13 @@ export default function Notifications() {
             title={<T kind="body" style={{ fontWeight: item.readAt ? "400" : "600" }}>{WORDS[item.kind]?.(name, amount, item.title ?? snapshot.expenses.find((expense) => expense.id === item.expenseId || expense.shares.some((share) => share.id === item.sourceId))?.title ?? "an expense") ?? item.detail ?? "Something changed."}</T>}
             meta={<T kind="label" muted>{snapshot.commune.name} · {feedTime(item.createdAt, today)}</T>} />;
         })}</Panel> : !toConfirm.length ? <Panel pad><T kind="body" muted>Nothing new. You’ll see payments, nudges and changes to your expenses here.</T></Panel> : null}
-        <T kind="note" muted style={{ paddingHorizontal: 4 }}>Phone notifications arrive with the hosted version. Quiet hours will follow your phone’s Focus settings.</T>
+        <View style={{ gap: 10 }}>
+          <Kicker>Send me a notification when</Kicker>
+          <Panel>{NOTIFY_KINDS.map((kind, index) => <Row key={kind.id} first={index === 0} title={kind.label}
+            right={<Switch accessibilityLabel={kind.label} value={notify[kind.id]} onValueChange={(on) => setNotify(kind.id, on)}
+              trackColor={{ true: c.action, false: c.recessed }} ios_backgroundColor={c.recessed} />} />)}</Panel>
+          <T kind="note" muted style={{ paddingHorizontal: 4 }}>These choices are kept on this phone for now. Quiet hours follow your phone’s Focus settings.</T>
+        </View>
       </Pad>
     </Body>
   </View>;
