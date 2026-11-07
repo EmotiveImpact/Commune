@@ -14,7 +14,7 @@
     "allowImportingTsExtensions": true,
     "useDefineForClassFields": true,
     "moduleDetection": "force",
-    "paths": { "@/*": ["./src/*"] }
+    "paths": { "@/*": ["./src/*"], "@commune/core/stories": ["../packages/core/src/stories/index.ts"] }
   },
   "include": ["src"]
 }

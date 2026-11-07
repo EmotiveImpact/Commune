@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "wouter";
 import { AuthLayout } from "./AuthLayout";
+import { visitStory } from "../stories/choose";
 import { useApp } from "../state";
 import { LIMITS } from "../data/limits";
 import { keepSearch } from "../nav";
@@ -8,6 +9,7 @@ import { GoogleMark } from "../ui/Icon";
 import { useFormError } from "../ui/components";
 
 export function LoginPage() {
+  const [story] = useState(() => visitStory());
   const { signInWithPassword, signInWithGoogle, signOutUnconfirmed, retrySignOut, sessionNotice } = useApp();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -50,7 +52,7 @@ export function LoginPage() {
   }
 
   return (
-    <AuthLayout>
+    <AuthLayout story={story}>
       <div className="commune-auth-panel">
         <h2>Welcome back</h2>
         <p className="commune-auth-lede">Sign in to your shared Commune account.</p>

@@ -10,7 +10,8 @@
     "strictFunctionTypes": true,
     "noUnusedLocals": true,
     "paths": {
-      "@commune/core": ["../../packages/core/src/index.ts"]
+      "@commune/core": ["../../packages/core/src/index.ts"],
+      "@commune/core/stories": ["../../packages/core/src/stories/index.ts"]
     }
   },
   "include": ["src"]

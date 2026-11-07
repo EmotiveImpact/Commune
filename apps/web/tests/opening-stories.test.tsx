@@ -1,0 +1,77 @@
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { IMAGE_KEYS, STORIES, storyById } from "@commune/core/stories";
+import { forgetVisitStory, seenStory, visitStory } from "../src/stories/choose";
+import { storyImage } from "../src/stories/images";
+import { AuthStory, FirstBillCard, LoadingLines } from "../src/stories/StoryParts";
+import { PendingShell } from "../src/shell/PendingShell";
+
+afterEach(() => {
+  cleanup();
+  forgetVisitStory();
+  window.history.replaceState(null, "", "/");
+  vi.useRealTimers();
+});
+beforeEach(() => forgetVisitStory());
+
+describe("opening stories in the web app", () => {
+  it("has a URL on this origin for every story photo", () => {
+    for (const key of IMAGE_KEYS) expect(storyImage(key), key).toMatch(/\.webp$|^data:image\/webp/);
+  });
+
+  it("opens on the story a website link named, and remembers it for empty screens", () => {
+    window.history.replaceState(null, "", "/signup?from=link-villa");
+    expect(visitStory().id).toBe("villa");
+    forgetVisitStory();
+    expect(seenStory().id).toBe("villa");
+    expect(JSON.parse(localStorage.getItem("commune.stories.seen") ?? "[]")).toEqual(["villa"]);
+  });
+
+  it("chooses one story per page load, and another on the next visit", () => {
+    const friday = new Date("2026-11-06T23:30:00");
+    const first = visitStory(friday);
+    expect(first.id).toBe("taxi");
+    expect(visitStory(friday)).toBe(first);
+    forgetVisitStory();
+    expect(visitStory(friday).id).not.toBe("taxi");
+  });
+
+  it("shows the story's first photo, line and note beside the sign-in form", () => {
+    const { container } = render(<AuthStory story={storyById("taxi")!} />);
+    expect(screen.getByText("Friday, 11:52pm")).toBeTruthy();
+    expect(screen.getByText("Friday night. Nobody is thinking about money.")).toBeTruthy();
+    expect(screen.getByText("Maya added Taxi home")).toBeTruthy();
+    expect(screen.getByText("£38.00 between five. £7.60 each.")).toBeTruthy();
+    expect(container.querySelector("img")?.getAttribute("alt")).toBe("");
+  });
+
+  it("offers the story's bill on an empty screen", () => {
+    const add = vi.fn();
+    render(<FirstBillCard story={storyById("roast")!} onAdd={add} />);
+    expect(screen.getByText("From the story you saw")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Add your first bill" })).toBeTruthy();
+    expect(screen.getByText("Ama added food shop and Commune split it in seconds. Yours works the same way.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Add a bill" }));
+    expect(add).toHaveBeenCalledOnce();
+  });
+
+  it("loads with the story's lines, ending on its signature", () => {
+    vi.useFakeTimers();
+    const story = storyById("football")!;
+    const { container } = render(<LoadingLines story={story} />);
+    expect(story.lines).toContain(container.textContent);
+    for (let i = 0; i < 3; i++) act(() => { vi.advanceTimersByTime(900); });
+    expect(container.textContent).toBe("Finding the other shin pad");
+  });
+
+  it("keeps the loading page free of actions, with a story line under the placeholders", () => {
+    localStorage.setItem("commune.story", "rent");
+    const { container } = render(<PendingShell />);
+    expect(storyById("rent")!.lines).toContain(container.querySelector(".c-story-loading")?.textContent);
+    expect(container.querySelectorAll("button, a, input").length).toBe(0);
+  });
+
+  it("has twelve stories", () => {
+    expect(STORIES).toHaveLength(12);
+  });
+});

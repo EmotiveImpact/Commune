@@ -95,9 +95,10 @@ export function releaseId(env: Record<string, string | undefined>): string {
   return /^[0-9a-f]{7,40}$/.test(commit) ? commit.slice(0, 12) : "local";
 }
 
-/** packages/core by name, as tsconfig.json's paths and vitest.config.ts name it. */
+/** packages/core by name, as tsconfig.json's paths and vitest.config.ts name it, with the opening stories as an entry of their own. */
 export const sharedCode = [
   { find: /^@commune\/core$/, replacement: fileURLToPath(new URL("../../packages/core/src/index.ts", import.meta.url)) },
+  { find: /^@commune\/core\/stories$/, replacement: fileURLToPath(new URL("../../packages/core/src/stories/index.ts", import.meta.url)) },
 ];
 
 export default defineConfig(({ mode }) => ({

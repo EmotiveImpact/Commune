@@ -1,5 +1,10 @@
 import { useEffect, useState } from 'react';
+import { CAST, billInSentence } from '@commune/core/stories';
 import { BrandWordmark } from './BrandWordmark';
+import { HeroStory } from './stories/HeroStory';
+import { TrySplit } from './stories/TrySplit';
+import { appLink, siteStory, storyPage } from './stories/choose';
+import './stories/stories.css';
 
 const heroScenes = [
   { image: '/company-hero-home.jpg', label: 'Home' },
@@ -58,6 +63,8 @@ export default function EditorialMock() {
   const [yearly, setYearly] = useState(false);
   const [menu, setMenu] = useState(false);
   const [heroScene, setHeroScene] = useState(0);
+  // A story for the time of day, weekday, month and date (see stories/choose.ts).
+  const [story] = useState(() => siteStory());
   const [reducedMotion, setReducedMotion] = useState(() => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   useEffect(() => {
     const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -93,10 +100,19 @@ export default function EditorialMock() {
         <h1 id="hero-title">For people who<br />do life together.</h1>
         <p>Shared costs, everyday jobs and the details everyone needs. Bring it all together, so no one has to hold it all.</p>
         <div className="l-hero__actions"><LinkButton variant="white">Start your free trial</LinkButton><a className="l-text-link" href="#features">See how it works</a></div>
+        <HeroStory story={story} />
       </div>
     </section>
 
     <main>
+      <section className="l-try l-section" id="try-it" aria-labelledby="try-title">
+        <div className="l-container">
+          <div className="l-section-heading"><div><span className="l-eyebrow">Try it. No account needed</span><h2 id="try-title">Split the {billInSentence(story.bill.n)}.</h2></div><p>Your turn. {CAST[story.bill.payer].n} paid.<br />Tap who was there.</p></div>
+          <TrySplit story={story} headingId="try-title" />
+          <div className="s-try__action"><LinkButton href={appLink(story)}>Start your free trial</LinkButton><a className="l-text-link" href={storyPage(story)}>Watch the whole story</a></div>
+        </div>
+      </section>
+
       <section className="l-features l-section" id="features" aria-labelledby="features-title">
         <div className="l-container">
           <div className="l-section-heading"><div><span className="l-eyebrow">Meet your shared headspace</span><h2 id="features-title">All the shared stuff.<br />In <mark>one clear place.</mark></h2></div><p>Less working it out.<br />More getting on with living.</p></div>

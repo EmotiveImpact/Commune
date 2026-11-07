@@ -16,6 +16,8 @@ import { coverSource } from "../data/covers";
 import { animate } from "../ui/motion";
 import { showToast } from "../ui/Toast";
 import "./Home.css";
+import { seenStory } from "../stories/choose";
+import { FirstBillCard } from "../stories/StoryParts";
 
 // Home opens on where you stand, then the one thing to do next, then your
 // communes in order of need, then everything that needs you by when. The
@@ -720,7 +722,7 @@ export function HomeScreen() {
 }
 
 function HomeWithCommunes() {
-  const { places, hubId, you, go, handOverOperation } = useApp();
+  const { places, hubId, you, go, handOverOperation, emptyHub } = useApp();
   const [message, setMessage] = useState("");
   const [taking, setTaking] = useState(false);
   const receipts = useReceiptActions(setMessage);
@@ -810,7 +812,11 @@ function HomeWithCommunes() {
         <SquareBand hub={current} places={places} name={name} today={today} clearing={clearing} />
         {status}
         <div className="c-home-split">
-          <div className="c-home-col">{comingUp}<Activity places={places} /></div>
+          <div className="c-home-col">
+            {/* A commune with no bills yet: the bill from the opening story they saw. */}
+            {emptyHub ? <FirstBillCard story={seenStory()} onAdd={() => go("add-expense")} /> : null}
+            {comingUp}<Activity places={places} />
+          </div>
           <div className="c-home-col">{communeList}</div>
         </div>
       </div>
