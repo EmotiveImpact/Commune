@@ -369,16 +369,20 @@ function WeekPanel({ onAll }: { onAll(): void }) {
   </View>;
 }
 
+/** A day in the week strip, drawn as the same date card used everywhere, with dots for what is on. */
 function WeekDay({ top, big, dots, on, today, late, onPress }: { top: string; big: string; dots: number; on: boolean; today?: boolean; late?: boolean; onPress(): void }) {
   const { c } = useTheme();
-  const ink = on ? c.onFrame : late ? c.late : c.ink;
+  const strip = on ? c.frame : late ? c.late : today ? "#2d6a4f" : c.calStrip;
+  const stripInk = on || late || today ? "#fff" : c.calStripInk;
   return <PressScale accessibilityRole="tab" accessibilityState={{ selected: on }} accessibilityLabel={late ? `Late, ${big}` : `${top} ${big}${dots ? `, ${dots} on` : ""}`} onPress={() => { haptic.select(); onPress(); }}
-    scaleTo={0.94} style={{ flex: 1, minHeight: 64, paddingTop: 7, paddingBottom: 6, borderRadius: 12, alignItems: "center", gap: 2,
-      backgroundColor: on ? c.frame : c.surface, borderWidth: today && !on ? 1.5 : 1, borderColor: on ? c.frame : today ? c.action : c.outline2 }}>
-    <Text style={{ fontSize: 10.5, lineHeight: 14, fontWeight: "600", color: on ? c.onFrame2 : late ? c.late : c.ink2 }}>{top}</Text>
-    <Text style={{ fontSize: 17, lineHeight: 22, fontWeight: "700", letterSpacing: -0.35, color: ink }}>{big}</Text>
+    scaleTo={0.94} style={{ flex: 1, height: 58, borderRadius: 10, alignItems: "center", overflow: "hidden",
+      backgroundColor: on ? c.surface : c.calFace, borderWidth: on ? 1.5 : 1, borderColor: on ? c.frame : c.calEdge }}>
+    <View style={{ alignSelf: "stretch", height: 15, alignItems: "center", justifyContent: "center", backgroundColor: strip }}>
+      <Text maxFontSizeMultiplier={1} style={{ fontSize: 9, fontWeight: "800", letterSpacing: 0.7, color: stripInk }}>{top.toUpperCase()}</Text>
+    </View>
+    <Text maxFontSizeMultiplier={1} style={{ fontSize: 18, lineHeight: 22, fontWeight: "800", letterSpacing: -0.6, color: late ? c.late : c.ink, fontVariant: ["tabular-nums"] }}>{big}</Text>
     <View style={{ flexDirection: "row", gap: 3, height: 5 }}>
-      {Array.from({ length: dots }, (_, i) => <View key={i} style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: on ? c.onFrame2 : late ? c.late : c.ink2 }} />)}
+      {Array.from({ length: dots }, (_, i) => <View key={i} style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: late ? c.late : c.ink2 }} />)}
     </View>
   </PressScale>;
 }
@@ -570,8 +574,9 @@ function ChoresPage() {
     <View style={{ gap: 12 }}>
       <SectionHead title="This week" count={count} right={<TextLink label="All tasks" onPress={() => router.push("/tasks")} />} />
       {!count ? <Panel><Empty icon={<Check size={18} color={c.onSettled} />} title="No chores left this week" /></Panel> : <View style={{ gap: 6 }}>
-        {late.length ? <DayRow left={<View style={{ width: 44, minHeight: 50, borderRadius: 10, backgroundColor: c.lateSoft, alignItems: "center", justifyContent: "center" }}>
-          <Text style={{ fontSize: 10.5, fontWeight: "600", color: c.late }}>Late</Text><Text style={{ fontSize: 17, lineHeight: 22, fontWeight: "700", color: c.late }}>{late.length}</Text></View>}>
+        {late.length ? <DayRow left={<View accessibilityLabel={`Late, ${late.length}`} style={{ width: 46, height: 52, borderRadius: 10, borderWidth: 1, borderColor: c.calEdge, backgroundColor: c.calFace, alignItems: "center", overflow: "hidden" }}>
+          <View style={{ alignSelf: "stretch", height: 15, alignItems: "center", justifyContent: "center", backgroundColor: c.late }}><Text maxFontSizeMultiplier={1} style={{ fontSize: 9, fontWeight: "800", letterSpacing: 0.7, color: "#fff" }}>LATE</Text></View>
+          <Text maxFontSizeMultiplier={1} style={{ fontSize: 18, lineHeight: 22, fontWeight: "800", color: c.late }}>{late.length}</Text></View>}>
           {late.map((item) => <WeekChip key={item.key} item={item} late />)}
         </DayRow> : null}
         {days.map((day) => <DayRow key={day.date} left={<Cal iso={day.date} today={today} small />}>
