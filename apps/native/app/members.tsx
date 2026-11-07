@@ -6,6 +6,7 @@ import { useTheme } from "../src/ui/theme";
 import { Body, Pad } from "../src/ui/chrome";
 import { Avatar, Button, Panel, Row, T } from "../src/ui/kit";
 import { UserPlus } from "lucide-react-native";
+import { JoinRequests } from "../src/ui/joins";
 
 export default function Members() {
   const { current, user } = useApp();
@@ -16,6 +17,7 @@ export default function Members() {
   const people = (current ? activeMembers(current) : []).sort((a, b) => Number(b.userId === focus) - Number(a.userId === focus));
   return <Body>
     <Pad>
+      {current ? <JoinRequests communeId={current.commune.id} /> : null}
       <Panel>{people.map((member, index) => <View key={member.userId} style={member.userId === focus ? { backgroundColor: c.settled } : null}><Row first={index === 0} left={<Avatar name={member.name} size={40} />}
         title={member.userId === user?.id ? "You" : member.name}
         meta={<T kind="label" muted>{member.role === "admin" ? "Admin" : "Member"}{member.email ? ` · ${member.email}` : ""}</T>} /></View>)}</Panel>

@@ -2,6 +2,7 @@ import type { PayLink, PayLinkInput, PayProvider } from "./payLinks";
 import { parsePayLinks } from "./payLinks";
 import type { Commune, CurrencyCode, Snapshot, User } from "./types";
 import { requestId } from "./format";
+import type { JoinCode, JoinCodeKind, JoinCodePreview, JoinMode, JoinResult, JoinState } from "./joinCodes";
 
 /**
  * Everything the phone app asks of Commune. The database stays the authority:
@@ -64,6 +65,18 @@ export interface Backend {
   acceptInvite(token: string): Promise<string>;
   /** Reads the amount, shop and date from a receipt photo, for the person to check. */
   readReceipt(uri: string): Promise<ReceiptReading>;
+  /** The commune's join setting, its working QR codes and who is waiting. Codes and requests are empty for non-admins. */
+  joinState(communeId: string): Promise<JoinState>;
+  /** Admins only: how a scan joins (approve, instant or off). Email invitations are unaffected. */
+  setJoinMode(communeId: string, mode: JoinMode): Promise<JoinState>;
+  /** Admins only: a QR code for now (an hour) or a sticker (until turned off; a new one replaces the old). */
+  createJoinCode(communeId: string, kind: JoinCodeKind, requestId: string): Promise<JoinCode>;
+  revokeJoinCode(codeId: string): Promise<void>;
+  /** What a scanned code shows: name, kind, head count. Null when it no longer works. */
+  previewJoinCode(token: string): Promise<JoinCodePreview | null>;
+  requestToJoin(token: string, requestId: string): Promise<JoinResult>;
+  /** Admins only: approve adds them as an ordinary member. */
+  decideJoinRequest(requestId: string, decision: "approve" | "decline"): Promise<JoinState>;
 }
 
 export type RecurringInput = {
@@ -183,6 +196,17 @@ export function serverBackend(base: string): Backend {
     async acceptInvite(token) {
       return (await post<{ communeId: string }>(`/invites/${encodeURIComponent(token)}/accept`)).communeId;
     },
+    async joinState(communeId) { return await call<JoinState>(`/communes/${communeId}/join`); },
+    async setJoinMode(communeId, mode) { return await post<JoinState>(`/communes/${communeId}/join-mode`, { mode, requestId: requestId() }); },
+    async createJoinCode(communeId, kind, request) {
+      return await post<JoinCode>(`/communes/${communeId}/join-codes`, { kind, requestId: request });
+    },
+    async revokeJoinCode(codeId) { await post(`/join-codes/${codeId}/revoke`); },
+    async previewJoinCode(token) {
+      return (await call<{ preview: JoinCodePreview | null }>(`/join/${encodeURIComponent(token)}`)).preview;
+    },
+    async requestToJoin(token, request) { return await post<JoinResult>(`/join/${encodeURIComponent(token)}`, { requestId: request }); },
+    async decideJoinRequest(id, decision) { return await post<JoinState>(`/join-requests/${id}/${decision}`); },
     async readReceipt() {
       // No server reads receipts yet; the photo stays on the phone and the person fills the details in.
       throw new ApiError("Reading receipts isn’t available yet", 501);

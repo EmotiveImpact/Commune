@@ -15,6 +15,7 @@ import { Still } from "../../src/ui/motion";
 import { useRemind } from "../../src/ui/remind";
 import { Swap } from "../../src/ui/rolling";
 import { FirstDayCard } from "../../src/ui/firstday";
+import { JoinWaitingCard } from "../../src/ui/joins";
 
 /** Home, Direction B: your standing on the dark band, the next step raised over it. */
 export default function Home() {
@@ -61,6 +62,7 @@ export default function Home() {
         </ImageBackground>
         <View style={{ padding: 16, paddingTop: 28, gap: 28 }}>
           <FirstDayCard />
+          <JoinWaitingCard />
           <Still index={0} style={{ gap: 12 }}><SectionHead title="Your communes" /><CommuneTiles /></Still>
           {soon.length ? <Still index={1} style={{ gap: 12 }}>
             <SectionHead title="Coming up" count={soon.length} />
@@ -100,6 +102,7 @@ export default function Home() {
       <Still index={0} style={{ marginTop: -46, marginHorizontal: 16 }}><NextStep need={needs[0]} total={needs.length} /></Still>
       <View style={{ padding: 16, paddingTop: 28, gap: 28 }}>
         <FirstDayCard />
+        <JoinWaitingCard />
         <Still index={1} style={{ gap: 12 }}><SectionHead title="Your communes" /><CommuneTiles /></Still>
         {chores.length ? <Still index={2} style={{ gap: 12 }}>
           <SectionHead title="Today" countText={`${chores.length} ${chores.length === 1 ? "chore" : "chores"}`} />

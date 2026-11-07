@@ -24,8 +24,9 @@ export function TopBar({ title, children, clear }: { title?: string; children?: 
   const insets = useSafeAreaInsets();
   const menu = useMenu();
   const router = useRouter();
-  const { snapshots } = useApp();
-  const unread = snapshots.some((snapshot) => snapshot.notifications.some((item) => !item.readAt));
+  const { snapshots, joinWaiting } = useApp();
+  // Someone waiting to join counts as new until an admin decides.
+  const unread = joinWaiting.length > 0 || snapshots.some((snapshot) => snapshot.notifications.some((item) => !item.readAt));
   const [searching, setSearching] = useState(false);
   return <View style={{ backgroundColor: clear ? "transparent" : c.frame, paddingTop: insets.top }}>
     <View style={{ height: BAR_HEIGHT, flexDirection: "row", alignItems: "center", paddingLeft: 20, paddingRight: 8, gap: 4 }}>

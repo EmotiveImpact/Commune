@@ -12,6 +12,7 @@ import { requestId, todayIso } from "./lib/format";
 import { usePrefs } from "./prefs";
 import { OUTBOX_STORE, enqueue, flush, isNetworkError, parseOutbox, type Queued } from "./lib/outbox";
 import type { PayLink, PayLinkInput, PayProvider } from "./lib/payLinks";
+import { EMPTY_JOIN, type JoinCode, type JoinCodeKind, type JoinMode, type JoinState } from "./lib/joinCodes";
 import type { Commune, Snapshot, User } from "./lib/types";
 
 /**
@@ -79,6 +80,15 @@ type App = {
   /** The share whose payee's app was opened last, until it is asked about. */
   payingAway: { shareId: string; provider: string } | null;
   clearPayingAway(): void;
+  /** Join codes and who is waiting, for each commune you're an admin of. */
+  joins: Record<string, JoinState>;
+  joinOf(communeId: string): JoinState;
+  /** Everyone waiting for an admin, across your communes. */
+  joinWaiting: Array<{ communeId: string; communeName: string; request: JoinState["requests"][number] }>;
+  setJoinMode(communeId: string, mode: JoinMode): Promise<void>;
+  makeJoinCode(communeId: string, kind: JoinCodeKind): Promise<JoinCode>;
+  revokeJoinCode(communeId: string, codeId: string): Promise<void>;
+  decideJoinRequest(communeId: string, requestId: string, decision: "approve" | "decline"): Promise<void>;
 };
 
 const Context = createContext<App | null>(null);
@@ -94,6 +104,7 @@ export function AppProvider({ children, backend: given }: { children: ReactNode;
   const [currentId, setCurrentId] = useState<string | null>(null);
   const [payingAway, setPayingAway] = useState<{ shareId: string; provider: string } | null>(null);
   const [myPayLinks, setMyPayLinks] = useState<PayLink[] | null>(null);
+  const [joins, setJoins] = useState<Record<string, JoinState>>({});
   const [today, setToday] = useState(todayIso());
   const userRef = useRef<User | null>(null);
   const [online, setOnline] = useState(true);
@@ -110,6 +121,10 @@ export function AppProvider({ children, backend: given }: { children: ReactNode;
     setStatus((value) => (value === "ready" ? value : "loading"));
     const list = await backend.communes();
     const loaded = await Promise.all(list.map((commune) => backend.snapshot(commune)));
+    // Join codes matter only to admins; a server without them leaves this empty.
+    const joinList = await Promise.all(list.filter((commune) => commune.role === "admin")
+      .map(async (commune) => [commune.id, await backend.joinState(commune.id).catch(() => EMPTY_JOIN)] as const));
+    setJoins(Object.fromEntries(joinList));
     setCommunes(list);
     setSnapshots(loaded);
     setToday(todayIso());
@@ -176,6 +191,8 @@ export function AppProvider({ children, backend: given }: { children: ReactNode;
     setSnapshots((list) => list.map((item) => (item.commune.id === communeId ? fresh : item)));
   }, [backend, communes]);
 
+  const keepJoin = useCallback((communeId: string, state: JoinState) => setJoins((all) => ({ ...all, [communeId]: state })), []);
+
   // Kept stable so screens can load it from an effect without looping.
   const loadMyPayLinks = useCallback(async () => { setMyPayLinks(await backend.myPayLinks()); }, [backend]);
 
@@ -206,7 +223,7 @@ export function AppProvider({ children, backend: given }: { children: ReactNode;
       },
       async signOut() {
         await backend.signOut();
-        setUser(null); setCommunes([]); setSnapshots([]); setMyPayLinks(null); setCurrentId(null);
+        setUser(null); setCommunes([]); setSnapshots([]); setMyPayLinks(null); setCurrentId(null); setJoins({});
         setStatus("signed-out");
       },
       async reportPayment(communeId, shareId, amountMinor, sentOn, reference, label = "") {
@@ -279,8 +296,27 @@ export function AppProvider({ children, backend: given }: { children: ReactNode;
       },
       payingAway,
       clearPayingAway() { setPayingAway(null); },
+      joins,
+      joinOf: (communeId) => joins[communeId] ?? EMPTY_JOIN,
+      joinWaiting: snapshots.flatMap((item) => (joins[item.commune.id]?.requests ?? [])
+        .map((request) => ({ communeId: item.commune.id, communeName: item.commune.name, request }))),
+      async setJoinMode(communeId, mode) { keepJoin(communeId, await backend.setJoinMode(communeId, mode)); },
+      async makeJoinCode(communeId, kind) {
+        const code = await backend.createJoinCode(communeId, kind, requestId());
+        keepJoin(communeId, await backend.joinState(communeId));
+        return code;
+      },
+      async revokeJoinCode(communeId, codeId) {
+        await backend.revokeJoinCode(codeId);
+        keepJoin(communeId, await backend.joinState(communeId));
+      },
+      async decideJoinRequest(communeId, id, decision) {
+        keepJoin(communeId, await backend.decideJoinRequest(id, decision));
+        // An approved person is now a member.
+        if (decision === "approve") await reload(communeId);
+      },
     };
-  }, [backend, status, error, user, displayName, today, communes, snapshots, currentId, myPayLinks, payingAway, refresh, loadAll, reload, loadMyPayLinks, online, outbox, sending, keepOutbox]);
+  }, [backend, status, error, user, displayName, today, communes, snapshots, currentId, myPayLinks, payingAway, refresh, loadAll, reload, loadMyPayLinks, online, outbox, sending, keepOutbox, joins, keepJoin]);
 
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }

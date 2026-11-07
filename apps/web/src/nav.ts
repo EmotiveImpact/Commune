@@ -140,7 +140,7 @@ export function addressOf(screen: ScreenId, options: {
 
 // Pages outside the signed-in app. None of them names a record in its path.
 const OTHER_PAGES = new Set(["/login", "/signup", "/verify-email", "/forgot-password", "/reset-password",
-  "/invite", "/privacy", "/terms", "/onboard"]);
+  "/invite", "/join", "/privacy", "/terms", "/onboard"]);
 
 /**
  * The page at an address as a pattern that names no record, commune or
@@ -149,6 +149,8 @@ const OTHER_PAGES = new Set(["/login", "/signup", "/verify-email", "/forgot-pass
 export function routePattern(path: string): string {
   const pathname = path.split(/[?#]/)[0];
   if (OTHER_PAGES.has(pathname)) return pathname;
+  // A join code's short link (/j/<code>) carries the code in its path.
+  if (pathname.startsWith("/j/")) return "/j/:code";
   const { screen, window, record } = readAddress(pathname);
   if (!screen) return "/:unknown";
   const base = SCREEN_PATH[screen] === "/" ? "" : SCREEN_PATH[screen];

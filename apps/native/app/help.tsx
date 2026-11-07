@@ -4,6 +4,8 @@ import { Mail } from "lucide-react-native";
 import { Body, Pad } from "../src/ui/chrome";
 import { Button, Panel, T, TextLink } from "../src/ui/kit";
 import { useTheme } from "../src/ui/theme";
+import { DEMO_ELM_STICKER } from "../src/lib/demo";
+import { useApp } from "../src/state";
 
 const SUPPORT = "support@ourcommune.io";
 
@@ -11,6 +13,7 @@ const SUPPORT = "support@ourcommune.io";
 export default function Help() {
   const { c } = useTheme();
   const router = useRouter();
+  const { backend } = useApp();
   return <Body>
     <Pad>
       <Panel pad>
@@ -23,6 +26,7 @@ export default function Help() {
         <Button variant="secondary" label="Email us" icon={<Mail size={15} color={c.ink} />} onPress={() => void Linking.openURL(`mailto:${SUPPORT}?subject=Commune%20for%20iPhone`).catch(() => undefined)} />
       </Panel>
       <TextLink label="Preview joining from an invitation" centred muted onPress={() => router.push("/join/demo")} />
+      {backend.mode === "demo" ? <TextLink label="Preview joining by QR code" centred muted onPress={() => router.push(`/join-code/${DEMO_ELM_STICKER}`)} /> : null}
     </Pad>
   </Body>;
 }

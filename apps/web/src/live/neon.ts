@@ -649,6 +649,16 @@ async function route<T>(path: string, init: RequestInit): Promise<T> {
   } else if (method === "POST" && pathId(path, /^\/invites\/([0-9a-f]{64})\/accept$/)) {
     const communeId = unwrap(await db().rpc("accept_commune_invite", { p_token: pathId(path, /^\/invites\/([0-9a-f]{64})\/accept$/) }));
     response = { communeId };
+  } else if (method === "GET" && pathId(path, /^\/join\/([0-9a-f]{32})$/)) {
+    // Join codes (0044): what the commune shows before joining, then asking.
+    const result = rows(unwrap(await db().rpc("preview_join_code", { p_token: pathId(path, /^\/join\/([0-9a-f]{32})$/) })))[0];
+    response = { preview: result ? { communeName: str(result.commune_name), communeKind: str(result.commune_kind),
+      memberCount: Number(result.member_count), joinMode: str(result.join_mode),
+      alreadyMember: result.already_member === true, waiting: result.waiting === true } : null };
+  } else if (method === "POST" && pathId(path, /^\/join\/([0-9a-f]{32})$/)) {
+    response = unwrap(await db().rpc("request_to_join", {
+      p_token: pathId(path, /^\/join\/([0-9a-f]{32})$/), p_request_id: body.requestId ?? null,
+    }));
   } else if (method === "POST" && pathId(path, /^\/communes\/([^/]+)\/notes$/)) {
     // Notes and tasks change only through commands (migration 0027). An add
     // carries a request id; an edit carries the version it was based on.

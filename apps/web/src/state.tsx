@@ -177,6 +177,17 @@ function locationForKind(input: {
       stayAddress: "",
     };
 }
+/** What a scanned join code shows before joining (0044): no money, no names. */
+export type JoinCodePreview = {
+  communeName: string;
+  communeKind: string;
+  memberCount: number;
+  joinMode: "approve" | "instant" | "off";
+  alreadyMember: boolean;
+  waiting: boolean;
+};
+export type JoinCodeResult = { status: "pending" | "joined" | "already_member" | "declined" | "cancelled"; requestId?: string; communeId?: string | null };
+
 export type InvitePreview = {
   communeName: string;
   role: "admin" | "member";
@@ -441,6 +452,8 @@ export type AppState = {
   /** The address an invitation this account cannot see was sent to, masked, when it is another one. */
   inviteAddressHint: (token: string) => Promise<string | null>;
   acceptInvite: (token: string) => Promise<string>;
+  previewJoinCode: (token: string) => Promise<JoinCodePreview | null>;
+  requestToJoin: (token: string, requestId: string) => Promise<JoinCodeResult>;
   /** requestId stays the same across retries of one open form. */
   createFund: (name: string, targetMinor: number | null, requestId: string) => Promise<string>;
   pledgeFund: (fundId: string, amountMinor: number, dueOn: string, requestId: string) => Promise<string>;
@@ -1734,6 +1747,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return result.communeId;
   }), [mutate, navigate, refresh]);
 
+  const previewJoinCode = useCallback(async (token: string) => {
+    const result = await api<{ preview: JoinCodePreview | null }>(`/join/${encodeURIComponent(token)}`);
+    return result.preview;
+  }, []);
+  // Asking to join with a code: with the commune's "approve" setting this
+  // waits for an admin; with "instant", or when already a member, it opens
+  // the commune.
+  const requestToJoin = useCallback((token: string, requestId: string) => mutate(async () => {
+    const result = await post<JoinCodeResult>(`/join/${encodeURIComponent(token)}`, { requestId });
+    if ((result.status === "joined" || result.status === "already_member") && result.communeId) {
+      await refresh();
+      setHubId(result.communeId);
+      navigate(addressOf("hub", { commune: result.communeId }), { fallback: "replace" });
+    }
+    return result;
+  }), [mutate, navigate, refresh]);
+
   // A repeat of the same requestId returns the record the first attempt made.
   const createFund = useCallback((name: string, targetMinor: number | null, requestId: string) => mutate(async () => {
     if (!activeId) throw new Error("Choose a commune first");
@@ -2053,7 +2083,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     removeOperation, createHub, updateCommune, recordExpense, confirmExpenseShare, correctExpense, voidExpense, recordShareReceipt, reverseShareReceipt,
     reportSharePayment, withdrawPaymentReport, resolvePaymentReport,
     announcements, postAnnouncement, acknowledgeAnnouncement, archiveAnnouncement,
-    markExpensePaid, createInvite, sendInviteEmail, revokeInvite, previewInvite, inviteAddressHint, acceptInvite, createFund,
+    markExpensePaid, createInvite, sendInviteEmail, revokeInvite, previewInvite, inviteAddressHint, acceptInvite, previewJoinCode, requestToJoin, createFund,
     pledgeFund, recordFundContribution, sendReminder, markNotificationRead,
     updateFund, archiveFund, updatePledge, voidContribution, saveRecurringBill, pauseRecurringBill, archiveRecurringBill, recordRecurringBill, recordRecurringPeriod, skipRecurringPeriod, saveSplitTemplate, manageMember,
     pageTitle, pageLede,

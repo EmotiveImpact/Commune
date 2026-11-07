@@ -4,7 +4,7 @@ import { Signpost } from "lucide-react";
 import { LoginPage } from "./auth/Login";
 import { SignupPage, VerifyEmailPage } from "./auth/Signup";
 import { ForgotPasswordPage, ResetPasswordPage } from "./auth/ForgotPassword";
-import { InvitePage, OnboardPage } from "./auth/InviteOnboard";
+import { InvitePage, JoinCodePage, JoinShortLink, OnboardPage } from "./auth/InviteOnboard";
 import { PrivacyPage, TermsPage } from "./legal/LegalPages";
 import { useApp } from "./state";
 import { forgetReturn, keepSearch, readAddress, readReturn, rememberReturn } from "./nav";
@@ -56,6 +56,13 @@ export function App() {
       <Route path="/invite">
         <PageTitle title="Invitation" />
         <InvitePage />
+      </Route>
+      <Route path="/j/:code">
+        {(params) => <JoinShortLink code={params.code} />}
+      </Route>
+      <Route path="/join">
+        <PageTitle title="Join a commune" />
+        <JoinCodePage />
       </Route>
       <Route path="/privacy">
         <PageTitle title="Privacy" />
