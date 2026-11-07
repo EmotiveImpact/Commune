@@ -82,3 +82,12 @@ describe("opening maths", () => {
     }
   });
 });
+
+describe("story slides", () => {
+  it("never shows the same photo twice in one story", () => {
+    for (const s of STORIES) {
+      const imgs = s.beats.map((b) => b.img);
+      expect(new Set(imgs).size, s.id).toBe(imgs.length);
+    }
+  });
+});
