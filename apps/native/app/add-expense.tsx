@@ -9,7 +9,7 @@ import { activeMembers } from "../src/lib/derive";
 import { addDays, equalShares, firstName, money, parseAmount, shortDate, word } from "../src/lib/format";
 import { failure, useApp } from "../src/state";
 import { Button, ErrorText, T, tap, FITTED, Panel } from "../src/ui/kit";
-import { BigAmount, Chips, Field, People, PersonChip } from "../src/ui/form";
+import { BigAmount, Chips, DateChips, Field, People, PersonChip } from "../src/ui/form";
 import { springs, useCalm } from "../src/ui/motion";
 import { Keypad } from "../src/ui/keypad";
 import { Sheet } from "../src/ui/sheet";
@@ -159,9 +159,9 @@ function AddBody({ close }: { close: () => void }) {
           on={payer === member.userId} onPress={() => { tap("select"); setPayer(member.userId); }} />)}
       </People>
       <Chips label="Category" options={CATEGORIES.map((value) => [value, value])} chosen={[category]} onPick={setCategory} />
-      <Chips label="Due" options={[...(receiptDay && receiptDay !== today ? [[receiptDay, `Receipt date, ${shortDate(receiptDay)}`] as [string, string]] : []),
+      <DateChips label="Due" options={[...(receiptDay && receiptDay !== today ? [[receiptDay, `Receipt date, ${shortDate(receiptDay)}`] as [string, string]] : []),
         [today, "Today"], [addDays(today, 7), `In a week, ${shortDate(addDays(today, 7))}`], ["", "No due date"]]}
-        chosen={[due]} onPick={setDue} />
+        chosen={due} onPick={setDue} />
     </View>,
     <View key="split" style={{ gap: 14 }}>
       <People label="Split equally between">

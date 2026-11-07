@@ -5,7 +5,7 @@ import { activeMembers } from "../src/lib/derive";
 import { addDays, firstName, shortDate } from "../src/lib/format";
 import { failure, useApp } from "../src/state";
 import { Button, ErrorText, FITTED, tap } from "../src/ui/kit";
-import { Chips, Field, SheetHead } from "../src/ui/form";
+import { Chips, DateChips, Field, SheetHead } from "../src/ui/form";
 import { Sheet } from "../src/ui/sheet";
 import { useToast } from "../src/ui/toast";
 
@@ -57,7 +57,7 @@ function Body({ close }: { close(): void }) {
       ["turns", "Take turns"], ["anyone", "Anyone"],
       ...people.map((member) => [member.userId, member.userId === user?.id ? "You" : firstName(member.name)] as [string, string]),
     ]} note={who === "turns" ? `${people.length > 1 ? "Everyone takes a turn, starting with you." : "Just you for now."}` : undefined} />
-    <Chips label="First due" chosen={[when]} onPick={setWhen} options={[
+    <DateChips label="First due" chosen={when} onPick={setWhen} min={today} options={[
       [today, "Today"], [addDays(today, 1), "Tomorrow"], [saturday, `Sat ${shortDate(saturday)}`], [addDays(today, 7), `In a week`],
     ]} />
     <Chips label="Repeats" chosen={[repeat]} onPick={(value) => setRepeat(value as typeof repeat)} options={[["weekly", "Every week"], ["monthly", "Every month"], ["none", "Just once"]]} />

@@ -1,9 +1,12 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Pressable, View } from "react-native";
-import { X } from "lucide-react-native";
+import { CalendarDays, ChevronLeft, ChevronRight, X } from "lucide-react-native";
+import Animated, { FadeIn } from "react-native-reanimated";
+import { longDate, shortDate } from "../lib/format";
+import { monthGrid, monthStart, shiftMonth } from "../lib/month";
 import { Text, TextInput } from "./text";
 import { Avatar, T } from "./kit";
-import { PressScale } from "./motion";
+import { PressScale, haptic, useCalm } from "./motion";
 import { radius, useTheme } from "./theme";
 
 /** A sheet's heading with its close button, as in the record and invite sheets. */
@@ -51,6 +54,66 @@ export function Chips<V extends string>({ label, options, chosen, onPick, many, 
       })}
     </View>
     {note ? <T kind="note" muted>{note}</T> : null}
+  </View>;
+}
+
+/**
+ * Date choices: the quick chips, then "Pick a date", which opens a full month
+ * calendar under the chips. A date picked there shows as its own chosen chip.
+ * Pass "" as a value for "No due date" style options.
+ */
+export function DateChips({ label, options, chosen, onPick, min }: {
+  label: string; options: Array<[string, string]>; chosen: string; onPick(value: string): void; min?: string;
+}) {
+  const { c } = useTheme();
+  const calm = useCalm();
+  const [open, setOpen] = useState(false);
+  const preset = options.some(([value]) => value === chosen);
+  const [month, setMonth] = useState(() => monthStart(chosen || min || options.find(([value]) => value)?.[0] || new Date().toISOString().slice(0, 10)));
+  const chip = (key: string, text: string, on: boolean, onPress: () => void, icon?: ReactNode) =>
+    <PressScale key={key} accessibilityRole="radio" accessibilityState={{ selected: on }} onPress={onPress}
+      style={{ height: 36, paddingHorizontal: 14, borderRadius: 18, flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: on ? c.frame : c.surface, borderWidth: 1, borderColor: on ? c.frame : c.outline }}>
+      {icon}<Text style={{ fontSize: 13.5, fontWeight: "500", color: on ? c.onFrame : c.ink }}>{text}</Text>
+    </PressScale>;
+  const pickedText = !preset && chosen ? shortDate(chosen) : "Pick a date";
+  const weeks = monthGrid(month);
+  const monthName = longDate(month).split(" ").slice(2).join(" ");
+  const year = month.slice(0, 4);
+  return <View style={{ gap: 8 }}>
+    <T kind="label" style={{ fontWeight: "600" }}>{label}</T>
+    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+      {options.map(([value, text]) => chip(value || "none", text, chosen === value, () => { onPick(value); setOpen(false); }))}
+      {chip("pick", pickedText, (!preset && !!chosen) || open, () => { haptic.select(); setOpen((now) => !now); },
+        <CalendarDays size={15} color={(!preset && !!chosen) || open ? c.onFrame : c.ink} />)}
+    </View>
+    {open ? <Animated.View entering={calm ? undefined : FadeIn.duration(180)} accessibilityLabel="Calendar"
+      style={{ marginTop: 4, padding: 12, borderRadius: 14, borderWidth: 1, borderColor: c.outline, backgroundColor: c.surface, gap: 6 }}>
+      <View style={{ flexDirection: "row", alignItems: "center" }}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Previous month" hitSlop={8} onPress={() => setMonth(shiftMonth(month, -1))}
+          style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}><ChevronLeft size={20} color={c.ink} /></Pressable>
+        <T kind="strong" accessibilityRole="header" style={{ flex: 1, textAlign: "center" }}>{monthName} {year}</T>
+        <Pressable accessibilityRole="button" accessibilityLabel="Next month" hitSlop={8} onPress={() => setMonth(shiftMonth(month, 1))}
+          style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}><ChevronRight size={20} color={c.ink} /></Pressable>
+      </View>
+      <View style={{ flexDirection: "row" }}>
+        {["M", "T", "W", "T", "F", "S", "S"].map((day, i) => <Text key={i} maxFontSizeMultiplier={1} style={{ flex: 1, textAlign: "center", fontSize: 11.5, fontWeight: "600", color: c.ink2 }}>{day}</Text>)}
+      </View>
+      {weeks.map((week, w) => <View key={w} style={{ flexDirection: "row" }}>
+        {week.map((iso, d) => {
+          if (!iso) return <View key={d} style={{ flex: 1, height: 42 }} />;
+          const on = iso === chosen;
+          const isToday = iso === new Date().toISOString().slice(0, 10);
+          const off = !!min && iso < min;
+          return <Pressable key={d} disabled={off} accessibilityRole="button" accessibilityState={{ selected: on, disabled: off }} accessibilityLabel={longDate(iso)}
+            onPress={() => { haptic.select(); onPick(iso); setOpen(false); }}
+            style={{ flex: 1, height: 42, alignItems: "center", justifyContent: "center" }}>
+            <View style={{ width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center", backgroundColor: on ? c.frame : "transparent", borderWidth: isToday && !on ? 1.5 : 0, borderColor: c.action }}>
+              <Text maxFontSizeMultiplier={1.1} style={{ fontSize: 15, fontWeight: on || isToday ? "600" : "400", color: on ? c.onFrame : off ? c.outline : c.ink, fontVariant: ["tabular-nums"] }}>{Number(iso.slice(8))}</Text>
+            </View>
+          </Pressable>;
+        })}
+      </View>)}
+    </Animated.View> : null}
   </View>;
 }
 
