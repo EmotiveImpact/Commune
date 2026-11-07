@@ -1,3 +1,4 @@
+import { TickRing } from "../../src/ui/settled";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { ImageBackground, Linking, Platform, RefreshControl, StyleSheet, View, useWindowDimensions } from "react-native";
@@ -305,7 +306,7 @@ function YourPart({ onMore }: { onMore(): void }) {
     <View accessibilityRole="header" style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center" }}>
       {owe > 0 ? <><Text style={big}>You owe</Text>{chip(owe)}<Text style={big}>here.</Text></>
         : owed > 0 ? <><Text style={big}>You’re owed</Text>{chip(owed)}<Text style={big}>here.</Text></>
-        : <Text style={big}>You’re all square here.</Text>}
+        : <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}><TickRing size={34} /><Text style={big}>You’re all square here.</Text></View>}
     </View>
     <T kind="label" muted style={{ fontSize: 14, lineHeight: 20 }}>{hubMoneyLine(owe, owed, commune.currency)}</T>
     {first ? <View style={{ backgroundColor: c.surface, borderRadius: 12, padding: 12, gap: 10 }}>

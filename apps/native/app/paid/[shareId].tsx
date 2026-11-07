@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { memberName, outstanding, pendingReport } from "../../src/lib/derive";
+import { paidOutcome, memberName, outstanding, pendingReport } from "../../src/lib/derive";
+import { SheetDone } from "../../src/ui/settled";
 import { firstName, money } from "../../src/lib/format";
 import { failure, useApp } from "../../src/state";
 import { Button, ErrorText, FITTED, T, tap } from "../../src/ui/kit";
 import { Sheet } from "../../src/ui/sheet";
 import { swapSheet } from "../../src/ui/origin";
-import { useToast } from "../../src/ui/toast";
 import { useTheme } from "../../src/ui/theme";
 
 /**
@@ -18,14 +18,15 @@ import { useTheme } from "../../src/ui/theme";
 function PaidBody({ close }: { close: () => void }) {
   const { c } = useTheme();
   const router = useRouter();
-  const toast = useToast();
   const { shareId, provider = "" } = useLocalSearchParams<{ shareId: string; provider?: string }>();
-  const { snapshots, today, reportPayment } = useApp();
+  const { snapshots, today, reportPayment, user } = useApp();
+  const [finished, setFinished] = useState<{ title: string; body: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const found = snapshots.flatMap((snapshot) => snapshot.expenses.flatMap((expense) => expense.shares
     .filter((share) => share.id === shareId).map((share) => ({ snapshot, expense, share }))))[0];
   const left = found ? outstanding(found.share) : 0;
+  if (finished) return <SheetDone title={finished.title} body={finished.body} onDone={close} />;
   if (!found || !left || pendingReport(found.share)) {
     return <View style={[FITTED, { padding: 24, gap: 14, backgroundColor: c.canvas }]}>
       <T kind="title">{found && pendingReport(found.share) ? "Already recorded" : "Nothing left to pay"}</T>
@@ -41,8 +42,7 @@ function PaidBody({ close }: { close: () => void }) {
     try {
       await reportPayment(snapshot.commune.id, shareId, left, today, provider || null);
       tap("success");
-      toast(`Recorded. ${name} will confirm your ${amount}.`);
-      close();
+      setFinished(paidOutcome(snapshot, user?.id ?? "", shareId, expense.paidByUserId, name, left, 0));
     } catch (cause) {
       setError(failure(cause, "Couldn’t record it. Try again."));
     } finally {

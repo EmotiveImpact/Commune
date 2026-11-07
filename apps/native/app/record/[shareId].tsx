@@ -5,7 +5,8 @@ import { Text, TextInput } from "../../src/ui/text";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Clipboard from "expo-clipboard";
 import { Copy, ExternalLink, Landmark, X } from "lucide-react-native";
-import { memberName, outstanding, payLinksOf, pendingReport } from "../../src/lib/derive";
+import { paidOutcome, memberName, outstanding, payLinksOf, pendingReport } from "../../src/lib/derive";
+import { SheetDone } from "../../src/ui/settled";
 import { addDays, firstName, money, parseAmount, shortDate } from "../../src/lib/format";
 import { bankDetailsText, payLinkHref, payLinkLabel, PAY_PROVIDER_NAME } from "../../src/lib/payLinks";
 import { failure, useApp } from "../../src/state";
@@ -14,7 +15,6 @@ import { Sheet } from "../../src/ui/sheet";
 import { BigAmount } from "../../src/ui/form";
 import { Segmented } from "../../src/ui/segmented";
 import { HOW_LABEL, joinReference, roomFor, type How } from "../../src/lib/reference";
-import { useToast } from "../../src/ui/toast";
 import { radius, useTheme } from "../../src/ui/theme";
 
 const HOWS: How[] = ["bank", "cash", "other"];
@@ -26,9 +26,9 @@ const HOWS: How[] = ["bank", "cash", "other"];
  */
 function RecordBody({ close }: { close: () => void }) {
   const { c } = useTheme();
-  const toast = useToast();
   const { shareId } = useLocalSearchParams<{ shareId: string }>();
-  const { snapshots, today, reportPayment } = useApp();
+  const { snapshots, today, reportPayment, user } = useApp();
+  const [finished, setFinished] = useState<{ title: string; body: string } | null>(null);
   const found = snapshots.flatMap((snapshot) => snapshot.expenses.flatMap((expense) => expense.shares
     .filter((share) => share.id === shareId).map((share) => ({ snapshot, expense, share }))))[0];
   const left = found ? outstanding(found.share) : 0;
@@ -41,6 +41,7 @@ function RecordBody({ close }: { close: () => void }) {
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
 
+  if (finished) return <SheetDone title={finished.title} body={finished.body} onDone={close} />;
   if (!found || !left || pendingReport(found.share)) {
     return <View style={[FITTED, { padding: 24, gap: 14, backgroundColor: c.canvas }]}>
       <T kind="title">{found && pendingReport(found.share) ? "Already recorded" : "Nothing left to pay"}</T>
@@ -63,10 +64,9 @@ function RecordBody({ close }: { close: () => void }) {
     try {
       const result = await reportPayment(snapshot.commune.id, shareId, minor, sentOn, saved, name);
       tap("success");
-      toast(result === "queued"
-        ? `Saved on this phone. It sends to ${name} when you’re back online.`
-        : `Recorded. ${name} will confirm your ${money(minor, currency)}.`);
-      close();
+      const queued = result === "queued" ? ` It sends when you’re back online.` : "";
+      const end = paidOutcome(snapshot, user?.id ?? "", shareId, expense.paidByUserId, name, minor, left - minor);
+      setFinished({ ...end, body: end.body + queued });
     } catch (cause) {
       setError(failure(cause, "Couldn’t record it. Try again."));
     } finally {

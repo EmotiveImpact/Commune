@@ -1,3 +1,4 @@
+import { TickRing } from "../../src/ui/settled";
 import { ImageBackground, RefreshControl, StyleSheet, View } from "react-native";
 import { Text } from "../../src/ui/text";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
@@ -54,6 +55,7 @@ export default function Home() {
           </Svg>
           <View style={{ position: "absolute", top: 0, left: 0, right: 0 }}><TopBar clear /></View>
           <View style={{ padding: 20, paddingBottom: 28, gap: 10 }}>
+            <TickRing size={48} delay={350} />
             <Text style={{ color: c.onFrame2, fontSize: 13, lineHeight: 18, fontWeight: "500" }}>{longDate(today)}</Text>
             <Text accessibilityRole="header" style={{ color: c.onFrame, fontSize: 36, lineHeight: 39, fontWeight: "500", letterSpacing: -0.9 }}>You’re all square, {firstName(user?.name ?? "")}.</Text>
             <Text style={{ color: "rgba(245,241,234,0.85)", fontSize: 14.5, lineHeight: 21 }}>Nothing owed and nothing waiting in your {snapshots.length === 1 ? "commune" : `${word(snapshots.length)} communes`}.</Text>

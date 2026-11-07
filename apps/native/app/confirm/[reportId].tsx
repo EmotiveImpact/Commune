@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { ScrollView, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { memberName, pendingReport } from "../../src/lib/derive";
+import { leftFrom, memberName, pendingReport } from "../../src/lib/derive";
+import { SheetDone } from "../../src/ui/settled";
 import { addDays, firstName, money, shortDate } from "../../src/lib/format";
 import { splitReference } from "../../src/lib/reference";
 import { failure, useApp } from "../../src/state";
@@ -22,7 +23,8 @@ function ConfirmBody({ close }: { close: () => void }) {
   const { c } = useTheme();
   const toast = useToast();
   const { reportId } = useLocalSearchParams<{ reportId: string }>();
-  const { snapshots, today, resolveReport } = useApp();
+  const { snapshots, today, resolveReport, user } = useApp();
+  const [finished, setFinished] = useState<{ title: string; body: string } | null>(null);
   const [busy, setBusy] = useState<"" | "confirm" | "decline">("");
   const [error, setError] = useState("");
   const live = snapshots.flatMap((snapshot) => snapshot.expenses.flatMap((expense) => expense.shares
@@ -30,6 +32,7 @@ function ConfirmBody({ close }: { close: () => void }) {
   // Kept from when the sheet opened, so answering doesn't blank it while it closes.
   const [first] = useState(live);
   const found = live ?? first;
+  if (finished) return <SheetDone title={finished.title} body={finished.body} onDone={close} />;
   if (!found) {
     return <View style={[FITTED, { padding: 24, gap: 14, backgroundColor: c.canvas }]}>
       <T kind="title">Already sorted</T>
@@ -51,11 +54,14 @@ function ConfirmBody({ close }: { close: () => void }) {
       if (decision === "confirm") {
         await resolveReport(snapshot.commune.id, report.id, "confirm");
         tap("success");
-        toast(`Confirmed. ${name}’s ${amount} is recorded.`);
-      } else {
-        await resolveReport(snapshot.commune.id, report.id, "decline", "Not received yet");
-        toast(`${name} will see it hasn’t arrived.`);
+        const rest = leftFrom(snapshot, user?.id ?? "", share.userId, share.id) + Math.max(0, share.amountMinor - share.settledMinor - report.amountMinor);
+        setFinished(rest > 0
+          ? { title: "Confirmed.", body: `${name}’s ${amount} is recorded against their share. They still owe you ${money(rest, currency)}.` }
+          : { title: `All square with ${name}.`, body: `${name}’s ${amount} is recorded. Nothing is owed between you in ${snapshot.commune.name}.` });
+        return;
       }
+      await resolveReport(snapshot.commune.id, report.id, "decline", "Not received yet");
+      toast(`${name} will see it hasn’t arrived.`);
       close();
     } catch (cause) {
       setError(failure(cause, decision === "confirm" ? "Couldn’t confirm it. Try again." : "Couldn’t send that. Try again."));

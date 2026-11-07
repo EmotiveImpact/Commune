@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { View } from "react-native";
 import { useRouter } from "expo-router";
 import { hasAny, payLinksOf } from "../../src/lib/derive";
+import { debtWeb } from "../../src/lib/debtWeb";
+import { AllSquare, DebtFold } from "../../src/ui/settled";
 import { firstName, money, moneyList, shortDate, word } from "../../src/lib/format";
 import type { CurrencyCode } from "../../src/lib/types";
 import { failure, useApp } from "../../src/state";
@@ -22,7 +24,8 @@ export default function Settle() {
   const ask = (title: string, message: string, yes: string) => askCard({ title, message, yes });
   const { c } = useTheme();
   const router = useRouter();
-  const { settle, owe, owed, recorded, resolveReport, nudge, snapshots } = useApp();
+  const { settle, owe, owed, recorded, resolveReport, nudge, snapshots, current, user } = useApp();
+  const web = useMemo(() => (current && user ? debtWeb(current, user.id) : null), [current, user]);
   const payable = (communeId: string, userId: string) => payLinksOf(snapshots.find((item) => item.commune.id === communeId), userId).length > 0;
   const toast = useToast();
   const remindFor = useRemind();
@@ -60,6 +63,11 @@ export default function Settle() {
           <T kind="title" accessibilityRole="header">{payTotalCurrencies.length ? `You owe ${moneyList(owe)} to ${word(people)} ${people === 1 ? "person" : "people"}.` : "You owe nobody."}</T>
           <T kind="body" muted>{hasAny(owed) ? `You’re owed ${moneyList(owed)}.` : "Nobody owes you anything."} Each currency is kept separate.</T>
         </Still>
+
+        {web && web.debts.length > 1 ? <Still index={1} style={{ gap: 10 }}>
+          <Kicker>You and the others in {current?.commune.name}</Kicker>
+          <DebtFold web={web} viewerId={user?.id ?? ""} />
+        </Still> : null}
 
         {youOweCurrencies.map((currency, index) => <Still key={`owe-${currency}`} index={1 + index} style={{ gap: 10 }}>
           <Kicker>You owe · {CURRENCY_WORD[currency]}</Kicker>
@@ -121,7 +129,7 @@ export default function Settle() {
         </Still>)}
 
         {!youOweCurrencies.length && !owedCurrencies.length && !recorded.length
-          ? <Panel pad><T kind="body" muted>Everyone is square. Nothing to settle.</T></Panel> : null}
+          ? <Panel pad><AllSquare body="Nothing to settle. Commune records what you pay each other, it never moves your money." /></Panel> : null}
         <T kind="note" muted style={{ paddingHorizontal: 4 }}>Commune records what you pay each other. It never moves money.</T>
       </Pad>
     </Body>
