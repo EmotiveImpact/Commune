@@ -12,6 +12,7 @@ import { Button, Panel, Row, T, Who, tap, FITTED } from "../../src/ui/kit";
 import { PayMark } from "../../src/ui/marks";
 import { Rise } from "../../src/ui/motion";
 import { Sheet } from "../../src/ui/sheet";
+import { swapSheet } from "../../src/ui/origin";
 import { useTheme } from "../../src/ui/theme";
 
 /**
@@ -79,7 +80,7 @@ function PayBody({ close }: { close: () => void }) {
         right={<ExternalLink size={17} color={c.ink2} />} />;
     })}</Panel></Rise> : <T kind="body" muted>{name} hasn’t said how they like to be paid. Pay them however you usually do.</T>}
     {links.length ? <Rise index={3}><T kind="note" muted style={{ textAlign: "center" }}>{movers.charAt(0).toUpperCase() + movers.slice(1)} moves the money. Commune just records it.</T></Rise> : null}
-    <Rise index={4}><Button size="lg" block variant="secondary" label={`I’ve already paid, tell ${name}`} onPress={() => router.replace(`/record/${shareId}`)} /></Rise>
+    <Rise index={4}><Button size="lg" block variant="secondary" label={`I’ve already paid, tell ${name}`} onPress={() => { swapSheet(); router.replace(`/record/${shareId}`); }} /></Rise>
   </ScrollView>;
 }
 

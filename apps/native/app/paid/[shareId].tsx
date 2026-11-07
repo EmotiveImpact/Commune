@@ -6,6 +6,7 @@ import { firstName, money } from "../../src/lib/format";
 import { failure, useApp } from "../../src/state";
 import { Button, ErrorText, FITTED, T, tap } from "../../src/ui/kit";
 import { Sheet } from "../../src/ui/sheet";
+import { swapSheet } from "../../src/ui/origin";
 import { useToast } from "../../src/ui/toast";
 import { useTheme } from "../../src/ui/theme";
 
@@ -58,7 +59,7 @@ function PaidBody({ close }: { close: () => void }) {
     <ErrorText>{error}</ErrorText>
     <View style={{ gap: 10 }}>
       <Button size="lg" block label={`Yes, tell ${name}`} busy={busy} onPress={() => void yes()} />
-      <Button size="lg" block variant="secondary" label="Paid a different amount" disabled={busy} onPress={() => router.replace(`/record/${shareId}`)} />
+      <Button size="lg" block variant="secondary" label="Paid a different amount" disabled={busy} onPress={() => { swapSheet(); router.replace(`/record/${shareId}`); }} />
       <Button size="lg" block variant="quiet" label="Not yet" disabled={busy} onPress={close} />
     </View>
     <T kind="note" muted>Your share stays open until {name} confirms they received it.</T>

@@ -1,3 +1,4 @@
+import type React from "react";
 import { useEffect, useState, type ReactNode } from "react";
 import { Pressable, View, type PressableProps, type StyleProp, type ViewStyle } from "react-native";
 import Animated, {
@@ -42,14 +43,14 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
  * A Pressable that gives under the finger: it settles to 0.97 on the snappy
  * spring and springs back on release. With Reduce Motion it only dims.
  */
-export function PressScale({ style, children, onPressIn, onPressOut, scaleTo = 0.97, pressedStyle, ...rest }: Omit<PressableProps, "style" | "children"> & {
-  style?: StyleProp<ViewStyle>; pressedStyle?: StyleProp<ViewStyle>; children?: ReactNode; scaleTo?: number;
+export function PressScale({ style, children, onPressIn, onPressOut, scaleTo = 0.97, pressedStyle, pressRef, ...rest }: Omit<PressableProps, "style" | "children"> & {
+  style?: StyleProp<ViewStyle>; pressedStyle?: StyleProp<ViewStyle>; children?: ReactNode; scaleTo?: number; pressRef?: React.Ref<View>;
 }) {
   const calm = useCalm();
   const scale = useSharedValue(1);
   const [pressed, setPressed] = useState(false);
   const animated = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
-  return <AnimatedPressable {...rest}
+  return <AnimatedPressable {...rest} ref={pressRef as never}
     onPressIn={(event) => { setPressed(true); if (!calm) scale.value = withSpring(scaleTo, springs.snappy); onPressIn?.(event); }}
     onPressOut={(event) => { setPressed(false); scale.value = withSpring(1, springs.snappy); onPressOut?.(event); }}
     style={[style, pressed ? pressedStyle : null, animated]}>

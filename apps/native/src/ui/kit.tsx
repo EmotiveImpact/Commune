@@ -1,5 +1,7 @@
-import type { ReactNode } from "react";
-import { ActivityIndicator, Image, View, type StyleProp, type TextStyle, type ViewStyle } from "react-native";
+import { useId, useRef, type ReactNode } from "react";
+import { useAnimatedStyle } from "react-native-reanimated";
+import { hiddenButton, lastPress } from "./origin";
+import { ActivityIndicator, Image, View, type GestureResponderEvent, type StyleProp, type TextStyle, type ViewStyle } from "react-native";
 import { Text } from "./text";
 import * as Haptics from "expo-haptics";
 import { calParts, initials } from "../lib/format";
@@ -57,7 +59,24 @@ export function Button({ label, onPress, variant = "primary", size = "md", block
   const height = size === "lg" ? 48 : size === "sm" ? 34 : 42;
   const bg = variant === "primary" ? c.action : variant === "quiet" ? "transparent" : c.surface;
   const fg = variant === "primary" ? c.onAction : variant === "danger" ? c.late : onFrame ? c.onFrame : c.ink;
-  return <PressScale
+  // Remember where this button is when pressed, so a sheet it opens can grow out of it.
+  const id = useId();
+  const ref = useRef<View>(null);
+  const hide = useAnimatedStyle(() => ({ opacity: hiddenButton.value === id ? 0 : disabled ? 0.45 : 1 }));
+  const box = useRef({ w: 0, h: 0 });
+  const mark = (event: GestureResponderEvent) => {
+    const save = (x: number, y: number, w: number, h: number) => {
+      if (!w || !h) return;
+      lastPress.rect = { x, y, w, h }; lastPress.color = variant === "primary" ? c.action : c.surface; lastPress.radius = h / 2; lastPress.at = Date.now(); lastPress.id = id;
+    };
+    const node = ref.current as unknown as { getBoundingClientRect?: () => DOMRect } | null;
+    // The web hands back the element itself; read its box straight away.
+    if (node?.getBoundingClientRect) { const r = node.getBoundingClientRect(); save(r.left, r.top, r.width, r.height); return; }
+    // On the phone the touch says where the finger is on screen and within the button, so the button's corner follows.
+    const { pageX, pageY, locationX, locationY } = event.nativeEvent;
+    save(pageX - locationX, pageY - locationY, box.current.w, box.current.h);
+  };
+  return <PressScale pressRef={ref} onPressIn={mark} onLayout={(e) => { box.current = { w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height }; }}
     accessibilityRole="button" accessibilityLabel={accessibilityLabel ?? label} accessibilityState={{ disabled: !!(disabled || busy), busy: !!busy }}
     disabled={disabled || busy}
     onPress={() => { tap(); onPress?.(); }}
@@ -65,8 +84,7 @@ export function Button({ label, onPress, variant = "primary", size = "md", block
     style={[{
       height, paddingHorizontal: size === "sm" ? 14 : size === "lg" ? 22 : 18, borderRadius: radius.pill, backgroundColor: bg,
       flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, alignSelf: block ? "stretch" : "flex-start",
-      opacity: disabled ? 0.45 : 1,
-    }, variant === "secondary" || variant === "danger" ? { borderWidth: 1, borderColor: variant === "danger" ? c.late : c.outline } : null]}>
+    }, hide, variant === "secondary" || variant === "danger" ? { borderWidth: 1, borderColor: variant === "danger" ? c.late : c.outline } : null]}>
     {busy ? <ActivityIndicator color={fg} /> : <>{icon}<Text style={{ color: fg, fontSize: size === "lg" ? 15.5 : size === "sm" ? 13 : 14, fontWeight: "500" }}>{label}</Text>{trailing}</>}
   </PressScale>;
 }
