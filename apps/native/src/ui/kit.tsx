@@ -180,12 +180,12 @@ export function Who({ name, photo, size = 40 }: { name: string; photo: string; s
   </View>;
 }
 
-export function SectionHead({ title, count, right }: { title: string; count?: number; right?: ReactNode }) {
+export function SectionHead({ title, count, countText, right }: { title: string; count?: number; countText?: string; right?: ReactNode }) {
   const { c } = useTheme();
   return <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 4 }}>
     <T kind="section" accessibilityRole="header">{title}</T>
-    {count != null ? <View style={{ minWidth: 22, height: 22, paddingHorizontal: 7, borderRadius: 11, backgroundColor: c.recessed, alignItems: "center", justifyContent: "center" }}>
-      <Text style={{ fontSize: 12, fontWeight: "600", color: c.ink2 }}>{count}</Text></View> : null}
+    {count != null || countText ? <View style={{ minWidth: 22, height: 22, paddingHorizontal: 8, borderRadius: 11, backgroundColor: c.recessed, alignItems: "center", justifyContent: "center" }}>
+      <Text style={{ fontSize: 12, fontWeight: "600", color: c.ink2 }}>{countText ?? count}</Text></View> : null}
     <View style={{ flex: 1 }} />
     {right}
   </View>;

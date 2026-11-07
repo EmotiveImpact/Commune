@@ -7,7 +7,8 @@ import { cap, feedTime, firstName, joinAnd, longDate, money, moneyList, plural, 
 import type { CurrencyCode } from "../../src/lib/types";
 import { useApp } from "../../src/state";
 import { Body, TopBar, photoOf } from "../../src/ui/chrome";
-import { Avatar, Cal, Panel, Row, SectionHead, T } from "../../src/ui/kit";
+import { Avatar, Cal, Faces, Panel, Row, SectionHead, T } from "../../src/ui/kit";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CommuneTiles, NeedsList, NextStep, TaskCheck, WaitingRow } from "../../src/ui/parts";
 import { useTheme } from "../../src/ui/theme";
 import { Still } from "../../src/ui/motion";
@@ -16,6 +17,7 @@ import { Still } from "../../src/ui/motion";
 export default function Home() {
   const { c } = useTheme();
   const app = useApp();
+  const insets = useSafeAreaInsets();
   const { user, today, needs, waiting, owe, owed, snapshots, refresh } = app;
   const [pulling, setPulling] = useState(false);
   const pull = <RefreshControl refreshing={pulling} tintColor={c.onFrame} onRefresh={async () => { setPulling(true); await refresh(); setPulling(false); }} />;
@@ -28,30 +30,32 @@ export default function Home() {
   if (!needs.length && !hasAny(owed)) {
     const photo = snapshots[0] ? photoOf(snapshots[0].commune.kind) : undefined;
     const soon = comingUp(snapshots, user?.id ?? "", today);
+    const people = [...new Set(snapshots.flatMap((snapshot) => snapshot.members.filter((member) => member.active !== false).map((member) => member.name)))];
     return <View style={{ flex: 1, backgroundColor: c.canvas }}>
-      <TopBar />
       <Body refreshControl={pull} ground={c.frame}>
-        <ImageBackground source={photo ? { uri: photo } : undefined} style={{ minHeight: 340, justifyContent: "flex-end", backgroundColor: c.frame }}>
-          {/* A soft fade, clear at the top and dark under the words, instead of a hard band. */}
+        {/* v7's all-square Home: the photo runs under a clear top bar and the status bar. */}
+        <ImageBackground source={photo ? { uri: photo } : undefined} style={{ minHeight: 470 + insets.top, justifyContent: "flex-end", backgroundColor: c.frame }}>
           <Svg style={StyleSheet.absoluteFill} width="100%" height="100%" preserveAspectRatio="none" pointerEvents="none">
             <Defs>
               <LinearGradient id="allSquareScrim" x1="0" y1="0" x2="0" y2="1">
-                <Stop offset="0" stopColor="#0e1018" stopOpacity={0.2} />
-                <Stop offset="0.22" stopColor="#0e1018" stopOpacity={0.05} />
-                <Stop offset="0.48" stopColor="#0e1018" stopOpacity={0.45} />
-                <Stop offset="0.75" stopColor="#0e1018" stopOpacity={0.78} />
+                <Stop offset="0" stopColor="#0e1018" stopOpacity={0.5} />
+                <Stop offset="0.2" stopColor="#0e1018" stopOpacity={0.08} />
+                <Stop offset="0.45" stopColor="#0e1018" stopOpacity={0.2} />
+                <Stop offset="0.72" stopColor="#0e1018" stopOpacity={0.7} />
                 <Stop offset="1" stopColor="#0e1018" stopOpacity={0.92} />
               </LinearGradient>
             </Defs>
             <Rect x="0" y="0" width="100%" height="100%" fill="url(#allSquareScrim)" />
           </Svg>
-          <View style={{ padding: 20, paddingBottom: 26, gap: 10 }}>
-            <Text style={{ color: "rgba(245,241,234,0.85)", fontSize: 13, fontWeight: "500" }}>{longDate(today)}</Text>
-            <Text accessibilityRole="header" style={{ color: c.onFrame, fontSize: 34, lineHeight: 38, fontWeight: "500", letterSpacing: -0.8 }}>You’re all square, {firstName(user?.name ?? "")}.</Text>
+          <View style={{ position: "absolute", top: 0, left: 0, right: 0 }}><TopBar clear /></View>
+          <View style={{ padding: 20, paddingBottom: 28, gap: 10 }}>
+            <Text style={{ color: c.onFrame2, fontSize: 13, lineHeight: 18, fontWeight: "500" }}>{longDate(today)}</Text>
+            <Text accessibilityRole="header" style={{ color: c.onFrame, fontSize: 36, lineHeight: 39, fontWeight: "500", letterSpacing: -0.9 }}>You’re all square, {firstName(user?.name ?? "")}.</Text>
             <Text style={{ color: "rgba(245,241,234,0.85)", fontSize: 14.5, lineHeight: 21 }}>Nothing owed and nothing waiting in your {snapshots.length === 1 ? "commune" : `${word(snapshots.length)} communes`}.</Text>
+            {people.length ? <View style={{ marginTop: 6 }}><Faces names={people} size={28} ring="rgba(255,255,255,0.9)" /></View> : null}
           </View>
         </ImageBackground>
-        <View style={{ padding: 16, gap: 24 }}>
+        <View style={{ padding: 16, paddingTop: 28, gap: 28 }}>
           <Still index={0} style={{ gap: 12 }}><SectionHead title="Your communes" /><CommuneTiles /></Still>
           {soon.length ? <Still index={1} style={{ gap: 12 }}>
             <SectionHead title="Coming up" count={soon.length} />
@@ -83,15 +87,15 @@ export default function Home() {
     <TopBar />
     <Body refreshControl={pull} ground={c.frame}>
       <View style={{ backgroundColor: c.frame, paddingHorizontal: 20, paddingTop: 14, paddingBottom: 66, gap: 10 }}>
-        <Text style={{ color: "rgba(245,241,234,0.85)", fontSize: 13, fontWeight: "500" }}>{longDate(today)}</Text>
-        <Text accessibilityRole="header" style={{ color: c.onFrame2, fontSize: 31, lineHeight: 35, fontWeight: "500", letterSpacing: -0.7 }}>{head}</Text>
-        <Text style={{ color: c.onFrame2, fontSize: 14.5, lineHeight: 21 }}>{sub}</Text>
+        <Text style={{ color: c.onFrame2, fontSize: 13, lineHeight: 18, fontWeight: "500" }}>{longDate(today)}</Text>
+        <Text accessibilityRole="header" style={{ color: c.onFrame, fontSize: 31, lineHeight: 35, fontWeight: "500", letterSpacing: -0.7 }}>{head}</Text>
+        <Text style={{ color: c.onFrame2, fontSize: 14.5, lineHeight: 21 }}>{boldStanding(sub, c.onFrame)}</Text>
       </View>
       <Still index={0} style={{ marginTop: -46, marginHorizontal: 16 }}><NextStep need={needs[0]} total={needs.length} /></Still>
-      <View style={{ padding: 16, paddingTop: 24, gap: 24 }}>
+      <View style={{ padding: 16, paddingTop: 28, gap: 28 }}>
         <Still index={1} style={{ gap: 12 }}><SectionHead title="Your communes" /><CommuneTiles /></Still>
         {chores.length ? <Still index={2} style={{ gap: 12 }}>
-          <SectionHead title="Today" count={chores.length} />
+          <SectionHead title="Today" countText={`${chores.length} ${chores.length === 1 ? "chore" : "chores"}`} />
           <Panel>{chores.map((need, index) => {
             const snapshot = app.snapshotOf(need.communeId);
             return <TaskCheck key={need.key} first={index === 0} communeId={need.communeId} operationId={need.operationId} date={need.date}
@@ -100,7 +104,7 @@ export default function Home() {
           })}</Panel>
         </Still> : null}
         {toPay.length ? <Still index={3} style={{ gap: 12 }}>
-          <SectionHead title="Still to pay" count={toPay.length} right={toPayTotal ? <T kind="label" muted>{toPayTotal}</T> : undefined} />
+          <SectionHead title="Still to pay" countText={toPayTotal ? `${toPay.length} · ${toPayTotal}` : String(toPay.length)} />
           <Panel><NeedsList items={toPay} initial={4} /></Panel>
         </Still> : null}
         {waiting.length ? <Still index={4} style={{ gap: 12 }}>
@@ -111,6 +115,12 @@ export default function Home() {
       </View>
     </Body>
   </View>;
+}
+
+/** v7 lifts "£92.45 ahead" (or behind) out of the grey subline in full cream. */
+function boldStanding(text: string, color: string) {
+  const parts = text.split(/((?:[£€$][\d,]+\.\d\d)(?: ahead| behind))/);
+  return parts.map((part, index) => index % 2 ? <Text key={index} style={{ color, fontWeight: "500" }}>{part}</Text> : part);
 }
 
 function Em({ children }: { children: React.ReactNode }) {

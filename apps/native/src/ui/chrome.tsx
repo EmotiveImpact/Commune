@@ -17,7 +17,7 @@ import { KIND_NAME, KIND_PHOTO, radius, useTheme } from "./theme";
  * the notifications bell (a dot means something new) and the burger that
  * opens the menu. The title names the screen for screen readers.
  */
-export function TopBar({ title, children }: { title?: string; children?: ReactNode }) {
+export function TopBar({ title, children, clear }: { title?: string; children?: ReactNode; clear?: boolean }) {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
   const menu = useMenu();
@@ -25,7 +25,7 @@ export function TopBar({ title, children }: { title?: string; children?: ReactNo
   const { snapshots } = useApp();
   const unread = snapshots.some((snapshot) => snapshot.notifications.some((item) => !item.readAt));
   const [searching, setSearching] = useState(false);
-  return <View style={{ backgroundColor: c.frame, paddingTop: insets.top }}>
+  return <View style={{ backgroundColor: clear ? "transparent" : c.frame, paddingTop: insets.top }}>
     <View style={{ height: BAR_HEIGHT, flexDirection: "row", alignItems: "center", paddingLeft: 20, paddingRight: 8, gap: 4 }}>
       <Text accessibilityRole="header" accessibilityLabel={title ? `Commune, ${title}` : "Commune, Home"} style={{ color: c.onFrame, fontSize: 25, fontWeight: "700", letterSpacing: -1.4 }}>commune.</Text>
       <View style={{ flex: 1 }} />

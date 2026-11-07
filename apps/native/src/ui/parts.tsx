@@ -146,35 +146,62 @@ export function WaitingRow({ entry, first }: { entry: Waiting; first?: boolean }
 export function CommuneTiles() {
   const { c } = useTheme();
   const router = useRouter();
-  const { snapshots, needs, waiting, recorded, setCurrent, user, today } = useApp();
+  const { snapshots, needs, waiting, recorded, setCurrent, user, today, current } = useApp();
   const rows: Snapshot[][] = [];
   snapshots.forEach((snapshot, index) => { if (index % 3 === 0) rows.push([]); rows[rows.length - 1].push(snapshot); });
   return <View style={{ gap: 16 }}>
     {rows.map((row, index) => <View key={index} style={{ flexDirection: "row", gap: 10 }}>
       {row.map((snapshot) => <Tile key={snapshot.commune.id} snapshot={snapshot}
         info={standing(snapshot, needs, waiting, recorded)} pulse={tilePulse(snapshot, user?.id ?? "", today)}
-        onPress={() => { setCurrent(snapshot.commune.id); router.push("/hub"); }} c={c.ink2} placeholder={c.recessed} />)}
+        onPress={() => { setCurrent(snapshot.commune.id); router.push("/hub"); }} c={c.ink2} placeholder={c.recessed}
+        isCurrent={snapshots.length > 1 && current?.commune.id === snapshot.commune.id} />)}
       {Array.from({ length: 3 - row.length }, (_, spare) => <View key={`spare-${spare}`} style={{ flex: 1 }} />)}
     </View>)}
   </View>;
 }
-function Tile({ snapshot, info, pulse, onPress, c, placeholder }: {
-  snapshot: Snapshot; info: ReturnType<typeof standing>; pulse: ReturnType<typeof tilePulse>; onPress: () => void; c: string; placeholder: string;
+function Tile({ snapshot, info, pulse, onPress, c, placeholder, isCurrent }: {
+  snapshot: Snapshot; info: ReturnType<typeof standing>; pulse: ReturnType<typeof tilePulse>; onPress: () => void; c: string; placeholder: string; isCurrent?: boolean;
 }) {
-  const { c: palette } = useTheme();
   return <Pressable accessibilityRole="button" accessibilityLabel={`${snapshot.commune.name}. ${info.line}. ${pulse.text}.`} onPress={onPress}
     style={({ pressed }) => ({ flex: 1, minWidth: 0, gap: 8, opacity: pressed ? 0.85 : 1 })}>
-    <Image source={{ uri: photoOf(snapshot.commune.kind) }} style={{ width: "100%", aspectRatio: 1 / 0.9, borderRadius: 12, backgroundColor: placeholder }} />
     <View>
+      <Image source={{ uri: photoOf(snapshot.commune.kind) }} style={{ width: "100%", aspectRatio: 1 / 0.9, borderRadius: 12, backgroundColor: placeholder }} />
+      {/* v7's "Current" tag: a small dark glass label on the photo. */}
+      {isCurrent ? <View style={{ position: "absolute", left: 6, top: 6, height: 18, paddingHorizontal: 7, borderRadius: 9, backgroundColor: "rgba(14,16,24,0.55)", borderWidth: 1, borderColor: "rgba(255,255,255,0.18)", justifyContent: "center" }}>
+        <T kind="note" color="#fff" style={{ fontSize: 10.5, lineHeight: 14, fontWeight: "600" }}>Current</T>
+      </View> : null}
+    </View>
+    <View style={{ gap: 3 }}>
       <T kind="label" style={{ fontWeight: "600", lineHeight: 17 }} lines={2}>{snapshot.commune.name}</T>
-      <T kind="note" color={c} style={{ marginTop: 1 }}>{info.line}</T>
-      {info.state && info.state.tone !== "late" ? <View style={{ marginTop: 3 }}><State text={info.state.text} tone={info.state.tone} /></View> : null}
-      <T kind="note" color={pulse.late ? palette.late : palette.action} style={{ marginTop: 3, fontWeight: "500" }}>{pulse.text}</T>
+      <T kind="note" color={c} style={{ fontSize: 12, lineHeight: 16 }}>{info.line}</T>
+      <State text={pulse.text} tone={pulse.late ? "late" : "plain"} />
     </View>
   </Pressable>;
 }
 
 /** The first thing to do, raised over the dark band on Home. */
+/** With nothing to do, the calm next step offers to nudge whoever still owes you (v7). */
+function CalmNudge() {
+  const { waiting, nudge } = useApp();
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  const targets = waiting.flatMap((entry) => entry.debtors.filter((debtor) => debtor.canNudge && !debtor.nudgedToday && !debtor.pending).map((debtor) => ({ communeId: entry.communeId, debtor })));
+  const names = [...new Set(targets.map((item) => firstName(item.debtor.name)))];
+  if (!names.length) return null;
+  async function send() {
+    setBusy(true);
+    try {
+      for (const item of targets) await nudge(item.communeId, item.debtor.shareId);
+      toast(`Nudged ${joinAnd(names)}.`);
+    } catch (cause) {
+      toast(failure(cause, "Couldn’t send the nudge."));
+    } finally {
+      setBusy(false);
+    }
+  }
+  return <Button size="lg" block variant="secondary" label={`Nudge ${joinAnd(names)}`} busy={busy} onPress={() => void send()} />;
+}
+
 export function NextStep({ need, total }: { need: Need | undefined; total: number }) {
   const { c } = useTheme();
   const router = useRouter();
@@ -191,6 +218,7 @@ export function NextStep({ need, total }: { need: Need | undefined; total: numbe
           <T kind="label" muted>{late ? `${late.title} is ${late.status.text}. ${joinAnd(late.debtors.map((debtor) => firstName(debtor.name)))} can see it.` : "Everyone is up to date."}</T>
         </View>
       </View>
+      <CalmNudge />
     </View>;
   }
   const commune = snapshotOf(need.communeId)?.commune;
