@@ -1,3 +1,4 @@
+import { usePrefs } from "../prefs";
 import { Platform, useColorScheme } from "react-native";
 
 /** The design language tokens (docs/DESIGN-LANGUAGE.md, design-language/system/cm.css). */
@@ -21,6 +22,8 @@ const light = {
   lateSoft: "#fbe7e2",
   attention: "#8a4b1f",
   attentionSoft: "#f7e8d6",
+  favourite: "#e9a83a",
+  favouriteEdge: "#b7791f",
   press: "rgba(26,30,43,0.08)",
   calFace: "#fffdf9",
   calEdge: "#e8e2d8",
@@ -52,6 +55,8 @@ const dark: Palette = {
   lateSoft: "#3a2222",
   attention: "#ebb886",
   attentionSoft: "#392b1e",
+  favourite: "#e9a83a",
+  favouriteEdge: "#d39a3a",
   press: "rgba(242,237,228,0.09)",
   calFace: "#202a37",
   calEdge: "#3d4a45",
@@ -65,7 +70,10 @@ const dark: Palette = {
 
 export function useTheme(): { c: Palette; dark: boolean } {
   const scheme = useColorScheme();
-  return scheme === "dark" ? { c: dark, dark: true } : { c: light, dark: false };
+  // Settings > Appearance: Light or Dark wins over the phone; Match phone follows it.
+  const { appearance } = usePrefs();
+  const isDark = appearance === "match" ? scheme === "dark" : appearance === "dark";
+  return isDark ? { c: dark, dark: true } : { c: light, dark: false };
 }
 
 export const radius = { inner: 4, control: 9, surface: 15, pill: 999 };

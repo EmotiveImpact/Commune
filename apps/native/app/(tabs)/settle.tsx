@@ -1,26 +1,23 @@
 import { useState } from "react";
-import { Alert, Platform, View } from "react-native";
+import { View } from "react-native";
 import { useRouter } from "expo-router";
 import { hasAny, payLinksOf } from "../../src/lib/derive";
 import { firstName, money, moneyList, shortDate, word } from "../../src/lib/format";
 import type { CurrencyCode } from "../../src/lib/types";
 import { failure, useApp } from "../../src/state";
 import { Body, Pad, TopBar } from "../../src/ui/chrome";
-import { Avatar, Button, Kicker, Panel, Row, State, T, tap } from "../../src/ui/kit";
+import { Avatar, Button, Kicker, Panel, Row, State, T } from "../../src/ui/kit";
+import { useConfirm } from "../../src/ui/confirm";
 import { useToast } from "../../src/ui/toast";
+import { Still } from "../../src/ui/motion";
 import { useTheme } from "../../src/ui/theme";
 
 const CURRENCY_WORD: Record<CurrencyCode, string> = { GBP: "pounds", EUR: "euros", USD: "dollars" };
 
-function ask(title: string, message: string, yes: string): Promise<boolean> {
-  if (Platform.OS === "web") return Promise.resolve(globalThis.confirm?.(`${title}\n\n${message}`) ?? true);
-  return new Promise((resolve) => Alert.alert(title, message, [
-    { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
-    { text: yes, onPress: () => resolve(true) },
-  ]));
-}
 
 export default function Settle() {
+  const askCard = useConfirm();
+  const ask = (title: string, message: string, yes: string) => askCard({ title, message, yes });
   const { c } = useTheme();
   const router = useRouter();
   const { settle, owe, owed, recorded, resolveReport, nudge, snapshots } = useApp();
@@ -32,17 +29,6 @@ export default function Settle() {
   const youOweCurrencies = [...new Set(settle.youOwe.map((row) => row.currency))];
   const owedCurrencies = [...new Set(settle.owedToYou.map((row) => row.currency))];
 
-  async function confirm(communeId: string, reportId: string, name: string, amount: string) {
-    if (!(await ask(`Confirm ${firstName(name)}’s ${amount}?`, `Only confirm once the money is in your account. This records it against ${firstName(name)}’s share.`, "Confirm"))) return;
-    setBusy(reportId);
-    try {
-      await resolveReport(communeId, reportId, "confirm");
-      tap("success");
-      toast(`Confirmed. ${firstName(name)}’s ${amount} is recorded.`);
-    } catch (cause) {
-      toast(failure(cause, "Couldn’t confirm it."));
-    } finally { setBusy(""); }
-  }
   async function decline(communeId: string, reportId: string, name: string) {
     if (!(await ask(`Not received from ${firstName(name)}?`, `${firstName(name)} sees that it hasn’t arrived yet and can report it again.`, "Not received"))) return;
     setBusy(reportId);
@@ -67,12 +53,12 @@ export default function Settle() {
     <TopBar title="Settle" />
     <Body>
       <Pad>
-        <View style={{ gap: 6, paddingHorizontal: 4 }}>
+        <Still index={0} style={{ gap: 6, paddingHorizontal: 4 }}>
           <T kind="title" accessibilityRole="header">{payTotalCurrencies.length ? `You owe ${moneyList(owe)} to ${word(people)} ${people === 1 ? "person" : "people"}.` : "You owe nobody."}</T>
           <T kind="body" muted>{hasAny(owed) ? `You’re owed ${moneyList(owed)}.` : "Nobody owes you anything."} Each currency is kept separate.</T>
-        </View>
+        </Still>
 
-        {youOweCurrencies.map((currency) => <View key={`owe-${currency}`} style={{ gap: 10 }}>
+        {youOweCurrencies.map((currency, index) => <Still key={`owe-${currency}`} index={1 + index} style={{ gap: 10 }}>
           <Kicker>You owe · {CURRENCY_WORD[currency]}</Kicker>
           <Panel>{settle.youOwe.filter((row) => row.currency === currency).map((row, index) => <Row key={`${row.userId}-${currency}`} first={index === 0}
             left={<Avatar name={row.name} size={40} />}
@@ -87,17 +73,17 @@ export default function Settle() {
                 </View>
                 : <Button size="sm" variant="secondary" label="I’ve paid" accessibilityLabel={`I’ve paid ${row.name}`} onPress={() => router.push(`/record/${row.items[0].shareId}`)} />}
             </View>} />)}</Panel>
-        </View>)}
+        </Still>)}
 
-        {recorded.length ? <View style={{ gap: 10 }}>
+        {recorded.length ? <Still index={1 + youOweCurrencies.length} style={{ gap: 10 }}>
           <Kicker>Waiting for them to confirm</Kicker>
           <Panel>{recorded.map((item, index) => <Row key={item.key} first={index === 0}
             left={<Avatar name={item.payerName} size={40} />}
             title={item.title}
             meta={<State text={`You recorded ${money(item.amountMinor, item.currency)} on ${shortDate(item.report.sentOn)}. ${firstName(item.payerName)} confirms it.`} />} />)}</Panel>
-        </View> : null}
+        </Still> : null}
 
-        {owedCurrencies.map((currency) => <View key={`owed-${currency}`} style={{ gap: 10 }}>
+        {owedCurrencies.map((currency, index) => <Still key={`owed-${currency}`} index={2 + youOweCurrencies.length + index} style={{ gap: 10 }}>
           <Kicker>Owed to you · {CURRENCY_WORD[currency]}</Kicker>
           <Panel>{settle.owedToYou.filter((row) => row.currency === currency).map((row, index) => {
             const pending = row.items.filter((item) => item.debtor.pending);
@@ -113,20 +99,20 @@ export default function Settle() {
                   {pending.length ? null
                     : nudgeable.length ? <Button size="sm" variant="secondary" label={`Nudge ${firstName(row.name)}`} busy={busy === `n:${row.name}`}
                       onPress={() => void sendNudge(nudgeable[0].waiting.communeId, nudgeable.map((item) => item.debtor.shareId), row.name)} />
-                    : <T kind="note" muted>{nudged ? "Nudged today" : "Not due yet"}</T>}
+                    : <T kind="note" muted>{nudged ? "Nudged today" : nudgeFrom(row.items.map((item) => item.waiting.dueOn))}</T>}
                 </View>} />
               {pending.map(({ waiting: entry, debtor }) => <View key={debtor.pending!.id} style={{ marginHorizontal: 16, marginBottom: 14, padding: 14, borderRadius: 12, backgroundColor: c.attentionSoft, gap: 10 }}>
                 <T kind="body">{firstName(row.name)} says they’ve paid you {money(debtor.pending!.amountMinor, currency)} for {entry.title}, sent {shortDate(debtor.pending!.sentOn)}{debtor.pending!.reference ? `, reference “${debtor.pending!.reference}”` : ""}.</T>
                 <View style={{ flexDirection: "row", gap: 10, flexWrap: "wrap" }}>
                   <Button size="sm" label={`Confirm ${money(debtor.pending!.amountMinor, currency)}`} busy={busy === debtor.pending!.id}
-                    onPress={() => void confirm(entry.communeId, debtor.pending!.id, row.name, money(debtor.pending!.amountMinor, currency))} />
+                    onPress={() => router.push(`/confirm/${debtor.pending!.id}`)} />
                   <Button size="sm" variant="secondary" label="Not received" disabled={busy === debtor.pending!.id}
                     onPress={() => void decline(entry.communeId, debtor.pending!.id, row.name)} />
                 </View>
               </View>)}
             </View>;
           })}</Panel>
-        </View>)}
+        </Still>)}
 
         {!youOweCurrencies.length && !owedCurrencies.length && !recorded.length
           ? <Panel pad><T kind="body" muted>Everyone is square. Nothing to settle.</T></Panel> : null}
@@ -134,4 +120,10 @@ export default function Settle() {
       </Pad>
     </Body>
   </View>;
+}
+
+/** v7's "Nudge from 18 Oct": nudging opens on the earliest due date still to come. */
+function nudgeFrom(dues: Array<string | null>): string {
+  const next = dues.filter((due): due is string => !!due).sort()[0];
+  return next ? `Nudge from ${shortDate(next)}` : "No due date";
 }

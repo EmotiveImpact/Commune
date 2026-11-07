@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
+import { Text, TextInput } from "../src/ui/text";
 import { Landmark, Star } from "lucide-react-native";
 import { formatSortCode, payLinkLabel, PAY_PROVIDER_NAME, PAY_PROVIDERS, type PayLink, type PayLinkInput, type PayProvider } from "../src/lib/payLinks";
 import { failure, useApp } from "../src/state";

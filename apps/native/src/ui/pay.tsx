@@ -1,12 +1,14 @@
 import { View } from "react-native";
+import { Text } from "./text";
 import { useRouter } from "expo-router";
 import { ArrowUpRight, ChevronRight } from "lucide-react-native";
 import { payLinksOf } from "../lib/derive";
 import { firstName, money } from "../lib/format";
-import { payLinkHref, PAY_PROVIDER_NAME } from "../lib/payLinks";
+import { payLinkHref, PAY_PROVIDER_NAME, type PayLink } from "../lib/payLinks";
 import type { CurrencyCode } from "../lib/types";
 import { useApp } from "../state";
-import { Button, T } from "./kit";
+import { Button, T, TextLink } from "./kit";
+import { PayMark } from "./marks";
 import { useTheme } from "./theme";
 
 export type PayTarget = {
@@ -48,14 +50,27 @@ export function PayPrimary({ target, size = "lg" }: { target: PayTarget; size?: 
         {others > 0 ? <View style={{ flex: 1 }}><Button block variant="secondary" label={`Other ways (${others})`} onPress={sheet} /></View> : null}
         <View style={{ flex: 1 }}><Button block variant="secondary" label="Already paid" accessibilityLabel={`Already paid ${name}`} onPress={tell} /></View>
       </View>
+      <PayWith name={name} links={links} />
       <T kind="note" muted>{href?.amountFilled ? `${name}’s favourite. It opens with ${amount} filled in.` : href ? `${name}’s favourite. Enter ${amount} when it opens.` : `${name}’s favourite. Their details are a tap away.`}</T>
     </>;
   }
   return <>
     <Button size={size} block label={`Pay ${name} ${amount}`} trailing={<ChevronRight size={16} color={c.onAction} />} onPress={sheet} />
-    <T kind="note" muted>{links.map((link) => PAY_PROVIDER_NAME[link.provider]).join(" · ")}</T>
-    <Button variant="quiet" size="sm" label={`Already paid? Tell ${name}`} onPress={tell} />
+    <PayWith name={name} links={links} />
+    <TextLink centred muted label={`Already paid? Tell ${name}`} onPress={tell} />
   </>;
+}
+
+/** "Sam takes" and a small pill for each way they take money. */
+export function PayWith({ name, links }: { name: string; links: PayLink[] }) {
+  const { c } = useTheme();
+  return <View accessibilityLabel={`${name} takes ${links.map((link) => PAY_PROVIDER_NAME[link.provider]).join(", ")}`} style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 6 }}>
+    <Text style={{ fontSize: 12.5, color: c.ink2, marginRight: 2 }}>{name} takes</Text>
+    {links.map((link) => <View key={link.provider} style={{ flexDirection: "row", alignItems: "center", gap: 6, height: 28, paddingLeft: 4, paddingRight: 10, borderRadius: 14, borderWidth: 1, borderColor: c.outline }}>
+      <PayMark provider={link.provider} size={20} />
+      <Text style={{ fontSize: 12.5, fontWeight: "500", color: c.ink }}>{PAY_PROVIDER_NAME[link.provider]}</Text>
+    </View>)}
+  </View>;
 }
 
 /** True when the person you owe has said how they like to be paid. */

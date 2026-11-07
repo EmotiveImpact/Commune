@@ -1,41 +1,63 @@
+import { useEffect, type ComponentType } from "react";
 import { Redirect, Tabs } from "expo-router";
-import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import { ActivityIndicator, View } from "react-native";
+import { Text } from "../../src/ui/text";
+import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
-import { ArrowRightLeft, Ellipsis, House, LayoutGrid, ReceiptText } from "lucide-react-native";
+import { ArrowRightLeft, House, LayoutGrid, ReceiptText } from "lucide-react-native";
 import { useApp } from "../../src/state";
-import { Button, T } from "../../src/ui/kit";
+import { Avatar, Button, T } from "../../src/ui/kit";
+import { MenuShell } from "../../src/ui/menu";
+import { PressScale, haptic, springs, useCalm } from "../../src/ui/motion";
 import { useTheme } from "../../src/ui/theme";
 
-const TABS = [
+type Icon = ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
+const TABS: Array<{ name: string; label: string; Icon?: Icon }> = [
   { name: "index", label: "Home", Icon: LayoutGrid },
   { name: "hub", label: "Hub", Icon: House },
   { name: "expenses", label: "Expenses", Icon: ReceiptText },
   { name: "settle", label: "Settle", Icon: ArrowRightLeft },
-  { name: "more", label: "More", Icon: Ellipsis },
+  { name: "profile", label: "Profile" },
 ];
 
-/** Five tabs on the dark frame, the selected one in a pill, as in the approved mock. */
+/**
+ * Five tabs on the dark frame. The chosen one has no pill: it comes alive
+ * instead, springing up from a little smaller, while the others rest at 55% opacity.
+ */
 function TabBar({ state, navigation }: BottomTabBarProps) {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
-  return <View accessibilityRole="tablist" style={{ flexDirection: "row", backgroundColor: c.frame, paddingTop: 8, paddingHorizontal: 6, paddingBottom: Math.max(insets.bottom, 10) }}>
-    {TABS.map((tab, index) => {
-      const on = state.index === index;
-      const color = on ? c.onFrame : c.onFrame2;
-      return <Pressable key={tab.name} accessibilityRole="tab" accessibilityState={{ selected: on }} accessibilityLabel={tab.label}
-        onPress={() => {
-          const event = navigation.emit({ type: "tabPress", target: state.routes[index].key, canPreventDefault: true });
-          if (!on && !event.defaultPrevented) navigation.navigate(state.routes[index].name);
-        }}
-        style={{ flex: 1, alignItems: "center", gap: 4 }}>
-        <View style={{ width: 54, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center", backgroundColor: on ? c.frameRaised : "transparent" }}>
-          <tab.Icon size={21} color={color} strokeWidth={on ? 2 : 1.7} />
-        </View>
-        <Text style={{ fontSize: 11, fontWeight: "500", color }}>{tab.label}</Text>
-      </Pressable>;
-    })}
+  return <View accessibilityRole="tablist" style={{ flexDirection: "row", backgroundColor: c.frame, paddingTop: 8, paddingHorizontal: 6, paddingBottom: Math.max(insets.bottom - 4, 10) }}>
+    {TABS.map((tab, index) => <TabButton key={tab.name} tab={tab} on={state.index === index}
+      onPress={() => {
+        const on = state.index === index;
+        const event = navigation.emit({ type: "tabPress", target: state.routes[index].key, canPreventDefault: true });
+        if (!on && !event.defaultPrevented) { haptic.select(); navigation.navigate(state.routes[index].name); }
+      }} />)}
   </View>;
+}
+
+function TabButton({ tab, on, onPress }: { tab: (typeof TABS)[number]; on: boolean; onPress: () => void }) {
+  const { c } = useTheme();
+  const calm = useCalm();
+  const { user } = useApp();
+  const life = useSharedValue(on ? 1 : 0);
+  useEffect(() => {
+    life.value = calm ? withTiming(on ? 1 : 0, { duration: 180 }) : withSpring(on ? 1 : 0, springs.snappy);
+  }, [on, calm, life]);
+  const body = useAnimatedStyle(() => ({ opacity: 0.55 + 0.45 * life.value }));
+  const color = c.onFrame;
+  return <PressScale accessibilityRole="tab" accessibilityState={{ selected: on }} accessibilityLabel={tab.label} onPress={onPress}
+    style={{ flex: 1, alignItems: "center" }}>
+    <Animated.View style={[{ alignItems: "center", gap: 4 }, body]}>
+      <View style={{ height: 30, alignItems: "center", justifyContent: "center" }}>
+        {tab.Icon ? <tab.Icon size={22} color={color} strokeWidth={on ? 2.1 : 1.7} />
+          : <Avatar name={user?.name ?? "You"} size={28} ring={on ? c.onFrame : undefined} />}
+      </View>
+      <Text style={{ fontSize: 11, fontWeight: on ? "600" : "500", color }}>{tab.label}</Text>
+    </Animated.View>
+  </PressScale>;
 }
 
 export default function TabsLayout() {
@@ -44,7 +66,7 @@ export default function TabsLayout() {
   if (status === "signed-out") return <Redirect href="/sign-in" />;
   if (status === "starting" || status === "loading") {
     return <View style={{ flex: 1, backgroundColor: c.frame, alignItems: "center", justifyContent: "center", gap: 16 }}>
-      <Text style={{ color: c.onFrame, fontSize: 34, fontWeight: "700", letterSpacing: -2 }}>commune.</Text>
+      <Text style={{ color: c.onFrame, fontSize: 34, fontFamily: "CommuneWordmark36", letterSpacing: -2 }}>commune.</Text>
       <ActivityIndicator color={c.onFrame} />
     </View>;
   }
@@ -55,7 +77,9 @@ export default function TabsLayout() {
       <Button label="Try again" onPress={() => void refresh()} />
     </View>;
   }
-  return <Tabs tabBar={(props) => <TabBar {...props} />} screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: c.canvas } }}>
-    {TABS.map((tab) => <Tabs.Screen key={tab.name} name={tab.name} options={{ title: tab.label }} />)}
-  </Tabs>;
+  return <MenuShell>
+    <Tabs tabBar={(props) => <TabBar {...props} />} screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: c.canvas }, animation: "none" }}>
+      {TABS.map((tab) => <Tabs.Screen key={tab.name} name={tab.name} options={{ title: tab.label }} />)}
+    </Tabs>
+  </MenuShell>;
 }
