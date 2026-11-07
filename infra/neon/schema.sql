@@ -103,6 +103,22 @@ $$;
 
 
 --
+-- Name: add_member_by_code(uuid, text); Type: FUNCTION; Schema: commune_private; Owner: -
+--
+
+CREATE FUNCTION commune_private.add_member_by_code(p_commune_id uuid, p_user_id text) RETURNS void
+    LANGUAGE plpgsql
+    SET search_path TO 'public', 'pg_temp'
+    AS $$
+BEGIN
+  INSERT INTO public.commune_members (commune_id, user_id, role) VALUES (p_commune_id, p_user_id, 'member')
+    ON CONFLICT (commune_id, user_id) DO UPDATE SET role = 'member', active = true, left_at = NULL, joined_at = now()
+    WHERE NOT public.commune_members.active;
+END;
+$$;
+
+
+--
 -- Name: announcement_result(uuid, boolean); Type: FUNCTION; Schema: commune_private; Owner: -
 --
 
@@ -333,6 +349,46 @@ CREATE FUNCTION commune_private.format_money(p_minor bigint, p_currency text) RE
     AS $_$
   SELECT CASE p_currency WHEN 'GBP' THEN '£' WHEN 'USD' THEN '$' WHEN 'EUR' THEN '€' ELSE '' END
     || to_char(p_minor / 100.0, 'FM999,999,999,999,990.00');
+$_$;
+
+
+SET default_table_access_method = heap;
+
+--
+-- Name: commune_join_codes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.commune_join_codes (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    commune_id uuid NOT NULL,
+    kind text NOT NULL,
+    token text NOT NULL,
+    created_by text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    expires_at timestamp with time zone,
+    revoked_at timestamp with time zone,
+    revoked_by text,
+    request_id uuid NOT NULL,
+    CONSTRAINT commune_join_codes_expiry CHECK (((kind = 'now'::text) = (expires_at IS NOT NULL))),
+    CONSTRAINT commune_join_codes_kind_check CHECK ((kind = ANY (ARRAY['sticker'::text, 'now'::text]))),
+    CONSTRAINT commune_join_codes_revoked CHECK (((revoked_at IS NULL) = (revoked_by IS NULL))),
+    CONSTRAINT commune_join_codes_token_check CHECK ((token ~ '^[0-9a-f]{32}$'::text))
+);
+
+
+--
+-- Name: live_join_code(text); Type: FUNCTION; Schema: commune_private; Owner: -
+--
+
+CREATE FUNCTION commune_private.live_join_code(p_token text) RETURNS public.commune_join_codes
+    LANGUAGE sql STABLE
+    SET search_path TO 'public', 'pg_temp'
+    AS $_$
+  SELECT j.* FROM public.commune_join_codes j JOIN public.communes c ON c.id = j.commune_id
+  WHERE p_token ~ '^[0-9a-f]{32}$' AND j.token = p_token AND j.revoked_at IS NULL
+    AND (j.expires_at IS NULL OR j.expires_at > now()) AND c.join_mode <> 'off'
+    AND EXISTS (SELECT 1 FROM public.commune_members m WHERE m.commune_id = j.commune_id
+      AND m.user_id = j.created_by AND m.active AND m.role = 'admin');
 $_$;
 
 
@@ -1454,6 +1510,21 @@ $$;
 
 
 --
+-- Name: cancel_join_request(uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.cancel_join_request(p_join_request_id uuid) RETURNS void
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public', 'pg_temp'
+    AS $$
+BEGIN
+  UPDATE public.commune_join_requests SET status = 'cancelled', decided_at = now(), decided_by = user_id
+    WHERE id = p_join_request_id AND user_id = commune_private.data_api_user_id() AND status = 'pending';
+END;
+$$;
+
+
+--
 -- Name: commune_expense_page(uuid, date, integer); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -1506,6 +1577,40 @@ BEGIN
   END IF;
   RETURN jsonb_build_object('expenses', commune_private.expense_records(ARRAY(SELECT e.id FROM public.expenses e
     WHERE e.commune_id = p_commune_id AND e.id = ANY (p_ids))));
+END;
+$$;
+
+
+--
+-- Name: commune_join_state(uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.commune_join_state(p_commune_id uuid) RETURNS jsonb
+    LANGUAGE plpgsql STABLE SECURITY DEFINER
+    SET search_path TO 'public', 'pg_temp'
+    AS $$
+DECLARE
+  v_mode text;
+BEGIN
+  IF NOT public.is_commune_member(p_commune_id) THEN
+    RAISE EXCEPTION 'Not a commune member' USING ERRCODE = '42501';
+  END IF;
+  SELECT join_mode INTO v_mode FROM public.communes WHERE id = p_commune_id;
+  IF NOT public.is_commune_admin(p_commune_id) THEN
+    RETURN jsonb_build_object('joinMode', v_mode, 'codes', '[]'::jsonb, 'requests', '[]'::jsonb);
+  END IF;
+  RETURN jsonb_build_object('joinMode', v_mode,
+    'codes', coalesce((SELECT jsonb_agg(jsonb_build_object('id', j.id, 'kind', j.kind, 'token', j.token,
+        'createdAt', j.created_at, 'expiresAt', j.expires_at) ORDER BY j.created_at DESC)
+      FROM public.commune_join_codes j WHERE j.commune_id = p_commune_id AND j.revoked_at IS NULL
+        AND (j.expires_at IS NULL OR j.expires_at > now())), '[]'::jsonb),
+    'requests', coalesce((SELECT jsonb_agg(jsonb_build_object('id', r.id, 'userId', r.user_id,
+        'name', coalesce(nullif(btrim(a.name), ''), 'Someone'), 'email', a.email, 'createdAt', r.created_at,
+        'codeKind', j.kind) ORDER BY r.created_at)
+      FROM public.commune_join_requests r JOIN public.commune_join_codes j ON j.id = r.code_id
+      LEFT JOIN commune_private.accounts(ARRAY(SELECT x.user_id FROM public.commune_join_requests x
+        WHERE x.commune_id = p_commune_id AND x.status = 'pending')) a ON a.id = r.user_id
+      WHERE r.commune_id = p_commune_id AND r.status = 'pending'), '[]'::jsonb));
 END;
 $$;
 
@@ -1991,6 +2096,58 @@ $$;
 
 
 --
+-- Name: create_join_code(uuid, text, uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.create_join_code(p_commune_id uuid, p_kind text, p_request_id uuid) RETURNS jsonb
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public', 'pg_temp'
+    AS $$
+DECLARE
+  v_actor text := commune_private.data_api_user_id();
+  v_kind text := lower(btrim(coalesce(p_kind, '')));
+  v_code public.commune_join_codes%ROWTYPE;
+  v_mode text;
+BEGIN
+  IF p_request_id IS NULL THEN
+    RAISE EXCEPTION 'A request id is required' USING ERRCODE = '22023';
+  END IF;
+  IF v_kind NOT IN ('sticker', 'now') THEN
+    RAISE EXCEPTION 'Choose a sticker or a code to show now' USING ERRCODE = '22023';
+  END IF;
+  SELECT join_mode INTO v_mode FROM public.communes WHERE id = p_commune_id FOR UPDATE;
+  IF NOT public.is_commune_admin(p_commune_id) THEN
+    RAISE EXCEPTION 'Only an admin can make a join code' USING ERRCODE = '42501';
+  END IF;
+  SELECT * INTO v_code FROM public.commune_join_codes WHERE created_by = v_actor AND request_id = p_request_id;
+  IF FOUND THEN
+    IF v_code.commune_id <> p_commune_id OR v_code.kind <> v_kind THEN
+      RAISE EXCEPTION 'This request was already used for a different code' USING ERRCODE = '22023';
+    END IF;
+  ELSE
+    IF v_mode = 'off' THEN
+      RAISE EXCEPTION 'Joining by code is turned off for this commune' USING ERRCODE = 'P0001';
+    END IF;
+    IF (SELECT count(*) FROM public.commune_join_codes WHERE commune_id = p_commune_id
+        AND created_at > now() - interval '1 hour') >= 30 THEN
+      RAISE EXCEPTION 'Too many codes made in the last hour. Try again later.' USING ERRCODE = 'P0001';
+    END IF;
+    IF v_kind = 'sticker' THEN
+      UPDATE public.commune_join_codes SET revoked_at = now(), revoked_by = v_actor
+        WHERE commune_id = p_commune_id AND kind = 'sticker' AND revoked_at IS NULL;
+    END IF;
+    INSERT INTO public.commune_join_codes (commune_id, kind, token, created_by, expires_at, request_id)
+      VALUES (p_commune_id, v_kind, encode(gen_random_bytes(16), 'hex'), v_actor,
+        CASE WHEN v_kind = 'now' THEN now() + interval '1 hour' END, p_request_id)
+      RETURNING * INTO v_code;
+  END IF;
+  RETURN jsonb_build_object('id', v_code.id, 'kind', v_code.kind, 'token', v_code.token,
+    'createdAt', v_code.created_at, 'expiresAt', v_code.expires_at, 'revokedAt', v_code.revoked_at);
+END;
+$$;
+
+
+--
 -- Name: create_note(uuid, text, text, text, text, text, jsonb, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -2088,6 +2245,46 @@ BEGIN
   INSERT INTO public.commune_events (commune_id, actor_id, kind, entity_id, title, description)
     VALUES (p_commune_id, v_actor, 'operations', v_id, v_new.title, 'Created');
   RETURN jsonb_build_object('id', v_id, 'version', 1, 'duplicate', false);
+END;
+$$;
+
+
+--
+-- Name: decide_join_request(uuid, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.decide_join_request(p_join_request_id uuid, p_decision text) RETURNS jsonb
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public', 'pg_temp'
+    AS $$
+DECLARE
+  v_actor text := commune_private.data_api_user_id();
+  v_decision text := lower(btrim(coalesce(p_decision, '')));
+  v_request public.commune_join_requests%ROWTYPE;
+  v_commune uuid;
+  v_status text;
+BEGIN
+  IF v_decision NOT IN ('approve', 'decline') THEN
+    RAISE EXCEPTION 'Choose approve or decline' USING ERRCODE = '22023';
+  END IF;
+  SELECT commune_id INTO v_commune FROM public.commune_join_requests WHERE id = p_join_request_id;
+  PERFORM 1 FROM public.communes WHERE id = v_commune FOR UPDATE;
+  IF v_commune IS NULL OR NOT public.is_commune_admin(v_commune) THEN
+    RAISE EXCEPTION 'Only an admin can answer a request to join' USING ERRCODE = '42501';
+  END IF;
+  v_status := CASE v_decision WHEN 'approve' THEN 'approved' ELSE 'declined' END;
+  SELECT * INTO v_request FROM public.commune_join_requests WHERE id = p_join_request_id FOR UPDATE;
+  IF v_request.status = 'pending' THEN
+    IF v_decision = 'approve' THEN
+      PERFORM commune_private.add_member_by_code(v_request.commune_id, v_request.user_id);
+    END IF;
+    UPDATE public.commune_join_requests
+      SET status = v_status, decided_at = now(), decided_by = v_actor
+      WHERE id = p_join_request_id;
+  ELSIF v_request.status <> v_status THEN
+    RAISE EXCEPTION 'This request was already answered' USING ERRCODE = 'P0001';
+  END IF;
+  RETURN public.commune_join_state(v_request.commune_id);
 END;
 $$;
 
@@ -2427,6 +2624,21 @@ $$;
 
 
 --
+-- Name: my_join_requests(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.my_join_requests() RETURNS jsonb
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO 'public', 'pg_temp'
+    AS $$
+  SELECT coalesce(jsonb_agg(jsonb_build_object('id', r.id, 'communeName', c.name, 'communeKind', c.kind,
+      'createdAt', r.created_at) ORDER BY r.created_at DESC), '[]'::jsonb)
+  FROM public.commune_join_requests r JOIN public.communes c ON c.id = r.commune_id
+  WHERE r.user_id = commune_private.data_api_user_id() AND r.status = 'pending';
+$$;
+
+
+--
 -- Name: my_pay_links(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -2613,6 +2825,32 @@ BEGIN
       AND m.user_id = i.invited_by AND m.active AND m.role = 'admin');
 END;
 $_$;
+
+
+--
+-- Name: preview_join_code(text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.preview_join_code(p_token text) RETURNS TABLE(commune_name text, commune_kind text, member_count integer, join_mode text, already_member boolean, waiting boolean)
+    LANGUAGE plpgsql STABLE SECURITY DEFINER
+    SET search_path TO 'public', 'pg_temp'
+    AS $$
+DECLARE
+  v_actor text := commune_private.data_api_user_id();
+  v_code public.commune_join_codes%ROWTYPE;
+BEGIN
+  IF v_actor IS NULL THEN RETURN; END IF;
+  v_code := commune_private.live_join_code(p_token);
+  IF v_code.id IS NULL THEN RETURN; END IF;
+  RETURN QUERY
+  SELECT c.name, c.kind,
+    (SELECT count(*)::integer FROM public.commune_members m WHERE m.commune_id = c.id AND m.active),
+    c.join_mode,
+    EXISTS (SELECT 1 FROM public.commune_members m WHERE m.commune_id = c.id AND m.user_id = v_actor AND m.active),
+    EXISTS (SELECT 1 FROM public.commune_join_requests r WHERE r.commune_id = c.id AND r.user_id = v_actor AND r.status = 'pending')
+  FROM public.communes c WHERE c.id = v_code.commune_id;
+END;
+$$;
 
 
 --
@@ -3258,6 +3496,69 @@ $$;
 
 
 --
+-- Name: request_to_join(text, uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.request_to_join(p_token text, p_request_id uuid) RETURNS jsonb
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public', 'pg_temp'
+    AS $_$
+DECLARE
+  v_actor text := commune_private.data_api_user_id();
+  v_code public.commune_join_codes%ROWTYPE;
+  v_mode text;
+  v_existing public.commune_join_requests%ROWTYPE;
+  v_id uuid;
+BEGIN
+  IF v_actor IS NULL THEN
+    RAISE EXCEPTION 'Sign in to ask to join' USING ERRCODE = '42501';
+  END IF;
+  IF p_request_id IS NULL THEN
+    RAISE EXCEPTION 'A request id is required' USING ERRCODE = '22023';
+  END IF;
+  SELECT * INTO v_existing FROM public.commune_join_requests WHERE user_id = v_actor AND request_id = p_request_id;
+  IF FOUND THEN
+    RETURN jsonb_build_object('status', CASE v_existing.status WHEN 'approved' THEN 'joined' ELSE v_existing.status END,
+      'requestId', v_existing.id,
+      'communeId', CASE WHEN v_existing.status = 'approved' THEN v_existing.commune_id END);
+  END IF;
+  -- Lock the commune before reading the code, as invitations do.
+  PERFORM 1 FROM public.communes c JOIN public.commune_join_codes j ON j.commune_id = c.id
+    WHERE p_token ~ '^[0-9a-f]{32}$' AND j.token = p_token FOR UPDATE OF c;
+  v_code := commune_private.live_join_code(p_token);
+  IF v_code.id IS NULL THEN
+    RAISE EXCEPTION 'This code no longer works. Ask for a new one.' USING ERRCODE = 'P0002';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.commune_members WHERE commune_id = v_code.commune_id AND user_id = v_actor AND active) THEN
+    RETURN jsonb_build_object('status', 'already_member', 'communeId', v_code.commune_id);
+  END IF;
+  SELECT * INTO v_existing FROM public.commune_join_requests
+    WHERE commune_id = v_code.commune_id AND user_id = v_actor AND status = 'pending';
+  IF FOUND THEN
+    RETURN jsonb_build_object('status', 'pending', 'requestId', v_existing.id);
+  END IF;
+  IF (SELECT count(*) FROM public.commune_join_requests WHERE user_id = v_actor AND status = 'pending') >= 10 THEN
+    RAISE EXCEPTION 'You are already waiting on 10 communes. Wait for an answer first.' USING ERRCODE = 'P0001';
+  END IF;
+  IF (SELECT count(*) FROM public.commune_join_requests WHERE commune_id = v_code.commune_id AND status = 'pending') >= 50 THEN
+    RAISE EXCEPTION 'This commune has too many people waiting. Ask an admin.' USING ERRCODE = 'P0001';
+  END IF;
+  SELECT join_mode INTO v_mode FROM public.communes WHERE id = v_code.commune_id;
+  IF v_mode = 'instant' THEN
+    PERFORM commune_private.add_member_by_code(v_code.commune_id, v_actor);
+    INSERT INTO public.commune_join_requests (commune_id, code_id, user_id, status, decided_at, decided_by, request_id)
+      VALUES (v_code.commune_id, v_code.id, v_actor, 'approved', now(), v_code.created_by, p_request_id)
+      RETURNING id INTO v_id;
+    RETURN jsonb_build_object('status', 'joined', 'requestId', v_id, 'communeId', v_code.commune_id);
+  END IF;
+  INSERT INTO public.commune_join_requests (commune_id, code_id, user_id, request_id)
+    VALUES (v_code.commune_id, v_code.id, v_actor, p_request_id) RETURNING id INTO v_id;
+  RETURN jsonb_build_object('status', 'pending', 'requestId', v_id);
+END;
+$_$;
+
+
+--
 -- Name: resolve_share_payment_report(uuid, text, text, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -3403,6 +3704,28 @@ BEGIN
   END IF;
   UPDATE public.commune_invites SET revoked_at = coalesce(revoked_at, now())
     WHERE id = p_invite_id;
+END;
+$$;
+
+
+--
+-- Name: revoke_join_code(uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.revoke_join_code(p_code_id uuid) RETURNS void
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public', 'pg_temp'
+    AS $$
+DECLARE
+  v_commune uuid;
+BEGIN
+  SELECT commune_id INTO v_commune FROM public.commune_join_codes WHERE id = p_code_id;
+  PERFORM 1 FROM public.communes WHERE id = v_commune FOR UPDATE;
+  IF v_commune IS NULL OR NOT public.is_commune_admin(v_commune) THEN
+    RAISE EXCEPTION 'Only an admin can turn off a join code' USING ERRCODE = '42501';
+  END IF;
+  UPDATE public.commune_join_codes SET revoked_at = now(), revoked_by = commune_private.data_api_user_id()
+    WHERE id = p_code_id AND revoked_at IS NULL;
 END;
 $$;
 
@@ -3823,6 +4146,41 @@ BEGIN
   UPDATE public.reminders SET request_id = p_request_id WHERE id = v_id;
   RETURN jsonb_build_object('id', v_id, 'duplicate', false,
     'emailStatus', commune_private.reminder_email_state(v_id));
+END;
+$$;
+
+
+--
+-- Name: set_commune_join_mode(uuid, text, uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.set_commune_join_mode(p_commune_id uuid, p_mode text, p_request_id uuid) RETURNS jsonb
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public', 'pg_temp'
+    AS $$
+DECLARE
+  v_actor text := commune_private.data_api_user_id();
+  v_mode text := lower(btrim(coalesce(p_mode, '')));
+  v_old text;
+BEGIN
+  IF p_request_id IS NULL THEN
+    RAISE EXCEPTION 'A request id is required' USING ERRCODE = '22023';
+  END IF;
+  IF v_mode NOT IN ('approve', 'instant', 'off') THEN
+    RAISE EXCEPTION 'Choose approve, instant or off' USING ERRCODE = '22023';
+  END IF;
+  SELECT join_mode INTO v_old FROM public.communes WHERE id = p_commune_id FOR UPDATE;
+  IF NOT public.is_commune_admin(p_commune_id) THEN
+    RAISE EXCEPTION 'Only an admin can change how people join' USING ERRCODE = '42501';
+  END IF;
+  IF v_old IS DISTINCT FROM v_mode THEN
+    UPDATE public.communes SET join_mode = v_mode WHERE id = p_commune_id;
+    IF v_mode = 'off' THEN
+      UPDATE public.commune_join_codes SET revoked_at = now(), revoked_by = v_actor
+        WHERE commune_id = p_commune_id AND revoked_at IS NULL;
+    END IF;
+  END IF;
+  RETURN public.commune_join_state(p_commune_id);
 END;
 $$;
 
@@ -4752,8 +5110,6 @@ END;
 $$;
 
 
-SET default_table_access_method = heap;
-
 --
 -- Name: client_reports; Type: TABLE; Schema: commune_private; Owner: -
 --
@@ -4892,6 +5248,25 @@ CREATE TABLE public.commune_invites (
 
 
 --
+-- Name: commune_join_requests; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.commune_join_requests (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    commune_id uuid NOT NULL,
+    code_id uuid NOT NULL,
+    user_id text NOT NULL,
+    status text DEFAULT 'pending'::text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    decided_at timestamp with time zone,
+    decided_by text,
+    request_id uuid NOT NULL,
+    CONSTRAINT commune_join_requests_decided CHECK (((status = 'pending'::text) = (decided_at IS NULL))),
+    CONSTRAINT commune_join_requests_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'approved'::text, 'declined'::text, 'cancelled'::text])))
+);
+
+
+--
 -- Name: commune_members; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -5003,10 +5378,12 @@ CREATE TABLE public.communes (
     destination text DEFAULT ''::text NOT NULL,
     stay_name text DEFAULT ''::text NOT NULL,
     stay_address text DEFAULT ''::text NOT NULL,
+    join_mode text DEFAULT 'approve'::text NOT NULL,
     CONSTRAINT commune_location_matches_kind CHECK ((((kind = 'trip'::text) AND (address = ''::text)) OR ((kind = ANY (ARRAY['household'::text, 'workspace'::text])) AND (destination = ''::text) AND (stay_name = ''::text) AND (stay_address = ''::text)))),
     CONSTRAINT communes_address_check CHECK ((length(address) <= 160)),
     CONSTRAINT communes_currency_check CHECK ((currency = ANY (ARRAY['GBP'::text, 'USD'::text, 'EUR'::text]))),
     CONSTRAINT communes_destination_check CHECK ((length(destination) <= 80)),
+    CONSTRAINT communes_join_mode_check CHECK ((join_mode = ANY (ARRAY['approve'::text, 'instant'::text, 'off'::text]))),
     CONSTRAINT communes_kind_check CHECK ((kind = ANY (ARRAY['household'::text, 'workspace'::text, 'trip'::text]))),
     CONSTRAINT communes_name_check CHECK (((length(btrim(name)) >= 1) AND (length(btrim(name)) <= 80))),
     CONSTRAINT communes_stay_address_check CHECK ((length(stay_address) <= 160)),
@@ -5543,6 +5920,46 @@ ALTER TABLE ONLY public.commune_invites
 
 
 --
+-- Name: commune_join_codes commune_join_codes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.commune_join_codes
+    ADD CONSTRAINT commune_join_codes_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: commune_join_codes commune_join_codes_request; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.commune_join_codes
+    ADD CONSTRAINT commune_join_codes_request UNIQUE (created_by, request_id);
+
+
+--
+-- Name: commune_join_codes commune_join_codes_token_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.commune_join_codes
+    ADD CONSTRAINT commune_join_codes_token_key UNIQUE (token);
+
+
+--
+-- Name: commune_join_requests commune_join_requests_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.commune_join_requests
+    ADD CONSTRAINT commune_join_requests_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: commune_join_requests commune_join_requests_request; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.commune_join_requests
+    ADD CONSTRAINT commune_join_requests_request UNIQUE (user_id, request_id);
+
+
+--
 -- Name: commune_members commune_members_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5875,6 +6292,34 @@ CREATE INDEX commune_invites_commune_idx ON public.commune_invites USING btree (
 --
 
 CREATE INDEX commune_invites_email_idx ON public.commune_invites USING btree (email, expires_at DESC) WHERE ((accepted_at IS NULL) AND (revoked_at IS NULL));
+
+
+--
+-- Name: commune_join_codes_commune_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX commune_join_codes_commune_idx ON public.commune_join_codes USING btree (commune_id) WHERE (revoked_at IS NULL);
+
+
+--
+-- Name: commune_join_codes_one_sticker; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX commune_join_codes_one_sticker ON public.commune_join_codes USING btree (commune_id) WHERE ((kind = 'sticker'::text) AND (revoked_at IS NULL));
+
+
+--
+-- Name: commune_join_requests_one_pending; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX commune_join_requests_one_pending ON public.commune_join_requests USING btree (commune_id, user_id) WHERE (status = 'pending'::text);
+
+
+--
+-- Name: commune_join_requests_user_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX commune_join_requests_user_idx ON public.commune_join_requests USING btree (user_id, created_at DESC);
 
 
 --
@@ -6218,6 +6663,20 @@ CREATE TRIGGER change_mark AFTER INSERT OR DELETE OR UPDATE ON public.commune_in
 
 
 --
+-- Name: commune_join_codes change_mark; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER change_mark AFTER INSERT OR DELETE OR UPDATE ON public.commune_join_codes FOR EACH ROW EXECUTE FUNCTION commune_private.note_commune_change('commune_id');
+
+
+--
+-- Name: commune_join_requests change_mark; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER change_mark AFTER INSERT OR DELETE OR UPDATE ON public.commune_join_requests FOR EACH ROW EXECUTE FUNCTION commune_private.note_commune_change('commune_id');
+
+
+--
 -- Name: commune_members change_mark; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -6535,6 +6994,30 @@ ALTER TABLE ONLY public.commune_invites
 
 ALTER TABLE ONLY public.commune_invites
     ADD CONSTRAINT commune_invites_commune_id_invited_by_fkey FOREIGN KEY (commune_id, invited_by) REFERENCES public.commune_members(commune_id, user_id);
+
+
+--
+-- Name: commune_join_codes commune_join_codes_commune_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.commune_join_codes
+    ADD CONSTRAINT commune_join_codes_commune_id_fkey FOREIGN KEY (commune_id) REFERENCES public.communes(id) ON DELETE CASCADE;
+
+
+--
+-- Name: commune_join_requests commune_join_requests_code_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.commune_join_requests
+    ADD CONSTRAINT commune_join_requests_code_id_fkey FOREIGN KEY (code_id) REFERENCES public.commune_join_codes(id) ON DELETE CASCADE;
+
+
+--
+-- Name: commune_join_requests commune_join_requests_commune_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.commune_join_requests
+    ADD CONSTRAINT commune_join_requests_commune_id_fkey FOREIGN KEY (commune_id) REFERENCES public.communes(id) ON DELETE CASCADE;
 
 
 --
@@ -6860,6 +7343,18 @@ ALTER TABLE public.commune_events ENABLE ROW LEVEL SECURITY;
 --
 
 ALTER TABLE public.commune_invites ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: commune_join_codes; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.commune_join_codes ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: commune_join_requests; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.commune_join_requests ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: commune_members; Type: ROW SECURITY; Schema: public; Owner: -
@@ -7236,6 +7731,13 @@ REVOKE ALL ON FUNCTION commune_private.activity_record_type(p_event_id uuid) FRO
 
 
 --
+-- Name: FUNCTION add_member_by_code(p_commune_id uuid, p_user_id text); Type: ACL; Schema: commune_private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION commune_private.add_member_by_code(p_commune_id uuid, p_user_id text) FROM PUBLIC;
+
+
+--
 -- Name: FUNCTION announcement_result(p_id uuid, p_duplicate boolean); Type: ACL; Schema: commune_private; Owner: -
 --
 
@@ -7325,6 +7827,13 @@ REVOKE ALL ON FUNCTION commune_private.expense_window_start() FROM PUBLIC;
 --
 
 REVOKE ALL ON FUNCTION commune_private.format_money(p_minor bigint, p_currency text) FROM PUBLIC;
+
+
+--
+-- Name: FUNCTION live_join_code(p_token text); Type: ACL; Schema: commune_private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION commune_private.live_join_code(p_token text) FROM PUBLIC;
 
 
 --
@@ -7690,6 +8199,14 @@ REVOKE ALL ON FUNCTION public.armor(bytea, text[], text[]) FROM PUBLIC;
 
 
 --
+-- Name: FUNCTION cancel_join_request(p_join_request_id uuid); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.cancel_join_request(p_join_request_id uuid) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.cancel_join_request(p_join_request_id uuid) TO authenticated;
+
+
+--
 -- Name: FUNCTION commune_expense_page(p_commune_id uuid, p_before date, p_months integer); Type: ACL; Schema: public; Owner: -
 --
 
@@ -7703,6 +8220,14 @@ GRANT ALL ON FUNCTION public.commune_expense_page(p_commune_id uuid, p_before da
 
 REVOKE ALL ON FUNCTION public.commune_expense_records(p_commune_id uuid, p_ids uuid[]) FROM PUBLIC;
 GRANT ALL ON FUNCTION public.commune_expense_records(p_commune_id uuid, p_ids uuid[]) TO authenticated;
+
+
+--
+-- Name: FUNCTION commune_join_state(p_commune_id uuid); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.commune_join_state(p_commune_id uuid) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.commune_join_state(p_commune_id uuid) TO authenticated;
 
 
 --
@@ -7802,6 +8327,14 @@ GRANT ALL ON FUNCTION public.create_fund_command(p_commune_id uuid, p_name text,
 
 
 --
+-- Name: FUNCTION create_join_code(p_commune_id uuid, p_kind text, p_request_id uuid); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.create_join_code(p_commune_id uuid, p_kind text, p_request_id uuid) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.create_join_code(p_commune_id uuid, p_kind text, p_request_id uuid) TO authenticated;
+
+
+--
 -- Name: FUNCTION create_note(p_commune_id uuid, p_title text, p_pill text, p_kicker text, p_lede text, p_body text, p_facts jsonb, p_request_id uuid); Type: ACL; Schema: public; Owner: -
 --
 
@@ -7829,6 +8362,14 @@ REVOKE ALL ON FUNCTION public.crypt(text, text) FROM PUBLIC;
 --
 
 REVOKE ALL ON FUNCTION public.dearmor(text) FROM PUBLIC;
+
+
+--
+-- Name: FUNCTION decide_join_request(p_join_request_id uuid, p_decision text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.decide_join_request(p_join_request_id uuid, p_decision text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.decide_join_request(p_join_request_id uuid, p_decision text) TO authenticated;
 
 
 --
@@ -8095,6 +8636,14 @@ GRANT ALL ON FUNCTION public.my_communes() TO authenticated;
 
 
 --
+-- Name: FUNCTION my_join_requests(); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.my_join_requests() FROM PUBLIC;
+GRANT ALL ON FUNCTION public.my_join_requests() TO authenticated;
+
+
+--
 -- Name: FUNCTION my_pay_links(); Type: ACL; Schema: public; Owner: -
 --
 
@@ -8283,6 +8832,14 @@ GRANT ALL ON FUNCTION public.preview_commune_invite(p_token text) TO authenticat
 
 
 --
+-- Name: FUNCTION preview_join_code(p_token text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.preview_join_code(p_token text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.preview_join_code(p_token text) TO authenticated;
+
+
+--
 -- Name: FUNCTION record_fund_contribution(p_commitment_id uuid, p_amount_minor bigint); Type: ACL; Schema: public; Owner: -
 --
 
@@ -8379,6 +8936,14 @@ GRANT ALL ON FUNCTION public.report_share_payment(p_share_id uuid, p_amount_mino
 
 
 --
+-- Name: FUNCTION request_to_join(p_token text, p_request_id uuid); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.request_to_join(p_token text, p_request_id uuid) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.request_to_join(p_token text, p_request_id uuid) TO authenticated;
+
+
+--
 -- Name: FUNCTION resolve_share_payment_report(p_report_id uuid, p_decision text, p_note text, p_request_id uuid); Type: ACL; Schema: public; Owner: -
 --
 
@@ -8400,6 +8965,14 @@ GRANT ALL ON FUNCTION public.reverse_share_receipt(p_receipt_id uuid, p_reason t
 
 REVOKE ALL ON FUNCTION public.revoke_commune_invite(p_invite_id uuid) FROM PUBLIC;
 GRANT ALL ON FUNCTION public.revoke_commune_invite(p_invite_id uuid) TO authenticated;
+
+
+--
+-- Name: FUNCTION revoke_join_code(p_code_id uuid); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.revoke_join_code(p_code_id uuid) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.revoke_join_code(p_code_id uuid) TO authenticated;
 
 
 --
@@ -8440,6 +9013,14 @@ GRANT ALL ON FUNCTION public.send_reminder(p_kind text, p_source_id uuid) TO aut
 
 REVOKE ALL ON FUNCTION public.send_reminder_command(p_kind text, p_source_id uuid, p_request_id uuid) FROM PUBLIC;
 GRANT ALL ON FUNCTION public.send_reminder_command(p_kind text, p_source_id uuid, p_request_id uuid) TO authenticated;
+
+
+--
+-- Name: FUNCTION set_commune_join_mode(p_commune_id uuid, p_mode text, p_request_id uuid); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.set_commune_join_mode(p_commune_id uuid, p_mode text, p_request_id uuid) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.set_commune_join_mode(p_commune_id uuid, p_mode text, p_request_id uuid) TO authenticated;
 
 
 --

@@ -19,6 +19,7 @@ import { Body, Ground, Pad, PULL_SHOWN, TopBar, photoOf, usePull } from "../../s
 import { Avatar, Button, Cal, Empty, Faces, Panel, Row, SectionHead, State, T, tap, TextLink } from "../../src/ui/kit";
 import { haptic, PressScale, springs, useCalm } from "../../src/ui/motion";
 import { NeedsList, TaskCheck, WaitingRow } from "../../src/ui/parts";
+import { JoinWaitingCard } from "../../src/ui/joins";
 import { HOLD, useRemind } from "../../src/ui/remind";
 import { SwipeRow } from "../../src/ui/swipe";
 import { PayPrimary } from "../../src/ui/pay";
@@ -106,7 +107,7 @@ export default function Hub() {
   if (!current) return <View style={{ flex: 1 }}><TopBar title="Hub" /><Body><Pad><T kind="body" muted>You’re not in a commune yet.</T></Pad></Body></View>;
   const pills = <HubPills tab={tab} onPick={(next) => choose(next)} left={left} right={right} floating={hubTabsAt === "bottom"} scrollY={pull.y} />;
   const pages: Record<HubTab, ReactNode[]> = {
-    overview: [<Notice key="notice" />, <YourPart key="part" onMore={() => choose("money")} />, <WeekPanel key="week" onAll={() => choose("chores")} />, <PeoplePanel key="people" />],
+    overview: [<JoinWaitingCard key="joins" communeId={current.commune.id} />, <Notice key="notice" />, <YourPart key="part" onMore={() => choose("money")} />, <WeekPanel key="week" onAll={() => choose("chores")} />, <PeoplePanel key="people" />],
     money: moneySections(),
     chores: [<ChoresPage key="chores" />],
     notes: [<Essentials key="essentials" />, <NotesList key="notes" />],

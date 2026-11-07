@@ -1,23 +1,28 @@
 import { useRef, useState, type ReactNode } from "react";
 import { Image, Platform, ScrollView, Share, View, type TextInput as RNTextInput } from "react-native";
-import { TextInput } from "../src/ui/text";
+import { Text, TextInput } from "../src/ui/text";
 import { useRouter } from "expo-router";
 import Animated, { FadeIn } from "react-native-reanimated";
 import * as Clipboard from "expo-clipboard";
-import { ChevronLeft, ChevronRight, Link2, Mail, QrCode, Share2 } from "lucide-react-native";
+import { ChevronLeft, ChevronRight, Link2, Mail, QrCode, Share2, StickyNote } from "lucide-react-native";
 import { shareLink } from "../src/lib/inviteLink";
+import {
+  INSTANT_WARNING, JOIN_MODES, WAYS_TO_INVITE, expiryWords, isLive, joinCodeUrl,
+  type JoinCode, type JoinCodeKind, type JoinMode,
+} from "../src/lib/joinCodes";
 import { failure, useApp } from "../src/state";
 import { Avatar, Button, ErrorText, FITTED, Panel, Row, T } from "../src/ui/kit";
 import { haptic, PressScale, useCalm } from "../src/ui/motion";
 import { photoOf } from "../src/ui/chrome";
 import { QrCode as QrImage } from "../src/ui/qr";
 import { Sheet } from "../src/ui/sheet";
+import { useConfirm } from "../src/ui/confirm";
 import { useToast } from "../src/ui/toast";
 import { radius, useTheme } from "../src/ui/theme";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-/** Invite someone to the current commune: share a link, copy it, show a QR code, or start from their email. */
+/** Invite someone to the current commune: by email, a QR to show now, or a sticker for the fridge. */
 export default function Invite() {
   const router = useRouter();
   const [closing, setClosing] = useState(false);
@@ -26,29 +31,38 @@ export default function Invite() {
 }
 
 type Made = { email: string; url: string };
+type Step = "start" | "now" | "sticker";
 
 /**
- * Each invitation is for one person's email, so the email comes first. Once
- * there is a link, it goes out however you like: the share sheet (Messages,
- * WhatsApp, email), a copied link, or a QR code for someone standing next to
- * you. The keyboard only opens when you tap the email field.
+ * Three ways in. An email invitation is for one person and lasts seven days.
+ * A QR code needs no email: shown now, it stops working after an hour; as a
+ * sticker, it works until an admin turns it off. What a scan does is the
+ * commune's join setting, which admins choose at the bottom.
  */
 function InviteBody({ close }: { close: () => void }) {
   const { c } = useTheme();
   const toast = useToast();
+  const confirm = useConfirm();
   const calm = useCalm();
-  const { backend, current, user } = useApp();
+  const { backend, current, user, joinOf, makeJoinCode, revokeJoinCode, setJoinMode } = useApp();
   const input = useRef<RNTextInput>(null);
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [codeError, setCodeError] = useState("");
   const [made, setMade] = useState<Made | null>(null);
   const [sent, setSent] = useState<string[]>([]);
-  const [step, setStep] = useState<"start" | "qr">("start");
+  const [step, setStep] = useState<Step>("start");
+  const [shown, setShown] = useState<JoinCode | null>(null);
   const name = current?.commune.name ?? "your commune";
+  const communeId = current?.commune.id ?? "";
+  const admin = current?.commune.role === "admin";
+  const join = joinOf(communeId);
+  const sticker = join.codes.find((code) => code.kind === "sticker" && isLive(code)) ?? null;
   const members = (current?.members ?? []).filter((member) => member.active !== false);
   const valid = EMAIL.test(email.trim());
   const message = (url: string) => `Join ${name} on Commune, where we keep track of shared bills and chores: ${url}`;
+  const scanLine = join.joinMode === "instant" ? "Scan to join" : "Scan to ask to join";
 
   /** The link for the email typed in, made once and kept while the email stays the same. */
   async function link(): Promise<string | null> {
@@ -75,11 +89,13 @@ function InviteBody({ close }: { close: () => void }) {
       setBusy(false);
     }
   }
+  async function shareUrl(url: string, text = message(url)) {
+    if (Platform.OS === "web") { await copyText(url); return; }
+    try { await Share.share({ message: text }); } catch { /* closed the share sheet */ }
+  }
   async function share() {
     const url = await link();
-    if (!url) return;
-    if (Platform.OS === "web") { await copyText(url); return; }
-    try { await Share.share({ message: message(url) }); } catch { /* closed the share sheet */ }
+    if (url) await shareUrl(url);
   }
   async function copy() {
     const url = await link();
@@ -88,45 +104,114 @@ function InviteBody({ close }: { close: () => void }) {
   async function copyText(url: string) {
     await Clipboard.setStringAsync(url);
     haptic.light();
-    toast("Invitation link copied.");
+    toast("Link copied.");
   }
-  async function showQr() {
-    const url = await link();
-    if (url) { input.current?.blur(); setStep("qr"); }
+
+  /** Opens a QR: the working one when there is one, otherwise a new one. */
+  async function openCode(kind: JoinCodeKind, fresh = false) {
+    if (!communeId || busy) return;
+    setCodeError("");
+    // A code shown now is reused only while it has ten minutes or more left.
+    const soon = new Date(Date.now() + 10 * 60000);
+    const reuse = fresh ? null : kind === "sticker" ? sticker : join.codes.find((code) => code.kind === "now" && isLive(code, soon)) ?? null;
+    if (reuse) { setShown(reuse); setStep(kind); return; }
+    setBusy(true);
+    try {
+      const code = await makeJoinCode(communeId, kind);
+      setShown(code);
+      setStep(kind);
+      haptic.success();
+    } catch (cause) {
+      setCodeError(failure(cause, "Couldn’t make the code. Try again."));
+    } finally { setBusy(false); }
+  }
+  async function newSticker() {
+    if (!(await confirm({ title: "Make a new code?", message: "The sticker you have now stops working. Print the new one.", yes: "Make a new code" }))) return;
+    await openCode("sticker", true);
+    toast("New code made. The old sticker no longer works.");
+  }
+  async function turnOff() {
+    if (!shown) return;
+    if (!(await confirm({ title: "Turn off this code?", message: "Scanning it will stop working. Nobody already in loses anything.", yes: "Turn off", destructive: true }))) return;
+    setBusy(true);
+    try {
+      await revokeJoinCode(communeId, shown.id);
+      setShown(null); setStep("start");
+      toast("That code no longer works.");
+    } catch (cause) {
+      setCodeError(failure(cause, "Couldn’t turn it off. Try again."));
+    } finally { setBusy(false); }
+  }
+  async function chooseMode(mode: JoinMode) {
+    if (mode === join.joinMode || busy) return;
+    setBusy(true); setCodeError("");
+    try {
+      await setJoinMode(communeId, mode);
+      haptic.light();
+    } catch (cause) {
+      setCodeError(failure(cause, "Couldn’t change that. Try again."));
+    } finally { setBusy(false); }
   }
   const fade = calm ? undefined : FadeIn.duration(220);
+  const back = <View style={{ alignSelf: "stretch", flexDirection: "row", alignItems: "center" }}>
+    <PressScale accessibilityRole="button" accessibilityLabel="Back" onPress={() => { setStep("start"); setCodeError(""); }} style={{ flexDirection: "row", alignItems: "center", gap: 2, height: 36, paddingRight: 8 }}>
+      <ChevronLeft size={20} color={c.ink} /><T kind="body" style={{ fontWeight: "500" }}>Back</T>
+    </PressScale>
+  </View>;
 
-  if (step === "qr" && made) {
+  if (step === "now" && shown) {
+    const url = joinCodeUrl(shown.token);
     return <Animated.View entering={fade} style={[FITTED, { padding: 20, paddingTop: 8, gap: 16, alignItems: "center" }]}>
-      <View style={{ alignSelf: "stretch", flexDirection: "row", alignItems: "center" }}>
-        <PressScale accessibilityRole="button" accessibilityLabel="Back" onPress={() => setStep("start")} style={{ flexDirection: "row", alignItems: "center", gap: 2, height: 36, paddingRight: 8 }}>
-          <ChevronLeft size={20} color={c.ink} /><T kind="body" style={{ fontWeight: "500" }}>Back</T>
-        </PressScale>
-      </View>
+      {back}
       <View style={{ alignItems: "center", gap: 4 }}>
-        <T kind="title" accessibilityRole="header" style={{ textAlign: "center" }}>Scan to join {name}</T>
-        <T kind="body" muted style={{ textAlign: "center" }}>Point your camera here to join.</T>
+        <T kind="title" accessibilityRole="header" style={{ textAlign: "center" }}>{scanLine} {name}</T>
+        <T kind="body" muted style={{ textAlign: "center" }}>{join.joinMode === "instant" ? "They join as soon as they scan." : "They ask to join. You approve them before they see anything."}</T>
       </View>
       <View style={{ padding: 14, borderRadius: 20, backgroundColor: "#fff", borderWidth: 1, borderColor: c.outline2 }}>
-        <QrImage value={made.url} size={248} label={`QR code to join ${name}`} />
+        <QrImage value={url} size={248} label={`QR code to join ${name}`} />
       </View>
       <View style={{ alignItems: "center", gap: 2 }}>
-        <T kind="body" style={{ fontWeight: "600" }}>{name}</T>
-        <T kind="label" muted style={{ textAlign: "center" }}>For {made.email}. It works once they sign in with that email.</T>
+        <T kind="body" style={{ fontWeight: "600" }}>{expiryWords(shown)}</T>
+        <T kind="label" muted style={{ textAlign: "center" }}>No email needed. After an hour, make another.</T>
       </View>
+      <ErrorText>{codeError}</ErrorText>
       <View style={{ alignSelf: "stretch", flexDirection: "row", gap: 10 }}>
         <View style={{ flex: 1 }}><Button block size="lg" variant="secondary" label="Done" onPress={close} /></View>
-        <View style={{ flex: 1 }}><Button block size="lg" label="Share link" icon={<Share2 size={17} color={c.onAction} />} onPress={() => void share()} /></View>
+        <View style={{ flex: 1 }}><Button block size="lg" label="Share link" icon={<Share2 size={17} color={c.onAction} />} onPress={() => void shareUrl(url)} /></View>
       </View>
+    </Animated.View>;
+  }
+
+  if (step === "sticker" && shown) {
+    const url = joinCodeUrl(shown.token);
+    return <Animated.View entering={fade} style={FITTED}>
+      <ScrollView style={FITTED} contentContainerStyle={{ padding: 20, paddingTop: 8, gap: 16, alignItems: "center" }}>
+        {back}
+        <View style={{ alignItems: "center", gap: 4 }}>
+          <T kind="title" accessibilityRole="header" style={{ textAlign: "center" }}>Sticker for the fridge</T>
+          <T kind="body" muted style={{ textAlign: "center" }}>Print it or save it. It works until you turn it off.</T>
+        </View>
+        <StickerCard name={name} line={scanLine} url={url} />
+        <ErrorText>{codeError}</ErrorText>
+        <View style={{ alignSelf: "stretch", gap: 10 }}>
+          <Button block size="lg" label={Platform.OS === "web" ? "Copy link" : "Share"} icon={<Share2 size={17} color={c.onAction} />}
+            onPress={() => void shareUrl(url, `${scanLine} ${name} on Commune: ${url}`)} />
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            <View style={{ flex: 1 }}><Button block variant="secondary" label="Make a new code" busy={busy} onPress={() => void newSticker()} /></View>
+            <View style={{ flex: 1 }}><Button block variant="secondary" label="Turn off this code" disabled={busy} onPress={() => void turnOff()} /></View>
+          </View>
+        </View>
+      </ScrollView>
     </Animated.View>;
   }
 
   const icon = (node: ReactNode) => <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: c.recessed, alignItems: "center", justifyContent: "center" }}>{node}</View>;
   const chevron = <ChevronRight size={18} color={c.ink2} />;
   const ready = made && made.email === email.trim();
+  const codesOff = join.joinMode === "off";
 
-  return <Animated.View entering={step === "start" && made ? fade : undefined} style={FITTED}>
-    <ScrollView keyboardShouldPersistTaps="handled" style={FITTED} contentContainerStyle={{ padding: 20, paddingTop: 12, gap: 16 }}>
+  return <Animated.View entering={step === "start" && (made || shown) ? fade : undefined} style={FITTED}>
+    <ScrollView keyboardShouldPersistTaps="handled" style={FITTED} contentContainerStyle={{ padding: 20, paddingTop: 12, gap: 18 }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
         {current ? <Image source={{ uri: photoOf(current.commune.kind) }} accessibilityIgnoresInvertColors
           style={{ width: 52, height: 52, borderRadius: 13, backgroundColor: c.recessed }} /> : null}
@@ -136,8 +221,28 @@ function InviteBody({ close }: { close: () => void }) {
         </View>
       </View>
 
+      <View accessibilityLabel="Ways to invite" style={{ gap: 6, padding: 14, borderRadius: radius.surface, backgroundColor: c.recessed }}>
+        <T kind="label" style={{ fontWeight: "600" }}>Ways to invite</T>
+        {WAYS_TO_INVITE.map(([way, lasts]) => <View key={way} style={{ flexDirection: "row", gap: 10 }}>
+          <T kind="label" style={{ width: 104, fontWeight: "500" }}>{way}</T>
+          <T kind="label" muted style={{ flex: 1 }}>{lasts}</T>
+        </View>)}
+      </View>
+
+      {admin ? <View style={{ gap: 8 }}>
+        <T kind="label" style={{ fontWeight: "600", paddingHorizontal: 4 }}>No email needed</T>
+        <Panel>
+          <Row first onPress={busy || codesOff ? undefined : () => void openCode("now")} left={icon(<QrCode size={17} color={c.ink} />)} title="Show a QR now"
+            meta={<T kind="label" muted>For someone next to you. Stops working after an hour.</T>} right={codesOff ? undefined : chevron} />
+          <Row onPress={busy || codesOff ? undefined : () => void openCode("sticker")} left={icon(<StickyNote size={17} color={c.ink} />)} title="Sticker for the fridge"
+            meta={<T kind="label" muted>{sticker ? "Your sticker is working. Tap to show, share or turn it off." : "A card to print. Works until you turn it off."}</T>} right={codesOff ? undefined : chevron} />
+        </Panel>
+        {codeError ? <ErrorText>{codeError}</ErrorText>
+          : codesOff ? <T kind="label" muted style={{ paddingHorizontal: 4 }}>QR codes are off for {name}. Turn them on under How a scan joins.</T> : null}
+      </View> : null}
+
       <View style={{ gap: 8 }}>
-        <T kind="label" style={{ fontWeight: "600", paddingHorizontal: 4 }}>Their email</T>
+        <T kind="label" style={{ fontWeight: "600", paddingHorizontal: 4 }}>By email</T>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 10, height: 50, borderRadius: radius.control, borderWidth: 1, borderColor: error ? c.late : c.outline, backgroundColor: c.surface, paddingHorizontal: 14 }}>
           <Mail size={17} color={c.ink2} />
           <TextInput ref={input} accessibilityLabel="Their email" value={email} onChangeText={(text) => { setEmail(text); setError(""); }}
@@ -147,18 +252,33 @@ function InviteBody({ close }: { close: () => void }) {
             style={[{ flex: 1, height: 48, fontSize: 16.5, color: c.ink }, Platform.OS === "web" ? ({ outlineStyle: "none" } as object) : null]} />
         </View>
         {error ? <ErrorText>{error}</ErrorText>
-          : <T kind="label" muted style={{ paddingHorizontal: 4 }}>Each invitation is for one person. It works once they sign in with this email.</T>}
+          : <T kind="label" muted style={{ paddingHorizontal: 4 }}>For one person. It works for 7 days, once they sign in with this email.</T>}
+        <Panel>
+          <Row first onPress={busy ? undefined : () => void share()} left={icon(<Share2 size={17} color={c.ink} />)} title="Share invite link"
+            meta={<T kind="label" muted>Messages, WhatsApp, email</T>} right={chevron} />
+          <Row onPress={busy ? undefined : () => void copy()} left={icon(<Link2 size={17} color={c.ink} />)} title="Copy link"
+            meta={<T kind="label" muted>{ready ? made!.url.replace("https://", "") : "Paste it anywhere"}</T>} right={chevron} />
+        </Panel>
       </View>
+      {busy ? <T kind="label" muted style={{ textAlign: "center" }}>Working on it…</T> : null}
 
-      <Panel>
-        <Row first onPress={busy ? undefined : () => void share()} left={icon(<Share2 size={17} color={c.ink} />)} title="Share invite link"
-          meta={<T kind="label" muted>Messages, WhatsApp, email</T>} right={chevron} />
-        <Row onPress={busy ? undefined : () => void copy()} left={icon(<Link2 size={17} color={c.ink} />)} title="Copy link"
-          meta={<T kind="label" muted>{ready ? made!.url.replace("https://", "") : "Paste it anywhere"}</T>} right={chevron} />
-        <Row onPress={busy ? undefined : () => void showQr()} left={icon(<QrCode size={17} color={c.ink} />)} title="Show a QR code"
-          meta={<T kind="label" muted>For someone standing next to you</T>} right={chevron} />
-      </Panel>
-      {busy ? <T kind="label" muted style={{ textAlign: "center" }}>Making the invitation…</T> : null}
+      {admin ? <View style={{ gap: 8 }}>
+        <T kind="label" style={{ fontWeight: "600", paddingHorizontal: 4 }}>How a scan joins</T>
+        <Panel>{JOIN_MODES.map((option, index) => {
+          const on = option.mode === join.joinMode;
+          return <PressScale key={option.mode} scaleTo={0.99} accessibilityRole="radio" accessibilityState={{ checked: on }} accessibilityLabel={`${option.label}. ${option.line}`}
+            onPress={() => void chooseMode(option.mode)}
+            style={{ flexDirection: "row", gap: 12, paddingVertical: 13, paddingHorizontal: 14, borderTopWidth: index === 0 ? 0 : 1, borderTopColor: c.outline2 }}>
+            <View style={{ width: 20, height: 20, borderRadius: 10, marginTop: 1, borderWidth: on ? 6 : 1.5, borderColor: on ? c.action : c.outline, backgroundColor: c.surface }} />
+            <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+              <T kind="body" style={{ fontWeight: on ? "600" : "400" }}>{option.label}</T>
+              <T kind="label" muted>{option.line}</T>
+              {option.mode === "instant" && on ? <T kind="label" style={{ color: c.late, marginTop: 4 }}>{INSTANT_WARNING}</T> : null}
+            </View>
+          </PressScale>;
+        })}</Panel>
+        <T kind="label" muted style={{ paddingHorizontal: 4 }}>This is for QR codes only. Email invitations work the same whichever you choose. People who join by code are members, never admins.</T>
+      </View> : <T kind="label" muted style={{ paddingHorizontal: 4 }}>Only an admin can make a QR code for {name}.</T>}
 
       <View style={{ gap: 8 }}>
         <T kind="label" style={{ fontWeight: "600", paddingHorizontal: 4 }}>Already in</T>
@@ -172,4 +292,19 @@ function InviteBody({ close }: { close: () => void }) {
       <Button block variant="quiet" label="Done" onPress={close} />
     </ScrollView>
   </Animated.View>;
+}
+
+/**
+ * The printable card: always black on white, whatever the theme, so it
+ * prints cleanly and any camera reads it.
+ */
+function StickerCard({ name, line, url }: { name: string; line: string; url: string }) {
+  return <View accessibilityLabel={`Sticker: ${line} ${name}`} style={{ width: 300, paddingTop: 22, paddingBottom: 18, paddingHorizontal: 22, borderRadius: 22, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e4e1da", alignItems: "center", gap: 12,
+    shadowColor: "#000", shadowOpacity: 0.08, shadowRadius: 18, shadowOffset: { width: 0, height: 6 }, elevation: 3 }}>
+    <Text numberOfLines={2} style={{ color: "#111", fontSize: 22, lineHeight: 27, fontWeight: "600", letterSpacing: -0.4, textAlign: "center" }}>{name}</Text>
+    <QrImage value={url} size={220} label={`QR code: ${line} ${name}`} />
+    <Text style={{ color: "#111", fontSize: 16, lineHeight: 21, fontWeight: "500" }}>{line}</Text>
+    <View style={{ alignSelf: "stretch", height: 1, backgroundColor: "#ece9e2" }} />
+    <Text accessibilityLabel="Commune" style={{ color: "#111", fontSize: 22, fontFamily: "CommuneWordmark25", letterSpacing: -1.2 }}>commune.</Text>
+  </View>;
 }

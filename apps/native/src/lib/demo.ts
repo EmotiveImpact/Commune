@@ -1,5 +1,6 @@
 import { addDays, requestId as newId, todayIso } from "./format";
 import type { Backend } from "./backend";
+import type { JoinCode, JoinMode, JoinRequest, JoinState } from "./joinCodes";
 import { ApiError } from "./backend";
 import { parsePayLinks, type PayLink, type PayLinkInput, type PayProvider } from "./payLinks";
 import type { Commune, Expense, Operation, PaymentReport, ReminderTarget, Share, Snapshot, User } from "./types";
@@ -147,6 +148,9 @@ function demoData(today: string): Snapshot[] {
 
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 
+/** 22 Elm Road's sticker in the demo: scanning it asks Sam to let Maya in. */
+export const DEMO_ELM_STICKER = "e1a2000000000000000000000000e1a2";
+
 export function demoBackend(now: () => string = todayIso): Backend {
   let signedIn = true;
   let data = demoData(now());
@@ -166,6 +170,28 @@ export function demoBackend(now: () => string = todayIso): Backend {
     }
     throw new ApiError("That payment report is no longer here", 404);
   };
+  // Join codes: Park Street has Priya waiting; the sticker below is 22 Elm
+  // Road's, for trying the scan on the phone (Help > Preview joining by QR).
+  const joinModes = new Map<string, JoinMode>();
+  let joinCodes: Array<JoinCode & { communeId: string }> = [];
+  let joinRequests: Array<JoinRequest & { communeId: string }> = [
+    { id: "jr-priya", communeId: "demo-park", userId: "demo-priya", name: "Priya Shah", email: "priya@example.com",
+      createdAt: new Date(Date.now() - 40 * 60000).toISOString(), codeKind: "sticker" },
+  ];
+  let elmWaiting = false;
+  const joinStateOf = (communeId: string): JoinState => {
+    const snapshot = data.find((candidate) => candidate.commune.id === communeId);
+    if (!snapshot) throw new ApiError("Not a commune member", 403);
+    const mode = joinModes.get(communeId) ?? "approve";
+    if (snapshot.commune.role !== "admin") return { joinMode: mode, codes: [], requests: [] };
+    const live = joinCodes.filter((code) => code.communeId === communeId && (!code.expiresAt || new Date(code.expiresAt) > new Date()));
+    return {
+      joinMode: mode,
+      codes: live.map(({ communeId: _, ...code }) => code),
+      requests: joinRequests.filter((item) => item.communeId === communeId).map(({ communeId: _, ...item }) => item),
+    };
+  };
+  const hex = () => Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join("");
   const myLinks = () => parsePayLinks(data[0].payLinks?.[MAYA.id]);
   const setMyLinks = (links: PayLink[]) => {
     for (const snapshot of data) snapshot.payLinks = { ...snapshot.payLinks, [MAYA.id]: links };
@@ -397,6 +423,60 @@ export function demoBackend(now: () => string = todayIso): Backend {
         recurringBills: [], splitTemplates: [], payLinks: {}, activityEvents: [],
       });
       return "demo-elm";
+    },
+    async joinState(communeId) { return joinStateOf(communeId); },
+    async setJoinMode(communeId, mode) {
+      if (joinStateOf(communeId) && data.find((item) => item.commune.id === communeId)?.commune.role !== "admin") {
+        throw new ApiError("Only an admin can change how people join", 403);
+      }
+      joinModes.set(communeId, mode);
+      if (mode === "off") joinCodes = joinCodes.filter((code) => code.communeId !== communeId);
+      return joinStateOf(communeId);
+    },
+    async createJoinCode(communeId, kind) {
+      const state = joinStateOf(communeId);
+      if (state.joinMode === "off") throw new ApiError("Joining by code is turned off for this commune", 409);
+      if (kind === "sticker") joinCodes = joinCodes.filter((code) => !(code.communeId === communeId && code.kind === "sticker"));
+      const code = { id: `jc-${newId()}`, communeId, kind, token: hex(), createdAt: new Date().toISOString(),
+        expiresAt: kind === "now" ? new Date(Date.now() + 3600_000).toISOString() : null };
+      joinCodes.push(code);
+      const { communeId: _, ...shown } = code;
+      return shown;
+    },
+    async revokeJoinCode(codeId) { joinCodes = joinCodes.filter((code) => code.id !== codeId); },
+    async previewJoinCode(token) {
+      if (token === DEMO_ELM_STICKER) {
+        if (data.some((snapshot) => snapshot.commune.id === "demo-elm")) {
+          return { communeName: "22 Elm Road", communeKind: "household", memberCount: 4, joinMode: "approve", alreadyMember: true, waiting: false };
+        }
+        return { communeName: "22 Elm Road", communeKind: "household", memberCount: 3, joinMode: "approve", alreadyMember: false, waiting: elmWaiting };
+      }
+      const code = joinCodes.find((item) => item.token === token && (!item.expiresAt || new Date(item.expiresAt) > new Date()));
+      const snapshot = code && data.find((item) => item.commune.id === code.communeId);
+      if (!code || !snapshot || (joinModes.get(code.communeId) ?? "approve") === "off") return null;
+      return { communeName: snapshot.commune.name, communeKind: snapshot.commune.kind, memberCount: snapshot.members.length,
+        joinMode: joinModes.get(code.communeId) ?? "approve", alreadyMember: true, waiting: false };
+    },
+    async requestToJoin(token) {
+      if (token === DEMO_ELM_STICKER) {
+        if (data.some((snapshot) => snapshot.commune.id === "demo-elm")) return { status: "already_member", communeId: "demo-elm" };
+        elmWaiting = true;
+        return { status: "pending", requestId: "jr-maya-elm" };
+      }
+      const code = joinCodes.find((item) => item.token === token);
+      if (!code) throw new ApiError("This code no longer works. Ask for a new one.", 410);
+      return { status: "already_member", communeId: code.communeId };
+    },
+    async decideJoinRequest(requestId, decision) {
+      const request = joinRequests.find((item) => item.id === requestId);
+      if (!request) throw new ApiError("This request was already answered", 409);
+      joinRequests = joinRequests.filter((item) => item.id !== requestId);
+      if (decision === "approve") {
+        const snapshot = data.find((item) => item.commune.id === request.communeId)!;
+        snapshot.members = [...snapshot.members, { userId: request.userId, name: request.name, email: request.email ?? undefined, role: "member", active: true }];
+        snapshot.commune.memberCount = snapshot.members.length;
+      }
+      return joinStateOf(request.communeId);
     },
     async readReceipt() {
       // The demo pretends to read the receipt, so the filled-in sheet can be seen.

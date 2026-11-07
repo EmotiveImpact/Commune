@@ -136,7 +136,7 @@ export default function Join() {
   </KeyboardAvoidingView>;
 }
 
-function Head({ over, title, body }: { over: string; title: string; body: string }) {
+export function Head({ over, title, body }: { over: string; title: string; body: string }) {
   return <Rise index={0} style={{ gap: 8 }}>
     <T kind="label" muted style={{ fontSize: 12.5, fontWeight: "600" }}>{over}</T>
     <T kind="display" accessibilityRole="header" style={{ fontSize: 28, lineHeight: 33 }}>{title}</T>
@@ -144,7 +144,7 @@ function Head({ over, title, body }: { over: string; title: string; body: string
   </Rise>;
 }
 
-function SignInStep({ name, error, busy, onSignedIn }: { name: string; error: string; busy: boolean; onSignedIn(): void }) {
+export function SignInStep({ name, error, busy, onSignedIn }: { name: string; error: string; busy: boolean; onSignedIn(): void }) {
   const { c } = useTheme();
   const { signIn, backend } = useApp();
   const [email, setEmail] = useState("");

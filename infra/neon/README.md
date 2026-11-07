@@ -24,6 +24,18 @@ link (the favourite listed first, at most one per person) and
 `set_preferred_pay_link`. Apply it after 0042, then deploy the client that
 offers it. The previous client ignores the new field. Test: `tests/pay_links.sql`.
 
+Join codes, **0044** (local only), add QR codes that need no email:
+`communes.join_mode` (`approve` by default, `instant` or `off`), the
+`commune_join_codes` and `commune_join_requests` tables, and
+`commune_join_state`, `set_commune_join_mode`, `create_join_code`,
+`revoke_join_code`, `preview_join_code`, `request_to_join`,
+`decide_join_request`, `my_join_requests` and `cancel_join_request`. People
+who join by code are always ordinary members. Email invitations are
+unaffected by the join setting. A code that no longer works raises SQLSTATE
+`P0002`, which the local API returns as 410. Apply it after 0043, then deploy
+the clients that offer it; the previous clients do not call it. Test:
+`tests/join_codes.sql`.
+
 Migrations **0015 to 0041 are local only**. They have not been applied to any
 Neon branch. Release order when they are: apply 0013 to 0041 in numeric order
 to the preview branch, refresh that branch's Data API schema cache, then

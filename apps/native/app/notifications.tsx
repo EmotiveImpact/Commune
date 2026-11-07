@@ -4,6 +4,7 @@ import { Stack, useRouter } from "expo-router";
 import { BellOff, Settings } from "lucide-react-native";
 import { memberName } from "../src/lib/derive";
 import { feedTime, firstName, money } from "../src/lib/format";
+import { askedWords } from "../src/lib/joinCodes";
 import type { Notification, Snapshot } from "../src/lib/types";
 import { useApp } from "../src/state";
 import { Body, Pad } from "../src/ui/chrome";
@@ -31,7 +32,7 @@ type Item = { snapshot: Snapshot; item: Notification };
 export default function Notifications() {
   const { c } = useTheme();
   const router = useRouter();
-  const { snapshots, today, waiting, markAllRead } = useApp();
+  const { snapshots, today, waiting, markAllRead, joinWaiting, setCurrent } = useApp();
   // What was new when the page opened keeps its dot until you leave.
   const [fresh] = useState(() => new Set(snapshots.flatMap((snapshot) => snapshot.notifications.filter((item) => !item.readAt).map((item) => item.id))));
   // Seeing the list counts as reading it.
@@ -87,14 +88,22 @@ export default function Notifications() {
         </View>} />;
     })}</Panel>;
   }
-  const nothing = !items.length && !toConfirm.length;
+  const nothing = !items.length && !toConfirm.length && !joinWaiting.length;
   return <View style={{ flex: 1, backgroundColor: c.canvas }}>
     <Stack.Screen options={{ headerRight: gear }} />
     <Body>
       <Pad gap={18}>
-        {toConfirm.length ? <View style={{ gap: 8 }}>
+        {toConfirm.length || joinWaiting.length ? <View style={{ gap: 8 }}>
           <Kicker>Needs you</Kicker>
-          <Panel>{toConfirm.map(({ entry, debtor }, index) => <Row key={debtor.pending!.id} first={index === 0}
+          <Panel>{joinWaiting.map(({ communeId, communeName, request }, index) => <Row key={request.id} first={index === 0}
+            onPress={() => { setCurrent(communeId); router.push("/members"); }}
+            left={<Avatar name={request.name} size={40} />}
+            title={<T kind="body" style={{ fontSize: 15, lineHeight: 20, fontWeight: "600" }}>{request.name} wants to join {communeName}.</T>}
+            meta={<View style={{ gap: 8, marginTop: 2 }}>
+              <T kind="label" muted style={{ fontSize: 12.5, lineHeight: 17 }}>{communeName} · Scanned your QR code {askedWords(request.createdAt)}</T>
+              <View style={{ alignSelf: "flex-start" }}><Button size="sm" label="Review" onPress={() => { setCurrent(communeId); router.push("/members"); }} /></View>
+            </View>} />)}
+          {toConfirm.map(({ entry, debtor }, index) => <Row key={debtor.pending!.id} first={index === 0 && !joinWaiting.length}
             left={<Avatar name={debtor.name} size={40} />}
             title={<T kind="body" style={{ fontSize: 15, lineHeight: 20, fontWeight: "600" }}>{firstName(debtor.name)} says they’ve paid you {money(debtor.pending!.amountMinor, entry.currency)} for {entry.title}.</T>}
             meta={<View style={{ gap: 8, marginTop: 2 }}>

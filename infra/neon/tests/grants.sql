@@ -13,7 +13,8 @@ DECLARE
     'split_templates', 'commune_events',
     'expense_share_receipts', 'expense_revisions', 'operation_occurrences', 'expense_share_payment_reports', 'note_revisions',
     'commune_announcements', 'announcement_acknowledgements',
-    'commune_notes', 'commune_operations', 'member_pay_links'
+    'commune_notes', 'commune_operations', 'member_pay_links',
+    'commune_join_codes', 'commune_join_requests'
   ];
 BEGIN
   FOREACH table_name IN ARRAY denied_tables LOOP
@@ -79,7 +80,16 @@ BEGIN
     'public.commune_summary(uuid)',
     'public.commune_expense_page(uuid,date,integer)',
     'public.commune_expense_records(uuid,uuid[])',
-    'public.my_unread_notices()'
+    'public.my_unread_notices()',
+    'public.commune_join_state(uuid)',
+    'public.set_commune_join_mode(uuid,text,uuid)',
+    'public.create_join_code(uuid,text,uuid)',
+    'public.revoke_join_code(uuid)',
+    'public.preview_join_code(text)',
+    'public.request_to_join(text,uuid)',
+    'public.decide_join_request(uuid,text)',
+    'public.my_join_requests()',
+    'public.cancel_join_request(uuid)'
   ] LOOP
     IF has_function_privilege('anonymous', table_name, 'EXECUTE')
       OR has_function_privilege('public', table_name, 'EXECUTE')
@@ -127,7 +137,9 @@ BEGIN
     'commune_private.expense_records(uuid[])',
     'commune_private.expense_history(uuid)',
     'commune_private.unread_notice_count(uuid,text)',
-    'commune_private.activity_record_type(uuid)'
+    'commune_private.activity_record_type(uuid)',
+    'commune_private.live_join_code(text)',
+    'commune_private.add_member_by_code(uuid,text)'
   ] LOOP
     IF has_function_privilege('authenticated', table_name, 'EXECUTE')
       OR has_function_privilege('anonymous', table_name, 'EXECUTE') THEN
