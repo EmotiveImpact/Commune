@@ -41,6 +41,8 @@ export interface Backend {
   setPreferredPayLink(provider: PayProvider | null): Promise<PayLink[]>;
   /** Creates an invitation for that email address and returns the link to send them. */
   invite(communeId: string, email: string, role?: "member" | "admin"): Promise<{ url: string }>;
+  /** Emails that invitation to its address from Commune, with a Join button and a QR code to scan from a computer. */
+  emailInvitation(token: string): Promise<void>;
   /** Adds a note: a title, an optional short line, and labelled details such as a Wi-Fi password. */
   addNote(communeId: string, input: NoteInput): Promise<void>;
   /** Adds a chore, on one person, taken in turns, or open to anyone, once or repeating. */
@@ -215,6 +217,7 @@ export function serverBackend(base: string): Backend {
       const result = await post<{ url: string }>(`/communes/${communeId}/invites`, { email, role });
       return { url: result.url };
     },
+    async emailInvitation(token) { await post("/invitation-email", { token }); },
     async myPayLinks() { return parsePayLinks((await call<{ links: unknown }>("/pay-links")).links); },
     async savePayLink(provider, input) {
       return parsePayLinks((await call<{ links: unknown }>(`/pay-links/${provider}`, { method: "PUT", body: JSON.stringify(input) })).links);

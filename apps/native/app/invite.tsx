@@ -5,7 +5,7 @@ import { useRouter } from "expo-router";
 import Animated, { FadeIn } from "react-native-reanimated";
 import * as Clipboard from "expo-clipboard";
 import { ChevronLeft, ChevronRight, Link2, Mail, QrCode, Share2, StickyNote } from "lucide-react-native";
-import { shareLink } from "../src/lib/inviteLink";
+import { inviteToken, shareLink } from "../src/lib/inviteLink";
 import {
   INSTANT_WARNING, JOIN_MODES, expiryWords, isLive, joinCodeUrl,
   type JoinCode, type JoinCodeKind, type JoinMode,
@@ -88,6 +88,20 @@ function InviteBody({ close }: { close: () => void }) {
     } finally {
       setBusy(false);
     }
+  }
+  /** Commune emails the invitation itself: a Join button for phones and a QR code to scan from a computer. */
+  async function sendEmail() {
+    const url = await link();
+    const token = url ? inviteToken(url) : null;
+    if (!token) return;
+    setBusy(true); setError("");
+    try {
+      await backend.emailInvitation(token);
+      haptic.success();
+      toast(`Emailed ${email.trim()}, with a link and a QR code.`);
+    } catch (cause) {
+      setError(failure(cause, "Couldn’t send the email. Share the link instead."));
+    } finally { setBusy(false); }
   }
   async function shareUrl(url: string, text = message(url)) {
     if (Platform.OS === "web") { await copyText(url); return; }
@@ -276,10 +290,12 @@ function InviteBody({ close }: { close: () => void }) {
         </View>
         {error ? <ErrorText>{error}</ErrorText>
           : <T kind="label" muted style={{ paddingHorizontal: 4 }}>For one person. It works for 7 days, once they sign in with this email.</T>}
+        <Button block size="lg" label="Email the invitation" busy={busy} icon={<Mail size={17} color={c.onAction} />} onPress={() => void sendEmail()} />
+        <T kind="label" muted style={{ paddingHorizontal: 4 }}>The email has a Join button for their phone and a QR code to scan if they open it on a computer.</T>
         <Panel>
-          <Row first onPress={busy ? undefined : () => void share()} left={icon(<Share2 size={17} color={c.ink} />)} title="Share email invitation"
-            meta={<T kind="label" muted>Only works for the email above</T>} right={chevron} />
-          <Row onPress={busy ? undefined : () => void copy()} left={icon(<Link2 size={17} color={c.ink} />)} title="Copy email invitation"
+          <Row first onPress={busy ? undefined : () => void share()} left={icon(<Share2 size={17} color={c.ink} />)} title="Or share it yourself"
+            meta={<T kind="label" muted>Messages, WhatsApp. Only works for the email above</T>} right={chevron} />
+          <Row onPress={busy ? undefined : () => void copy()} left={icon(<Link2 size={17} color={c.ink} />)} title="Copy their invitation link"
             meta={<T kind="label" muted>{ready ? made!.url.replace("https://", "") : "Only works for the email above"}</T>} right={chevron} />
         </Panel>
       </View>

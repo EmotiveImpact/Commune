@@ -92,3 +92,31 @@ test("amounts read as the app writes them, with each currency's own symbol", () 
   assert.match(email.text, /\$32\.10 expense share for Internet in Brooklyn loft/);
   assert.doesNotMatch(email.text, /US\$/);
 });
+
+test("invitation email carries the join link as a button and as a QR code drawn only at send time", async () => {
+  const { renderInvitationEmail, completeInvitationHtml, invitationUrl, qrTable } = await import("../src/invitations.ts");
+  const token = "cd".repeat(32);
+  const email = renderInvitationEmail({ commune: "Park House", inviter: "Alice", role: "member", expires: "2026-11-14", appUrl: "https://example.test", inviteId: "3f2b6c1e-9a7d-4c2b-8e1f-0a1b2c3d4e5f" });
+  // The stored payload never holds the token or its QR.
+  assert.ok(email.html.includes("COMMUNE_INVITATION_QR"));
+  assert.ok(!email.html.includes(token));
+  assert.match(email.text, /On a computer\? Open this email on your phone/);
+  const html = completeInvitationHtml(email.html, "https://example.test", token);
+  assert.ok(!html.includes("COMMUNE_INVITATION"), "every placeholder is filled");
+  assert.ok(html.includes(`href="${invitationUrl("https://example.test", token)}"`));
+  assert.ok(html.includes(qrTable(invitationUrl("https://example.test", token))));
+  assert.match(html, /Scan this with your phone’s camera/);
+  // Gmail cuts off messages over about 102 KB.
+  assert.ok(Buffer.byteLength(html) < 80_000, `email is ${Buffer.byteLength(html)} bytes`);
+});
+
+test("QR table has a square grid with a quiet border", async () => {
+  const { qrTable } = await import("../src/invitations.ts");
+  const table = qrTable("https://example.test/invite?token=" + "ef".repeat(32));
+  const rows = table.match(/<tr>/g).length;
+  const columns = table.match(/<tr>(.*?)<\/tr>/)[1].match(/<td /g).length;
+  assert.equal(rows, columns + 1, "one ruler row plus one row per module");
+  // The first and last module rows are quiet (all white), as cameras need.
+  const moduleRows = table.match(/<tr>(.*?)<\/tr>/g).slice(1);
+  for (const row of [moduleRows[0], moduleRows.at(-1)]) assert.ok(!row.includes("#111111"));
+});

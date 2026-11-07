@@ -357,6 +357,10 @@ export function demoBackend(now: () => string = todayIso): Backend {
       const token = Array.from(email.trim().toLowerCase()).reduce((hash, ch) => (hash * 31 + ch.charCodeAt(0)) >>> 0, 7).toString(16).padStart(8, "0");
       return { url: `https://app.ourcommune.io/invite?token=demo${token}` };
     },
+    async emailInvitation(token) {
+      // The demo sends nothing; it only checks the invitation came from here.
+      if (!token.startsWith("demo")) throw new Error("That invitation isn’t here any more.");
+    },
     async nudge(shareId) {
       for (const snapshot of data) {
         const target = snapshot.reminderTargets.find((item) => item.sourceId === shareId);
