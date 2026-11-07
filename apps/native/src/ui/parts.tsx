@@ -2,7 +2,8 @@ import { SwipeRow } from "./swipe";
 import { HOLD, useRemind } from "./remind";
 import { useRef, useState } from "react";
 import Svg, { Path } from "react-native-svg";
-import { Pressable, View } from "react-native";
+import { Pressable, View, useWindowDimensions } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useRouter } from "expo-router";
 import { Check, ChevronDown, Clock3 } from "lucide-react-native";
 import { standing, tilePulse, type Need, type Waiting } from "../lib/derive";
@@ -17,10 +18,10 @@ import { InPlaceCard, useInPlace, withLanded } from "./settled";
 import { Rolling, Swap } from "./rolling";
 import { useToast } from "./toast";
 import { useTheme } from "./theme";
-import Animated, { Easing, FadeOut, useAnimatedProps, useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from "react-native-reanimated";
+import Animated, { Easing, FadeOut, runOnJS, useAnimatedProps, useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from "react-native-reanimated";
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
-import { PressScale, springs, useCalm } from "./motion";
+import { haptic, PressScale, springs, useCalm } from "./motion";
 
 /** "Mark done" for a task, with a confirmation that offers Undo for a few seconds. */
 export function useCompleteTask() {
@@ -226,7 +227,77 @@ function CalmNudge() {
   return <Button size="lg" block variant="secondary" label={`Nudge ${joinAnd(names)}`} busy={busy} onPress={() => void send()} />;
 }
 
-export function NextStep({ need, total }: { need: Need | undefined; total: number }) {
+const GLIDE = Easing.bezier(0.32, 0.72, 0, 1);
+
+/** Small dots under the next step card: one per step, the current one filled. Capped so a long list stays tidy. */
+function StepDots({ count, at }: { count: number; at: number }) {
+  const { c } = useTheme();
+  const shown = Math.min(count, 7);
+  // With more than seven steps the window of dots follows the current one.
+  const start = Math.max(0, Math.min(at - 3, count - shown));
+  return <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={{ flexDirection: "row", justifyContent: "center", gap: 6, marginTop: -4, marginBottom: -6 }}>
+    {Array.from({ length: shown }, (_, i) => {
+      const on = start + i === at;
+      return <View key={i} style={{ width: on ? 16 : 6, height: 6, borderRadius: 3, backgroundColor: on ? c.ink : c.outline }} />;
+    })}
+  </View>;
+}
+
+export function NextStep({ needs }: { needs: Need[] }) {
+  const total = needs.length;
+  const [at, setAt] = useState(0);
+  const index = Math.min(at, Math.max(0, total - 1));
+  const need: Need | undefined = needs[index];
+  const calm = useCalm();
+  const { width } = useWindowDimensions();
+  // Swipe sideways between steps, like a stack of cards. Swiping only moves
+  // between steps: paying, confirming and Mark done stay on the buttons.
+  const x = useSharedValue(0);
+  const fade = useSharedValue(1);
+  const dragged = useRef(0);
+  const moved = () => { dragged.current = Date.now(); };
+  const allow = () => Date.now() - dragged.current > 400;
+  const go = (next: number, dir: number) => {
+    setAt(next);
+    haptic.select();
+    if (calm) { x.value = 0; fade.value = 0; fade.value = withTiming(1, { duration: 160 }); return; }
+    x.value = dir * 56;
+    fade.value = 0;
+    x.value = withTiming(0, { duration: 320, easing: GLIDE });
+    fade.value = withTiming(1, { duration: 240, easing: GLIDE });
+  };
+  const many = total > 1;
+  const pan = Gesture.Pan()
+    .enabled(many)
+    .activeOffsetX([-14, 14])
+    .failOffsetY([-10, 10])
+    .onStart(() => { runOnJS(moved)(); })
+    .onUpdate((event) => {
+      const t = event.translationX;
+      // Past the first or last step the card follows the finger only a little.
+      const edge = (t > 0 && index === 0) || (t < 0 && index === total - 1);
+      x.value = edge ? t * 0.25 : t;
+    })
+    .onEnd((event) => {
+      runOnJS(moved)();
+      const t = event.translationX;
+      const dir = t < 0 ? -1 : 1;
+      const next = index - dir;
+      const far = Math.abs(t) > 80 || Math.abs(event.velocityX) > 700;
+      if (far && next >= 0 && next < total && Math.sign(event.velocityX || t) === dir) {
+        if (calm) { runOnJS(go)(next, dir); return; }
+        fade.value = withTiming(0, { duration: 180, easing: GLIDE });
+        x.value = withTiming(dir * width, { duration: 200, easing: GLIDE }, (finished) => {
+          if (finished) runOnJS(go)(next, -dir);
+        });
+        return;
+      }
+      x.value = withTiming(0, { duration: 260, easing: GLIDE });
+    });
+  const slide = useAnimatedStyle(() => ({
+    opacity: fade.value,
+    transform: [{ translateX: x.value }, { rotate: `${Math.max(-3, Math.min(3, x.value / 60))}deg` }],
+  }));
   const { c } = useTheme();
   const router = useRouter();
   const { snapshotOf, waiting, today } = useApp();
@@ -252,19 +323,25 @@ export function NextStep({ need, total }: { need: Need | undefined; total: numbe
   }
   const commune = snapshotOf(need.communeId)?.commune;
   // Hold the card (or tap the clock) for Remind me tonight or tomorrow, as in v7.
-  return <View style={card} accessibilityLabel="Your next step">
+  return <GestureDetector gesture={pan}><Animated.View style={[card, slide]} accessibilityLabel="Your next step"
+    accessibilityHint={many ? "Swipe left or right for your other steps" : undefined}
+    accessibilityActions={many ? [{ name: "increment", label: "Next step" }, { name: "decrement", label: "Previous step" }] : undefined}
+    onAccessibilityAction={(event) => {
+      const next = index + (event.nativeEvent.actionName === "increment" ? 1 : -1);
+      if (next >= 0 && next < total) go(next, next > index ? 1 : -1);
+    }}>
     <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginVertical: -6 }}>
       <T kind="note" muted style={{ fontWeight: "500" }}>Your next step</T>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
-        <T kind="note" muted style={{ fontWeight: "500" }}>1 of {total}</T>
+        <T kind="note" muted style={{ fontWeight: "500" }}>{index + 1} of {total}</T>
         <PressScale scaleTo={0.9} accessibilityRole="button" accessibilityLabel={`Remind me about ${need.title}`} onPress={remind}
           hitSlop={6} style={{ width: 32, height: 32, alignItems: "center", justifyContent: "center", marginRight: -8 }}>
           <Clock3 size={16} color={c.ink2} />
         </PressScale>
       </View>
     </View>
-    <PressScale scaleTo={0.985} accessibilityRole="button" accessibilityHint="Hold for a reminder" onLongPress={remind} delayLongPress={HOLD}
-      onPress={() => router.push(need.kind === "share" ? `/expense/${need.expenseId}` : "/tasks")} style={{ flexDirection: "row", gap: 14, alignItems: "center" }}>
+    <PressScale scaleTo={0.985} accessibilityRole="button" accessibilityHint="Hold for a reminder" onLongPress={() => { if (allow()) remind?.(); }} delayLongPress={HOLD}
+      onPress={() => allow() && router.push(need.kind === "share" ? `/expense/${need.expenseId}` : "/tasks")} style={{ flexDirection: "row", gap: 14, alignItems: "center" }}>
       {need.kind === "share" && commune ? <Who name={need.payerName} photo={photoOf(commune.kind)} /> : <Cal iso={need.dueOn} today={today} small />}
       <View style={{ flex: 1, minWidth: 0 }}>
         <Swap value={need.key}><T kind="strong" style={{ fontSize: 17, lineHeight: 23 }}>{need.title}</T></Swap>
@@ -276,11 +353,12 @@ export function NextStep({ need, total }: { need: Need | undefined; total: numbe
     <View style={{ gap: 10 }}>
       {need.kind === "share"
         ? <>
-          <PayPrimary onStart={() => claim(need.shareId)} target={{ shareId: need.shareId, communeId: need.communeId, payerId: need.payerId, payerName: need.payerName, amountMinor: need.amountMinor, currency: need.currency, title: need.title }} />
+          <PayPrimary allow={allow} onStart={() => claim(need.shareId)} target={{ shareId: need.shareId, communeId: need.communeId, payerId: need.payerId, payerName: need.payerName, amountMinor: need.amountMinor, currency: need.currency, title: need.title }} />
         </>
-        : <Button size="lg" block label="Mark done" busy={task.busy === need.key} onPress={() => void task.run(need)} />}
+        : <Button size="lg" block label="Mark done" busy={task.busy === need.key} onPress={() => { if (allow()) void task.run(need); }} />}
     </View>
-  </View>;
+    {many ? <StepDots count={total} at={index} /> : null}
+  </Animated.View></GestureDetector>;
 }
 
 /**

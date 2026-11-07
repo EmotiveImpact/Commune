@@ -101,7 +101,7 @@ export default function Home() {
         <Swap value={headKey}><Text accessibilityRole="header" style={{ color: c.onFrame, fontSize: 31, lineHeight: 35, fontWeight: "500", letterSpacing: -0.7 }}>{head}</Text></Swap>
         <Swap value={sub}><Text style={{ color: c.onFrame2, fontSize: 14.5, lineHeight: 21 }}>{boldStanding(sub, c.onFrame)}</Text></Swap>
       </View>
-      <Still index={0} style={{ marginTop: -46, marginHorizontal: 16 }}><NextStep need={needs[0]} total={needs.length} /></Still>
+      <Still index={0} style={{ marginTop: -46, marginHorizontal: 16 }}><NextStep needs={needs} /></Still>
       <View style={{ padding: 16, paddingTop: 28, gap: 28 }}>
         <FirstDayCard />
         <JoinWaitingCard />
