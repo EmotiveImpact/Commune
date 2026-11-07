@@ -1,14 +1,13 @@
 import { useEffect, useState } from "react";
-import { Image, Pressable, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import Constants from "expo-constants";
 import { ChevronRight, Mail, Plus, Settings, Star, User } from "lucide-react-native";
-import { standing } from "../../src/lib/derive";
 import { cap, money, word } from "../../src/lib/format";
 import { payLinkLabel, PAY_PROVIDER_NAME, PAY_PROVIDERS, type PayProvider } from "../../src/lib/payLinks";
 import type { CurrencyCode } from "../../src/lib/types";
 import { failure, useApp } from "../../src/state";
-import { Body, TopBar, photoOf } from "../../src/ui/chrome";
+import { Body, TopBar } from "../../src/ui/chrome";
 import { Avatar, Panel, Row, SectionHead, T } from "../../src/ui/kit";
 import { PayMark } from "../../src/ui/marks";
 import { haptic, Still } from "../../src/ui/motion";
@@ -23,7 +22,7 @@ export default function Profile() {
   const { c } = useTheme();
   const router = useRouter();
   const toast = useToast();
-  const { user, snapshots, owe, owed, needs, waiting, recorded, setCurrent, myPayLinks, loadMyPayLinks, setPreferredPayLink } = useApp();
+  const { user, snapshots, owe, owed, myPayLinks, loadMyPayLinks, setPreferredPayLink } = useApp();
   const [busy, setBusy] = useState(false);
   useEffect(() => { loadMyPayLinks().catch(() => undefined); }, [loadMyPayLinks]);
 
@@ -77,12 +76,6 @@ export default function Profile() {
             }) : <Row first title="All square" meta={<T kind="label" muted>Nothing owed either way.</T>} />}
           </Panel>
           {currencies.length > 1 ? <T kind="label" muted style={{ paddingHorizontal: 4 }}>One line for each currency. Commune never adds {CURRENCY_WORD[currencies[0]]} and {CURRENCY_WORD[currencies[1]]} together.</T> : null}
-          <Panel>{snapshots.map((snapshot, index) => <Row key={snapshot.commune.id} first={index === 0}
-            onPress={() => { setCurrent(snapshot.commune.id); router.navigate("/hub"); }}
-            left={<Image source={{ uri: photoOf(snapshot.commune.kind) }} style={{ width: 36, height: 36, borderRadius: 9, backgroundColor: c.recessed }} />}
-            title={snapshot.commune.name}
-            meta={<T kind="label" muted>{standing(snapshot, needs, waiting, recorded).line}</T>}
-            right={<ChevronRight size={17} color={c.ink2} />} />)}</Panel>
         </Still>
 
         <Still index={next()} style={{ gap: 10 }}>

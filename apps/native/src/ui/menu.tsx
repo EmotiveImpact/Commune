@@ -1,15 +1,16 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ComponentType, type ReactNode } from "react";
-import { Alert, Image, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { Image, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import Animated, { interpolate, runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, type Href } from "expo-router";
 import {
-  Bell, Check, CircleHelp, FileText, Files, LogOut, Plus, Repeat2, Settings, ShoppingBag, SquareCheck, UsersRound, X,
+  Check, CircleHelp, FileText, Files, LogOut, Plus, Repeat2, Settings, ShoppingBag, SquareCheck, UsersRound, X,
 } from "lucide-react-native";
 import { standing } from "../lib/derive";
 import { useApp } from "../state";
 import { haptic, springs, useCalm } from "./motion";
+import { useConfirm } from "./confirm";
 import { useToast } from "./toast";
 import { KIND_NAME, KIND_PHOTO, useTheme } from "./theme";
 
@@ -89,16 +90,13 @@ function MenuPanel() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const toast = useToast();
+  const confirm = useConfirm();
   const { close } = useMenu();
   const { snapshots, current, setCurrent, needs, waiting, recorded, user, signOut } = useApp();
-  const unread = snapshots.reduce((sum, snapshot) => sum + snapshot.notifications.filter((item) => !item.readAt).length, 0);
   const go = (href: Href) => { close(); router.push(href); };
-  function askSignOut() {
-    const leave = () => { close(); void signOut().then(() => router.replace("/sign-in")); };
-    if (Platform.OS === "web") { if (globalThis.confirm?.("Sign out of Commune on this phone?") ?? true) leave(); return; }
-    Alert.alert("Sign out of Commune on this phone?", "Your records stay in Commune. You’ll sign in again to see them.", [
-      { text: "Cancel", style: "cancel" }, { text: "Sign out", style: "destructive", onPress: leave },
-    ]);
+  async function askSignOut() {
+    if (!(await confirm({ title: "Sign out of Commune on this phone?", message: "Your records stay in Commune. You’ll sign in again to see them.", yes: "Sign out", destructive: true }))) return;
+    close(); void signOut().then(() => router.replace("/sign-in"));
   }
   const name = current?.commune.name ?? "your commune";
 
@@ -162,12 +160,11 @@ function MenuPanel() {
       {row("templates", Files, "Templates", () => go("/templates"), templates ? `${templates} saved ${templates === 1 ? "split" : "splits"}` : "None saved yet")}
 
       <Divider />
-      {row("notifications", Bell, "Notifications", () => go("/notifications"), unread ? (unread === 1 ? "One thing new" : `${unread} things new`) : undefined, unread ? `${unread} new` : undefined)}
-      {row("invite", UsersRound, "Invite people", () => go("/members"), `To ${name}`)}
+      {row("invite", UsersRound, "Invite people", () => go("/invite"), `To ${name}`)}
       {row("settings", Settings, "Settings", () => go("/account"), "Layout, pay links and sign out")}
       {row("help", CircleHelp, "Help and feedback", () => go("/help"))}
       <View style={{ height: 18 }} />
-      {row("signout", LogOut, "Sign out", askSignOut, user?.email)}
+      {row("signout", LogOut, "Sign out", () => void askSignOut(), user?.email)}
     </ScrollView>
   </View>;
 }

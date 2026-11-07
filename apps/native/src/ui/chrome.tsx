@@ -1,9 +1,9 @@
 import { useState, type ReactNode } from "react";
-import { Image, Pressable, StyleSheet, Text, View, type ScrollViewProps } from "react-native";
+import { Image, Pressable, RefreshControl, StyleSheet, Text, View, type ScrollViewProps } from "react-native";
 import Animated, { useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { Bell, ChevronDown, Menu, Search } from "lucide-react-native";
+import { Bell, ChevronDown, ChevronLeft, Menu, Search } from "lucide-react-native";
 import { SearchScreen } from "./search";
 import { useMenu } from "./menu";
 import { useApp } from "../state";
@@ -25,7 +25,7 @@ export function TopBar({ title, children }: { title?: string; children?: ReactNo
   const unread = snapshots.some((snapshot) => snapshot.notifications.some((item) => !item.readAt));
   const [searching, setSearching] = useState(false);
   return <View style={{ backgroundColor: c.frame, paddingTop: insets.top }}>
-    <View style={{ height: 52, flexDirection: "row", alignItems: "center", paddingLeft: 20, paddingRight: 8, gap: 4 }}>
+    <View style={{ height: BAR_HEIGHT, flexDirection: "row", alignItems: "center", paddingLeft: 20, paddingRight: 8, gap: 4 }}>
       <Text accessibilityRole="header" accessibilityLabel={title ? `Commune, ${title}` : "Commune, Home"} style={{ color: c.onFrame, fontSize: 25, fontWeight: "700", letterSpacing: -1.4 }}>commune.</Text>
       <View style={{ flex: 1 }} />
       <Pressable accessibilityRole="button" accessibilityLabel="Search" hitSlop={4}
@@ -47,13 +47,49 @@ export function TopBar({ title, children }: { title?: string; children?: ReactNo
   </View>;
 }
 
-/** The scrolling body under a top bar. */
-export function Body({ children, ground, ...rest }: ScrollViewProps & { children: ReactNode; ground?: string }) {
+/** Height of the top bar under the status bar, the same on every screen. */
+export const BAR_HEIGHT = 52;
+
+/**
+ * The top bar on inner screens (Notifications, Settings and the rest): the
+ * same dark bar and height as the tabs' top bar, with a back chevron and the
+ * screen's name. Swiping from the left goes back too.
+ */
+export function PushedBar({ title, onBack }: { title: string; onBack?: () => void }) {
+  const { c } = useTheme();
+  const insets = useSafeAreaInsets();
+  return <View style={{ backgroundColor: c.frame, paddingTop: insets.top }}>
+    <View style={{ height: BAR_HEIGHT, flexDirection: "row", alignItems: "center", paddingHorizontal: 6 }}>
+      <View style={{ width: 52 }}>
+        {onBack ? <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={onBack} hitSlop={6}
+          style={({ pressed }) => ({ width: 46, height: 46, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.6 : 1 })}>
+          <ChevronLeft size={27} color={c.onFrame} strokeWidth={1.8} />
+        </Pressable> : null}
+      </View>
+      <Text accessibilityRole="header" numberOfLines={1} style={{ flex: 1, textAlign: "center", color: c.onFrame, fontSize: 17, fontWeight: "600" }}>{title}</Text>
+      <View style={{ width: 52 }} />
+    </View>
+  </View>;
+}
+
+/**
+ * The scrolling body under a top bar. Pulling down refreshes, with the
+ * spinner in the gap: the content follows the finger half way and `ground`
+ * (the page's own top colour, canvas unless the page opens dark) fills the
+ * rest, so no odd band appears. Pass refresh={false} where it makes no sense.
+ */
+export function Body({ children, ground, refresh = true, ...rest }: ScrollViewProps & { children: ReactNode; ground?: string; refresh?: boolean }) {
   const { c } = useTheme();
   const pull = usePull();
+  const app = useApp();
+  const [pulling, setPulling] = useState(false);
+  const top = ground ?? c.canvas;
+  const dark = top === c.frame;
+  const control = rest.refreshControl ?? (refresh ? <RefreshControl refreshing={pulling} tintColor={dark ? c.onFrame : c.ink2} colors={[c.action]}
+    onRefresh={async () => { setPulling(true); try { await app.refresh(); } finally { setPulling(false); } }} /> : undefined);
   return <Animated.ScrollView style={{ flex: 1, backgroundColor: c.canvas }} contentContainerStyle={{ paddingBottom: 32 }}
-    onScroll={pull.onScroll} scrollEventThrottle={16} {...rest}>
-    <Ground color={ground ?? c.frame} />
+    onScroll={pull.onScroll} scrollEventThrottle={16} {...rest} refreshControl={control}>
+    <Ground color={top} />
     <Animated.View style={pull.damp}>{children}</Animated.View>
   </Animated.ScrollView>;
 }

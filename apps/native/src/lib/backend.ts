@@ -35,6 +35,8 @@ export interface Backend {
   removePayLink(provider: PayProvider): Promise<PayLink[]>;
   /** Mark one of your links as your favourite, or none (null). */
   setPreferredPayLink(provider: PayProvider | null): Promise<PayLink[]>;
+  /** Creates an invitation for that email address and returns the link to send them. */
+  invite(communeId: string, email: string, role?: "member" | "admin"): Promise<{ url: string }>;
 }
 
 export class ApiError extends Error {
@@ -90,6 +92,10 @@ export function serverBackend(base: string): Backend {
     async addExpense(communeId, input) { await post(`/communes/${communeId}/expenses`, input); },
     async nudge(shareId, requestId) { await post("/reminders", { kind: "nudge", sourceId: shareId, requestId }); },
     async markRead(notificationId) { await post(`/notifications/${notificationId}/read`); },
+    async invite(communeId, email, role = "member") {
+      const result = await post<{ url: string }>(`/communes/${communeId}/invites`, { email, role });
+      return { url: result.url };
+    },
     async myPayLinks() { return parsePayLinks((await call<{ links: unknown }>("/pay-links")).links); },
     async savePayLink(provider, input) {
       return parsePayLinks((await call<{ links: unknown }>(`/pay-links/${provider}`, { method: "PUT", body: JSON.stringify(input) })).links);

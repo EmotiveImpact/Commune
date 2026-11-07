@@ -232,6 +232,11 @@ export function demoBackend(now: () => string = todayIso): Backend {
         })),
       });
     },
+    async invite(communeId, email) {
+      if (!data.some((snapshot) => snapshot.commune.id === communeId)) throw new Error("That commune isn’t here any more.");
+      const token = Array.from(email.trim().toLowerCase()).reduce((hash, ch) => (hash * 31 + ch.charCodeAt(0)) >>> 0, 7).toString(16).padStart(8, "0");
+      return { url: `https://app.ourcommune.io/invite?token=demo${token}` };
+    },
     async nudge(shareId) {
       for (const snapshot of data) {
         const target = snapshot.reminderTargets.find((item) => item.sourceId === shareId);

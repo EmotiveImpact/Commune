@@ -28,7 +28,7 @@ export default function Home() {
     const soon = comingUp(snapshots, user?.id ?? "", today);
     return <View style={{ flex: 1, backgroundColor: c.canvas }}>
       <TopBar />
-      <Body refreshControl={pull}>
+      <Body refreshControl={pull} ground={c.frame}>
         <ImageBackground source={photo ? { uri: photo } : undefined} style={{ minHeight: 300, justifyContent: "flex-end", backgroundColor: c.frame }}>
           <View style={{ padding: 20, paddingBottom: 26, gap: 10, backgroundColor: "rgba(14,16,24,0.55)" }}>
             <Text style={{ color: c.onFrame2, fontSize: 13, fontWeight: "500" }}>{longDate(today)}</Text>
@@ -66,7 +66,7 @@ export default function Home() {
 
   return <View style={{ flex: 1, backgroundColor: c.canvas }}>
     <TopBar />
-    <Body refreshControl={pull}>
+    <Body refreshControl={pull} ground={c.frame}>
       <View style={{ backgroundColor: c.frame, paddingHorizontal: 20, paddingTop: 14, paddingBottom: 66, gap: 10 }}>
         <Text style={{ color: c.onFrame2, fontSize: 13, fontWeight: "500" }}>{longDate(today)}</Text>
         <Text accessibilityRole="header" style={{ color: c.onFrame2, fontSize: 31, lineHeight: 35, fontWeight: "500", letterSpacing: -0.7 }}>{head}</Text>

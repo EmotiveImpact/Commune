@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Alert, Platform, View } from "react-native";
+import { View } from "react-native";
 import { useRouter } from "expo-router";
 import { hasAny, payLinksOf } from "../../src/lib/derive";
 import { firstName, money, moneyList, shortDate, word } from "../../src/lib/format";
@@ -7,21 +7,17 @@ import type { CurrencyCode } from "../../src/lib/types";
 import { failure, useApp } from "../../src/state";
 import { Body, Pad, TopBar } from "../../src/ui/chrome";
 import { Avatar, Button, Kicker, Panel, Row, State, T, tap } from "../../src/ui/kit";
+import { useConfirm } from "../../src/ui/confirm";
 import { useToast } from "../../src/ui/toast";
 import { Still } from "../../src/ui/motion";
 import { useTheme } from "../../src/ui/theme";
 
 const CURRENCY_WORD: Record<CurrencyCode, string> = { GBP: "pounds", EUR: "euros", USD: "dollars" };
 
-function ask(title: string, message: string, yes: string): Promise<boolean> {
-  if (Platform.OS === "web") return Promise.resolve(globalThis.confirm?.(`${title}\n\n${message}`) ?? true);
-  return new Promise((resolve) => Alert.alert(title, message, [
-    { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
-    { text: yes, onPress: () => resolve(true) },
-  ]));
-}
 
 export default function Settle() {
+  const askCard = useConfirm();
+  const ask = (title: string, message: string, yes: string) => askCard({ title, message, yes });
   const { c } = useTheme();
   const router = useRouter();
   const { settle, owe, owed, recorded, resolveReport, nudge, snapshots } = useApp();

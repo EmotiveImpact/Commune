@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
-import { Keyboard, Modal, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { Keyboard, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, type Href } from "expo-router";
-import { FileText, Receipt, Search as Glass, SquareCheck, UsersRound } from "lucide-react-native";
+import { FileText, Receipt, Search as Glass, SquareCheck, UsersRound, X } from "lucide-react-native";
 import { search, type SearchHit } from "../lib/search";
 import { useApp } from "../state";
 import { useCalm } from "./motion";
@@ -23,7 +23,8 @@ export function hitHref(hit: SearchHit): Href {
 /**
  * Search, opened from the glass in the top bar. The bar turns into the search
  * field with Cancel beside it, and results fill the screen below it, grouped
- * by kind. Cancel, or opening a result, closes it and clears what was typed.
+ * by kind. Cancel, opening a result, or tapping the empty screen before
+ * typing anything closes it and clears what was typed.
  */
 export function SearchScreen({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const { c } = useTheme();
@@ -49,22 +50,31 @@ export function SearchScreen({ visible, onClose }: { visible: boolean; onClose: 
   return <Modal visible={visible} transparent animationType="none" onRequestClose={close} statusBarTranslucent onShow={() => input.current?.focus()}>
     <Animated.View entering={calm ? undefined : FadeIn.duration(160)} style={{ flex: 1, backgroundColor: c.canvas }}>
       <View style={{ backgroundColor: c.frame, paddingTop: insets.top }}>
-        <View style={{ height: 52, flexDirection: "row", alignItems: "center", paddingLeft: 16, paddingRight: 6, gap: 6 }}>
-          <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 10, height: 40, paddingHorizontal: 14, borderRadius: 20, backgroundColor: c.frameRaised }}>
-            <Glass size={18} color={c.onFrame2} strokeWidth={1.8} />
-            <TextInput ref={input} value={query} onChangeText={setQuery} autoFocus placeholder="Search bills, chores, notes, people" placeholderTextColor={c.onFrame2}
-              accessibilityLabel="Search your communes" returnKeyType="search" autoCorrect={false} autoCapitalize="none" clearButtonMode="while-editing"
-              style={{ flex: 1, color: c.onFrame, fontSize: 16, paddingVertical: 0 }} />
-          </View>
+        <View style={{ height: 56, flexDirection: "row", alignItems: "center", paddingLeft: 16, paddingRight: 4, gap: 4 }}>
+          <Animated.View entering={calm ? undefined : FadeIn.duration(180)} style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 10, height: 42, paddingLeft: 14, paddingRight: 6, borderRadius: 21, backgroundColor: c.canvas }}>
+            <Glass size={19} color={c.ink} strokeWidth={2} />
+            <TextInput ref={input} value={query} onChangeText={setQuery} autoFocus placeholder="Search Commune" placeholderTextColor={c.ink2}
+              accessibilityLabel="Search bills, chores, notes and people" returnKeyType="search" autoCorrect={false} autoCapitalize="none"
+              selectionColor={c.action} cursorColor={c.action} keyboardAppearance="light" underlineColorAndroid="transparent"
+              style={[{ flex: 1, minWidth: 0, height: 42, color: c.ink, fontSize: 17, fontWeight: "500", paddingVertical: 0 }, Platform.OS === "web" ? ({ outlineStyle: "none" } as object) : null]} />
+            {query ? <Pressable accessibilityRole="button" accessibilityLabel="Clear search" onPress={() => { setQuery(""); input.current?.focus(); }} hitSlop={8}
+              style={{ width: 30, height: 30, alignItems: "center", justifyContent: "center" }}>
+              <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: c.ink2, alignItems: "center", justifyContent: "center" }}>
+                <X size={13} color={c.canvas} strokeWidth={2.6} />
+              </View>
+            </Pressable> : null}
+          </Animated.View>
           <Pressable accessibilityRole="button" accessibilityLabel="Cancel search" onPress={close} hitSlop={6}
-            style={({ pressed }) => ({ height: 44, paddingHorizontal: 10, justifyContent: "center", opacity: pressed ? 0.7 : 1 })}>
-            <Text style={{ color: c.onFrame, fontSize: 16, fontWeight: "500" }}>Cancel</Text>
+            style={({ pressed }) => ({ height: 44, paddingHorizontal: 12, justifyContent: "center", opacity: pressed ? 0.6 : 1 })}>
+            <Text style={{ color: c.onFrame, fontSize: 16 }}>Cancel</Text>
           </Pressable>
         </View>
       </View>
-      <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" contentContainerStyle={{ paddingHorizontal: 12, paddingTop: 8, paddingBottom: insets.bottom + 24 }}>
+      {!typed ? <Pressable accessibilityRole="button" accessibilityLabel="Close search" onPress={close} style={{ flex: 1, paddingHorizontal: 12, paddingTop: 8 }}>
+        <Text style={{ color: c.ink2, fontSize: 15, padding: 12 }}>Find bills, chores, notes and people. Try a name, an amount or who paid.</Text>
+      </Pressable> : <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" contentContainerStyle={{ paddingHorizontal: 12, paddingTop: 8, paddingBottom: insets.bottom + 24 }}>
         {typed.length < 2
-          ? <Text style={{ color: c.ink2, fontSize: 15, padding: 12 }}>Search by name, amount or who paid. Words can go in any order.</Text>
+          ? <Text style={{ color: c.ink2, fontSize: 15, padding: 12 }}>Find bills, chores, notes and people. Try a name, an amount or who paid.</Text>
           : hits.length === 0
             ? <Text style={{ color: c.ink2, fontSize: 15, padding: 12 }}>Nothing matches “{typed}”.</Text>
             : hits.map((hit, index) => {
@@ -85,7 +95,7 @@ export function SearchScreen({ visible, onClose }: { visible: boolean; onClose: 
                 </Pressable>
               </Animated.View>;
             })}
-      </ScrollView>
+      </ScrollView>}
     </Animated.View>
   </Modal>;
 }

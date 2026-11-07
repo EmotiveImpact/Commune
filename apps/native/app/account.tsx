@@ -1,5 +1,6 @@
 import { useEffect } from "react";
-import { Alert, Platform, View } from "react-native";
+import { View } from "react-native";
+import { useConfirm } from "../src/ui/confirm";
 import { useRouter } from "expo-router";
 import { Bell, Check, ChevronRight, CircleHelp, HandCoins, LogOut } from "lucide-react-native";
 import { joinAnd } from "../src/lib/format";
@@ -26,10 +27,10 @@ export default function Account() {
   const { hubTabsAt, setHubTabsAt } = usePrefs();
   const { user, myPayLinks, loadMyPayLinks, signOut, backend } = useApp();
   useEffect(() => { loadMyPayLinks().catch(() => undefined); }, [loadMyPayLinks]);
-  function askSignOut() {
-    const go = () => { void signOut().then(() => router.replace("/sign-in")); };
-    if (Platform.OS === "web") { if (globalThis.confirm?.("Sign out of Commune on this phone?") ?? true) go(); return; }
-    Alert.alert("Sign out of Commune on this phone?", "Your records stay in Commune. You’ll sign in again to see them.", [{ text: "Cancel", style: "cancel" }, { text: "Sign out", style: "destructive", onPress: go }]);
+  const confirm = useConfirm();
+  async function askSignOut() {
+    if (!(await confirm({ title: "Sign out of Commune on this phone?", message: "Your records stay in Commune. You’ll sign in again to see them.", yes: "Sign out", destructive: true }))) return;
+    void signOut().then(() => router.replace("/sign-in"));
   }
   const icon = (node: React.ReactNode) => <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: c.recessed, alignItems: "center", justifyContent: "center" }}>{node}</View>;
   return <View style={{ flex: 1, backgroundColor: c.canvas }}>
@@ -59,7 +60,7 @@ export default function Account() {
           <Row first onPress={() => router.push("/help")} left={icon(<CircleHelp size={17} color={c.ink} />)} title="Help and feedback" right={<ChevronRight size={17} color={c.ink2} />} />
         </Panel></Rise>
         <Rise index={4}><Panel>
-          <Row first onPress={askSignOut} left={icon(<LogOut size={17} color={c.late} />)} title={<T kind="body" color={c.late} style={{ fontWeight: "500" }}>Sign out</T>} />
+          <Row first onPress={() => void askSignOut()} left={icon(<LogOut size={17} color={c.late} />)} title={<T kind="body" color={c.late} style={{ fontWeight: "500" }}>Sign out</T>} />
         </Panel></Rise>
         {backend.mode === "demo" ? <T kind="note" muted style={{ paddingHorizontal: 4 }}>You’re looking at demo data kept on this phone. Nothing you do here reaches anyone.</T> : null}
       </Pad>

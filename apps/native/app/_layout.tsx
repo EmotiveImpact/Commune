@@ -5,7 +5,9 @@ import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { PrefsProvider } from "../src/prefs";
 import { AppProvider, useApp } from "../src/state";
+import { ConfirmProvider } from "../src/ui/confirm";
 import { ToastProvider } from "../src/ui/toast";
+import { PushedBar } from "../src/ui/chrome";
 import { SHEET_SCREEN } from "../src/ui/sheet";
 import { useTheme } from "../src/ui/theme";
 
@@ -50,13 +52,15 @@ function PayReturn() {
 
 function Screens() {
   const { c } = useTheme();
+  // Inner screens slide in from the right and swipe back from anywhere on
+  // the screen, under a top bar the same height as the tabs' one.
   const pushed = {
     headerShown: true,
-    headerStyle: { backgroundColor: c.frame },
-    headerTintColor: c.onFrame,
-    headerTitleStyle: { fontWeight: "600" as const, fontSize: 17 },
-    headerShadowVisible: false,
-    headerBackButtonDisplayMode: "minimal" as const,
+    header: ({ navigation, options, back }: { navigation: { goBack(): void }; options: { title?: string }; back?: unknown }) =>
+      <PushedBar title={options.title ?? ""} onBack={back ? () => navigation.goBack() : undefined} />,
+    animation: "slide_from_right" as const,
+    gestureEnabled: true,
+    fullScreenGestureEnabled: true,
     contentStyle: { backgroundColor: c.canvas },
   };
   // Long forms (add an expense, switch commune) open as iOS page sheets: the
@@ -83,13 +87,14 @@ function Screens() {
       <Stack.Screen name="pay/[shareId]" options={SHEET_SCREEN} />
       <Stack.Screen name="paid/[shareId]" options={SHEET_SCREEN} />
       <Stack.Screen name="add-expense" options={sheet} />
-      <Stack.Screen name="switch" options={sheet} />
+      <Stack.Screen name="switch" options={SHEET_SCREEN} />
+      <Stack.Screen name="invite" options={SHEET_SCREEN} />
     </Stack>
   </>;
 }
 
 export default function Root() {
   return <GestureHandlerRootView style={{ flex: 1 }}>
-    <PrefsProvider><AppProvider><ToastProvider><Screens /></ToastProvider></AppProvider></PrefsProvider>
+    <PrefsProvider><AppProvider><ToastProvider><ConfirmProvider><Screens /></ConfirmProvider></ToastProvider></AppProvider></PrefsProvider>
   </GestureHandlerRootView>;
 }
