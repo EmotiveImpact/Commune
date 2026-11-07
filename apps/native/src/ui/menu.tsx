@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ComponentType, type ReactNode } from "react";
-import { Image, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { Image, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native";
+import { Text } from "./text";
 import Animated, { interpolate, runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -36,7 +37,7 @@ export function MenuShell({ children }: { children: ReactNode }) {
   const progress = useSharedValue(0);
   const [isOpen, setOpen] = useState(false);
   const settle = useCallback((to: 0 | 1, velocity = 0) => {
-    progress.value = calm ? withTiming(to, { duration: 220 }) : withSpring(to, { ...springs.smooth, velocity });
+    progress.value = calm ? withTiming(to, { duration: 220 }) : withSpring(to, { ...springs.release, velocity });
   }, [calm, progress]);
   const open = useCallback(() => { setOpen(true); haptic.light(); settle(1); }, [settle]);
   const close = useCallback(() => { setOpen(false); settle(0); }, [settle]);

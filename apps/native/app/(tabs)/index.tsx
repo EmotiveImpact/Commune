@@ -1,4 +1,5 @@
-import { ImageBackground, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { ImageBackground, RefreshControl, StyleSheet, View } from "react-native";
+import { Text } from "../../src/ui/text";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { useState } from "react";
 import { aheadBy, comingUp, hasAny, oweTotals, standingClause, type Need } from "../../src/lib/derive";

@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Linking, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { Linking, Pressable, ScrollView, View } from "react-native";
+import { Text, TextInput } from "../../src/ui/text";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Clipboard from "expo-clipboard";
 import { Copy, ExternalLink, Landmark, X } from "lucide-react-native";

@@ -1,5 +1,7 @@
+import type React from "react";
 import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
-import { Keyboard, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { Keyboard, Modal, Platform, Pressable, ScrollView, View } from "react-native";
+import { Text, TextInput } from "./text";
 import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, type Href } from "expo-router";
@@ -33,7 +35,7 @@ export function SearchScreen({ visible, onClose }: { visible: boolean; onClose: 
   const router = useRouter();
   const { snapshots, current, setCurrent, user } = useApp();
   const [query, setQuery] = useState("");
-  const input = useRef<TextInput>(null);
+  const input = useRef<React.ElementRef<typeof TextInput>>(null);
   const hits = useMemo(() => search(snapshots, query, user?.id), [snapshots, query, user?.id]);
   const typed = query.trim();
 

@@ -1,6 +1,7 @@
 import { useEffect, type ComponentType } from "react";
 import { Redirect, Tabs } from "expo-router";
-import { ActivityIndicator, Text, View } from "react-native";
+import { ActivityIndicator, View } from "react-native";
+import { Text } from "../../src/ui/text";
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
@@ -42,12 +43,10 @@ function TabButton({ tab, on, onPress }: { tab: (typeof TABS)[number]; on: boole
   const calm = useCalm();
   const { user } = useApp();
   const life = useSharedValue(on ? 1 : 0);
-  const pop = useSharedValue(1);
   useEffect(() => {
     life.value = calm ? withTiming(on ? 1 : 0, { duration: 180 }) : withSpring(on ? 1 : 0, springs.snappy);
-    if (on && !calm) { pop.value = 0.86; pop.value = withSpring(1, springs.bouncy); }
-  }, [on, calm, life, pop]);
-  const body = useAnimatedStyle(() => ({ opacity: 0.55 + 0.45 * life.value, transform: [{ scale: pop.value }] }));
+  }, [on, calm, life]);
+  const body = useAnimatedStyle(() => ({ opacity: 0.55 + 0.45 * life.value }));
   const color = c.onFrame;
   return <PressScale accessibilityRole="tab" accessibilityState={{ selected: on }} accessibilityLabel={tab.label} onPress={onPress}
     style={{ flex: 1, alignItems: "center" }}>

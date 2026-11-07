@@ -1,6 +1,9 @@
 import { useEffect, useRef } from "react";
 import { AppState, Platform } from "react-native";
 import { Stack, useRouter } from "expo-router";
+import { useFonts } from "expo-font";
+import { DMSans_400Regular, DMSans_500Medium, DMSans_600SemiBold, DMSans_700Bold } from "@expo-google-fonts/dm-sans";
+import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from "@expo-google-fonts/inter";
 import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { PrefsProvider } from "../src/prefs";
@@ -94,6 +97,9 @@ function Screens() {
 }
 
 export default function Root() {
+  // The design language's faces; the first frame waits for them so text never jumps.
+  const [ready, fontError] = useFonts({ DMSans_400Regular, DMSans_500Medium, DMSans_600SemiBold, DMSans_700Bold, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold });
+  if (!ready && !fontError) return null;
   return <GestureHandlerRootView style={{ flex: 1 }}>
     <PrefsProvider><AppProvider><ToastProvider><ConfirmProvider><Screens /></ConfirmProvider></ToastProvider></AppProvider></PrefsProvider>
   </GestureHandlerRootView>;

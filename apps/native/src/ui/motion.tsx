@@ -11,9 +11,13 @@ import * as Haptics from "expo-haptics";
  * snappy for presses and toggles, bouncy for things that land.
  */
 export const springs = {
-  smooth: { duration: 550, dampingRatio: 0.85 },
-  snappy: { duration: 350, dampingRatio: 0.9 },
+  // The v7 prototype's springs: smooth lands with a small overshoot (about 4%),
+  // snappy with almost none. Together they do almost everything.
+  smooth: { duration: 880, dampingRatio: 0.74 },
+  snappy: { duration: 670, dampingRatio: 0.86 },
   bouncy: { duration: 600, dampingRatio: 0.7 },
+  // For releasing a swipe (Hub pages, the menu), where a long spring drags.
+  release: { duration: 550, dampingRatio: 0.85 },
 } satisfies Record<string, WithSpringConfig>;
 
 /** Gap between rows arriving one after another, and how many rows get a stagger. */

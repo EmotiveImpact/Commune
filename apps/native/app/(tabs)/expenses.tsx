@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, View } from "react-native";
+import { Text } from "../../src/ui/text";
 import { useRouter } from "expo-router";
 import { Check, Plus, ReceiptText } from "lucide-react-native";
 import { memberName, outstanding } from "../../src/lib/derive";

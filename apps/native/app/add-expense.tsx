@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { Pressable, ScrollView, View } from "react-native";
+import { Text, TextInput } from "../src/ui/text";
 import { useRouter } from "expo-router";
 import { X } from "lucide-react-native";
 import { activeMembers } from "../src/lib/derive";

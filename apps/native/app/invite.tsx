@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Platform, Share, TextInput, View } from "react-native";
+import { Platform, Share, View } from "react-native";
+import { TextInput } from "../src/ui/text";
 import { useRouter } from "expo-router";
 import * as Clipboard from "expo-clipboard";
 import { Link2, Share2 } from "lucide-react-native";

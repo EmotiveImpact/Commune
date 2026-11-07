@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Pressable, Text, View, type LayoutRectangle } from "react-native";
+import { Pressable, View, type LayoutRectangle } from "react-native";
+import { Text } from "./text";
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
 import { haptic, springs, useCalm } from "./motion";
 import { useTheme } from "./theme";

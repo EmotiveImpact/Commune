@@ -1,4 +1,5 @@
-import { Text, View } from "react-native";
+import { View } from "react-native";
+import { Text } from "./text";
 import { useRouter } from "expo-router";
 import { ArrowUpRight, ChevronRight } from "lucide-react-native";
 import { payLinksOf } from "../lib/derive";
@@ -6,7 +7,7 @@ import { firstName, money } from "../lib/format";
 import { payLinkHref, PAY_PROVIDER_NAME, type PayLink } from "../lib/payLinks";
 import type { CurrencyCode } from "../lib/types";
 import { useApp } from "../state";
-import { Button, T } from "./kit";
+import { Button, T, TextLink } from "./kit";
 import { PayMark } from "./marks";
 import { useTheme } from "./theme";
 
@@ -56,7 +57,7 @@ export function PayPrimary({ target, size = "lg" }: { target: PayTarget; size?: 
   return <>
     <Button size={size} block label={`Pay ${name} ${amount}`} trailing={<ChevronRight size={16} color={c.onAction} />} onPress={sheet} />
     <PayWith name={name} links={links} />
-    <Button variant="quiet" size="sm" label={`Already paid? Tell ${name}`} onPress={tell} />
+    <TextLink centred muted label={`Already paid? Tell ${name}`} onPress={tell} />
   </>;
 }
 

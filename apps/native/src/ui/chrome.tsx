@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
-import { Image, Pressable, RefreshControl, StyleSheet, Text, View, type ScrollViewProps } from "react-native";
+import { Image, Pressable, RefreshControl, StyleSheet, View, type ScrollViewProps } from "react-native";
+import { Text } from "./text";
 import Animated, { useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
-import { ImageBackground, Linking, Pressable, RefreshControl, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { ImageBackground, Linking, Pressable, RefreshControl, StyleSheet, View, useWindowDimensions } from "react-native";
+import { Text } from "../../src/ui/text";
 import { useRouter, type Href } from "expo-router";
 import * as Clipboard from "expo-clipboard";
 import Animated, { interpolate, runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming, Extrapolation, type SharedValue } from "react-native-reanimated";
@@ -14,7 +15,7 @@ import { addDays, calParts, firstName, joinAnd, money } from "../../src/lib/form
 import { usePrefs } from "../../src/prefs";
 import { failure, useApp } from "../../src/state";
 import { Body, Ground, Pad, PULL_SHOWN, TopBar, photoOf, usePull } from "../../src/ui/chrome";
-import { Avatar, Button, Cal, Empty, Faces, Panel, Row, SectionHead, State, T, tap } from "../../src/ui/kit";
+import { Avatar, Button, Cal, Empty, Faces, Panel, Row, SectionHead, State, T, tap, TextLink } from "../../src/ui/kit";
 import { haptic, PressScale, springs, useCalm } from "../../src/ui/motion";
 import { NeedsList, TaskCheck, WaitingRow } from "../../src/ui/parts";
 import { PayPrimary } from "../../src/ui/pay";
@@ -90,7 +91,7 @@ export default function Hub() {
     let to = i;
     if (f > 0.22 || event.velocityX < -600) to = Math.min(HUB_TABS.length - 1, i + 1);
     else if (f < -0.22 || event.velocityX > 600) to = Math.max(0, i - 1);
-    pager.value = calm ? withTiming(-to * width, { duration: 200 }) : withSpring(-to * width, { ...springs.smooth, velocity: event.velocityX });
+    pager.value = calm ? withTiming(-to * width, { duration: 200 }) : withSpring(-to * width, { ...springs.release, velocity: event.velocityX });
     movePill(to);
     if (to !== i) { at.value = to; runOnJS(landed)(to); }
   });
@@ -287,7 +288,7 @@ function YourPart({ onMore }: { onMore(): void }) {
         <T kind="amount" style={{ fontSize: 19, lineHeight: 24 }}>{money(first.amountMinor, first.currency)}</T>
       </Pressable>
       <PayPrimary size="md" target={{ shareId: first.shareId, communeId: first.communeId, payerId: first.payerId, payerName: first.payerName, amountMinor: first.amountMinor, currency: first.currency, title: first.title }} />
-      {shares.length > 1 ? <Button variant="quiet" size="sm" label={`${shares.length - 1} more to settle`} onPress={onMore} /> : null}
+      {shares.length > 1 ? <TextLink centred label={`${shares.length - 1} more to settle`} onPress={onMore} /> : null}
     </View> : toConfirm?.debtor.pending ? <View style={{ backgroundColor: c.surface, borderRadius: 12, padding: 12, gap: 10 }}>
       <View style={{ flexDirection: "row", gap: 8 }}>
         <View style={{ flex: 1 }}>
@@ -297,11 +298,11 @@ function YourPart({ onMore }: { onMore(): void }) {
         <T kind="amount" style={{ fontSize: 19, lineHeight: 24 }}>{money(toConfirm.debtor.pending.amountMinor, commune.currency)}</T>
       </View>
       <Button block busy={busy} label={`Confirm ${money(toConfirm.debtor.pending.amountMinor, commune.currency)} received`} onPress={() => void confirm()} />
-      <Button variant="quiet" size="sm" label="Not received" onPress={() => router.push("/settle")} />
+      <TextLink label="Not received" onPress={() => router.push("/settle")} />
     </View> : null}
     <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
       <Button variant="secondary" size="sm" label="Add expense" icon={<Plus size={15} color={c.ink} />} onPress={() => router.push("/add-expense")} />
-      <Button variant="quiet" size="sm" label="View settlement" onPress={() => router.push("/settle")} />
+      <TextLink label="View settlement" onPress={() => router.push("/settle")} />
       {first && confirms.length ? <T kind="label" muted>{confirms.length} to confirm</T> : null}
     </View>
   </View>;
@@ -317,7 +318,7 @@ function WeekPanel({ onAll }: { onAll(): void }) {
   const days = value.days.filter((day, index) => index === 0 || day.items.length);
   const empty = !value.late.length && value.days.every((day) => !day.items.length);
   return <View style={{ gap: 12 }}>
-    <SectionHead title="This week" right={<Button variant="quiet" size="sm" label="All chores" onPress={onAll} />} />
+    <SectionHead title="This week" right={<TextLink label="All chores" onPress={onAll} />} />
     <Panel>
       {empty ? <Empty icon={<Check size={18} color={c.onSettled} />} title="Nothing planned for this week" body="Tasks, events and bills due will show here." /> : <>
         {value.late.length ? <DayHead first label="Late" count={value.late.length} late /> : null}
@@ -379,7 +380,7 @@ function PeoplePanel() {
   if (!current) return null;
   const lines = people(current, user?.id ?? "", today);
   return <View style={{ gap: 12 }}>
-    <SectionHead title="People" right={<Button variant="quiet" size="sm" label="Members" onPress={() => router.push("/members")} />} />
+    <SectionHead title="People" right={<TextLink label="Members" onPress={() => router.push("/members")} />} />
     <Panel>{lines.map((line, index) => <Pressable key={line.userId} accessibilityRole="button" accessibilityLabel={`${line.name}. ${line.balance}. ${line.job}.`}
       onPress={() => router.push("/settle")}
       style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 11, paddingHorizontal: 16, borderTopWidth: index ? StyleSheet.hairlineWidth : 0, borderTopColor: c.outline, backgroundColor: pressed ? c.press : "transparent" })}>
@@ -413,7 +414,7 @@ function NotesList() {
   const notes = current?.notes ?? [];
   if (!notes.length) return null;
   return <View style={{ gap: 12 }}>
-    <SectionHead title="All notes" count={notes.length} right={<Button variant="quiet" size="sm" label="Open" onPress={() => router.push("/notes")} />} />
+    <SectionHead title="All notes" count={notes.length} right={<TextLink label="Open" onPress={() => router.push("/notes")} />} />
     <Panel>{notes.map((note, index) => <Row key={note.id} first={index === 0} onPress={() => router.push("/notes")} title={note.title}
       meta={note.lede || note.body ? <T kind="label" muted lines={1}>{note.lede || note.body}</T> : undefined} />)}</Panel>
     <T kind="note" muted style={{ paddingHorizontal: 4 }}>Adding and editing notes is on the web app for now.</T>
@@ -453,8 +454,8 @@ function MoneyActions() {
   const router = useRouter();
   return <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
     <Button label="Add expense" icon={<Plus size={15} color={c.onAction} />} onPress={() => router.push("/add-expense")} />
-    <Button variant="quiet" size="sm" label="All expenses" onPress={() => router.navigate("/expenses")} />
-    <Button variant="quiet" size="sm" label="Settlement" onPress={() => router.navigate("/settle")} />
+    <TextLink label="All expenses" onPress={() => router.navigate("/expenses")} />
+    <TextLink label="Settlement" onPress={() => router.navigate("/settle")} />
   </View>;
 }
 
@@ -488,7 +489,7 @@ function ChoresPage() {
   const days = value.days.map((day) => ({ ...day, items: day.items.filter((item) => item.kind === "task") })).filter((day) => day.items.length);
   const count = late.length + days.reduce((sum, day) => sum + day.items.length, 0);
   return <View style={{ gap: 12 }}>
-    <SectionHead title="This week" count={count} right={<Button variant="quiet" size="sm" label="All tasks" onPress={() => router.push("/tasks")} />} />
+    <SectionHead title="This week" count={count} right={<TextLink label="All tasks" onPress={() => router.push("/tasks")} />} />
     <Panel>
       {!count ? <Empty icon={<Check size={18} color={c.onSettled} />} title="No chores left this week" /> : <>
         {late.length ? <DayHead first label="Late" count={late.length} late /> : null}

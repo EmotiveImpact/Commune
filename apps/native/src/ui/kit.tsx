@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { ActivityIndicator, Image, StyleSheet, Text, View, type StyleProp, type TextStyle, type ViewStyle } from "react-native";
+import { ActivityIndicator, Image, View, type StyleProp, type TextStyle, type ViewStyle } from "react-native";
+import { Text } from "./text";
 import * as Haptics from "expo-haptics";
 import { calParts, initials } from "../lib/format";
 import type { Tone } from "../lib/derive";
@@ -72,7 +73,7 @@ export function Button({ label, onPress, variant = "primary", size = "md", block
 
 export function Panel({ children, pad, style }: { children: ReactNode; pad?: boolean; style?: StyleProp<ViewStyle> }) {
   const { c } = useTheme();
-  return <View style={[{ backgroundColor: c.surface, borderRadius: radius.surface, borderWidth: StyleSheet.hairlineWidth, borderColor: c.outline, overflow: "hidden" }, pad ? { padding: 20, gap: 12 } : null, style]}>{children}</View>;
+  return <View style={[{ backgroundColor: c.surface, borderRadius: radius.surface, borderWidth: 1, borderColor: c.outline2, overflow: "hidden" }, pad ? { padding: 20, gap: 12 } : null, style]}>{children}</View>;
 }
 
 export function Row({ left, title, meta, right, onPress, first, accessibilityLabel }: {
@@ -87,9 +88,9 @@ export function Row({ left, title, meta, right, onPress, first, accessibilityLab
     </View>
     {right}
   </>;
-  const style = { flexDirection: "row" as const, alignItems: "center" as const, gap: 12, paddingVertical: 12, paddingHorizontal: 16, borderTopWidth: first ? 0 : StyleSheet.hairlineWidth, borderTopColor: c.outline };
+  const style = { flexDirection: "row" as const, alignItems: "center" as const, gap: 12, paddingVertical: 12, paddingHorizontal: 16, borderTopWidth: first ? 0 : 1, borderTopColor: c.outline2 };
   return onPress
-    ? <PressScale accessibilityRole="button" accessibilityLabel={accessibilityLabel} onPress={onPress} style={style} pressedStyle={{ backgroundColor: c.press }}>{body}</PressScale>
+    ? <PressScale accessibilityRole="button" accessibilityLabel={accessibilityLabel} onPress={onPress} style={style} scaleTo={0.985} pressedStyle={{ backgroundColor: c.press }}>{body}</PressScale>
     : <View style={style}>{body}</View>;
 }
 
@@ -174,7 +175,7 @@ export function SectionHead({ title, count, right }: { title: string; count?: nu
 
 export function Group({ label, count, late, first }: { label: string; count: number; late?: boolean; first?: boolean }) {
   const { c } = useTheme();
-  return <View style={{ flexDirection: "row", gap: 8, paddingTop: 10, paddingBottom: 6, paddingHorizontal: 16, borderTopWidth: first ? 0 : StyleSheet.hairlineWidth, borderTopColor: c.outline }}>
+  return <View style={{ flexDirection: "row", gap: 8, paddingTop: 10, paddingBottom: 6, paddingHorizontal: 16, borderTopWidth: first ? 0 : 1, borderTopColor: c.outline2 }}>
     <Text style={{ fontSize: 12, fontWeight: "600", color: late ? c.late : c.ink }}>{label}</Text>
     <Text style={{ fontSize: 12, fontWeight: "500", color: c.ink2 }}>{count}</Text>
   </View>;
@@ -182,7 +183,19 @@ export function Group({ label, count, late, first }: { label: string; count: num
 
 /** Small grey heading above a list, like "Owed to you · euros". */
 export function Kicker({ children }: { children: ReactNode }) {
-  return <T kind="label" muted style={{ fontWeight: "600", paddingHorizontal: 4, textTransform: "none" }}>{children}</T>;
+  return <T kind="note" muted style={{ fontWeight: "500", paddingHorizontal: 4 }}>{children}</T>;
+}
+
+/**
+ * An onward link, as in v7's .cm-link: 14 px ink, underlined with a soft line,
+ * at least 44 px to tap. `muted` is the smaller grey "Already paid? Tell Sam".
+ */
+export function TextLink({ label, onPress, centred, muted, accessibilityLabel }: { label: string; onPress: () => void; centred?: boolean; muted?: boolean; accessibilityLabel?: string }) {
+  const { c } = useTheme();
+  return <PressScale accessibilityRole="link" accessibilityLabel={accessibilityLabel ?? label} onPress={() => { tap("select"); onPress(); }} scaleTo={0.98}
+    hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }} style={{ minHeight: 30, justifyContent: "center", alignSelf: centred ? "center" : "flex-start", paddingHorizontal: 2 }} pressedStyle={{ opacity: 0.6 }}>
+    <Text style={{ fontSize: muted ? 13.5 : 14, lineHeight: 20, fontWeight: muted ? "400" : "500", color: muted ? c.ink2 : c.ink, textDecorationLine: "underline", textDecorationColor: c.outline, textAlign: centred ? "center" : "left" }}>{label}</Text>
+  </PressScale>;
 }
 
 export function Empty({ title, body, icon }: { title: string; body?: string; icon?: ReactNode }) {
