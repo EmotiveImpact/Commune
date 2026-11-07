@@ -10,6 +10,8 @@ import { Avatar, Button, Kicker, Panel, Row, State, T } from "../../src/ui/kit";
 import { useConfirm } from "../../src/ui/confirm";
 import { useToast } from "../../src/ui/toast";
 import { Still } from "../../src/ui/motion";
+import { useRemind } from "../../src/ui/remind";
+import { SwipeRow } from "../../src/ui/swipe";
 import { useTheme } from "../../src/ui/theme";
 
 const CURRENCY_WORD: Record<CurrencyCode, string> = { GBP: "pounds", EUR: "euros", USD: "dollars" };
@@ -23,6 +25,7 @@ export default function Settle() {
   const { settle, owe, owed, recorded, resolveReport, nudge, snapshots } = useApp();
   const payable = (communeId: string, userId: string) => payLinksOf(snapshots.find((item) => item.commune.id === communeId), userId).length > 0;
   const toast = useToast();
+  const remindFor = useRemind();
   const [busy, setBusy] = useState("");
   const payTotalCurrencies = Object.keys(owe) as CurrencyCode[];
   const people = new Set(settle.youOwe.map((row) => row.userId)).size;
@@ -60,7 +63,8 @@ export default function Settle() {
 
         {youOweCurrencies.map((currency, index) => <Still key={`owe-${currency}`} index={1 + index} style={{ gap: 10 }}>
           <Kicker>You owe · {CURRENCY_WORD[currency]}</Kicker>
-          <Panel>{settle.youOwe.filter((row) => row.currency === currency).map((row, index) => <Row key={`${row.userId}-${currency}`} first={index === 0}
+          <Panel>{settle.youOwe.filter((row) => row.currency === currency).map((row, index) => <SwipeRow key={`${row.userId}-${currency}`} label={row.name} onRemind={remindFor(`share:${row.items[0].shareId}`)}>{(guard) => <Row first={index === 0}
+            onLongPress={guard(remindFor(`share:${row.items[0].shareId}`))}
             left={<Avatar name={row.name} size={40} />}
             title={row.name}
             meta={<T kind="label" muted>{row.items.map((item) => item.title).join(", ")}</T>}
@@ -72,7 +76,7 @@ export default function Settle() {
                   <Button size="sm" label="Pay" accessibilityLabel={`Pay ${row.name}`} onPress={() => router.push(`/pay/${row.items[0].shareId}`)} />
                 </View>
                 : <Button size="sm" variant="secondary" label="I’ve paid" accessibilityLabel={`I’ve paid ${row.name}`} onPress={() => router.push(`/record/${row.items[0].shareId}`)} />}
-            </View>} />)}</Panel>
+            </View>} />}</SwipeRow>)}</Panel>
         </Still>)}
 
         {recorded.length ? <Still index={1 + youOweCurrencies.length} style={{ gap: 10 }}>
@@ -89,8 +93,10 @@ export default function Settle() {
             const pending = row.items.filter((item) => item.debtor.pending);
             const nudgeable = row.items.filter((item) => item.debtor.canNudge && !item.debtor.nudgedToday && !item.debtor.pending);
             const nudged = row.items.some((item) => item.debtor.nudgedToday);
+            const chase = remindFor(`expense:${row.items[0].waiting.expenseId}`);
             return <View key={`${row.userId}-${currency}`}>
-              <Row first={index === 0}
+              <SwipeRow label={row.name} onRemind={chase}>{(guard) => <Row first={index === 0}
+                onLongPress={guard(chase)}
                 left={<Avatar name={row.name} size={40} />}
                 title={row.name}
                 meta={<T kind="label" muted>{row.items.map((item) => item.waiting.title).join(", ")}</T>}
@@ -100,7 +106,7 @@ export default function Settle() {
                     : nudgeable.length ? <Button size="sm" variant="secondary" label={`Nudge ${firstName(row.name)}`} busy={busy === `n:${row.name}`}
                       onPress={() => void sendNudge(nudgeable[0].waiting.communeId, nudgeable.map((item) => item.debtor.shareId), row.name)} />
                     : <T kind="note" muted>{nudged ? "Nudged today" : nudgeFrom(row.items.map((item) => item.waiting.dueOn))}</T>}
-                </View>} />
+                </View>} />}</SwipeRow>
               {pending.map(({ waiting: entry, debtor }) => <View key={debtor.pending!.id} style={{ marginHorizontal: 16, marginBottom: 14, padding: 14, borderRadius: 12, backgroundColor: c.attentionSoft, gap: 10 }}>
                 <T kind="body">{firstName(row.name)} says they’ve paid you {money(debtor.pending!.amountMinor, currency)} for {entry.title}, sent {shortDate(debtor.pending!.sentOn)}{debtor.pending!.reference ? `, reference “${debtor.pending!.reference}”` : ""}.</T>
                 <View style={{ flexDirection: "row", gap: 10, flexWrap: "wrap" }}>

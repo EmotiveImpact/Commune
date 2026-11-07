@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CommuneTiles, NeedsList, NextStep, TaskCheck, WaitingRow } from "../../src/ui/parts";
 import { useTheme } from "../../src/ui/theme";
 import { Still } from "../../src/ui/motion";
+import { useRemind } from "../../src/ui/remind";
 import { Swap } from "../../src/ui/rolling";
 import { FirstDayCard } from "../../src/ui/firstday";
 
@@ -20,6 +21,7 @@ export default function Home() {
   const { c } = useTheme();
   const app = useApp();
   const insets = useSafeAreaInsets();
+  const remindFor = useRemind();
   const { user, today, needs, waiting, owe, owed, snapshots, refresh } = app;
   const [pulling, setPulling] = useState(false);
   const pull = <RefreshControl refreshing={pulling} tintColor={c.onFrame} onRefresh={async () => { setPulling(true); await refresh(); setPulling(false); }} />;
@@ -62,7 +64,7 @@ export default function Home() {
           <Still index={0} style={{ gap: 12 }}><SectionHead title="Your communes" /><CommuneTiles /></Still>
           {soon.length ? <Still index={1} style={{ gap: 12 }}>
             <SectionHead title="Coming up" count={soon.length} />
-            <Panel>{soon.map((item, index) => <Row key={item.key} first={index === 0} left={<Cal iso={item.date} today={today} small />} title={item.title} meta={<T kind="label" muted>{item.meta}</T>} />)}</Panel>
+            <Panel>{soon.map((item, index) => <Row key={item.key} first={index === 0} onLongPress={remindFor(item.key)} left={<Cal iso={item.date} today={today} small />} title={item.title} meta={<T kind="label" muted>{item.meta}</T>} />)}</Panel>
           </Still> : null}
           <Still index={2}><Feed /></Still>
         </View>

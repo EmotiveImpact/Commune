@@ -11,6 +11,8 @@ import { Body, Pad, ScopeRow, TopBar } from "../../src/ui/chrome";
 import { Badge, Button, Cal, Panel, T } from "../../src/ui/kit";
 import { PressScale, Still } from "../../src/ui/motion";
 import { radius, useTheme } from "../../src/ui/theme";
+import { HOLD, useRemind } from "../../src/ui/remind";
+import { SwipeRow } from "../../src/ui/swipe";
 
 type Filter = "all" | "open" | "settled";
 
@@ -19,6 +21,7 @@ export default function Expenses() {
   const router = useRouter();
   const { current, user, today } = useApp();
   const [filter, setFilter] = useState<Filter>("all");
+  const remindFor = useRemind();
   if (!current) return <View style={{ flex: 1 }}><TopBar title="Expenses" /></View>;
   const currency = current.commune.currency;
   const isOpen = (expense: Expense) => expense.shares.some((share) => outstanding(share) > 0);
@@ -48,7 +51,10 @@ export default function Expenses() {
         {list.map((expense, index) => {
           const mine = expense.shares.find((share) => share.userId === user?.id);
           const open = isOpen(expense);
-          return <Still key={`${filter}-${current.commune.id}-${expense.id}`} index={index}><PressScale accessibilityRole="button" onPress={() => router.push(`/expense/${expense.id}`)}>
+          const remind = remindFor(`expense:${expense.id}`);
+          // Swipe the card left for Remind me, or hold it.
+          return <Still key={`${filter}-${current.commune.id}-${expense.id}`} index={index}><View style={{ borderRadius: radius.surface, overflow: "hidden" }}><SwipeRow label={expense.title} onRemind={remind} background="transparent">{(guard) => <PressScale accessibilityRole="button" accessibilityHint="Hold for a reminder"
+            onLongPress={guard(remind)} delayLongPress={HOLD} onPress={guard(() => router.push(`/expense/${expense.id}`))}>
             <Panel style={{ paddingVertical: 14, paddingHorizontal: 16, gap: 10 }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                 <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: c.recessed, alignItems: "center", justifyContent: "center" }}><ReceiptText size={17} color={c.ink2} /></View>
@@ -67,7 +73,7 @@ export default function Expenses() {
                 </View>
               </View>
             </Panel>
-          </PressScale></Still>;
+          </PressScale>}</SwipeRow></View></Still>;
         })}
         {!list.length ? <Panel pad><T kind="body" muted>{filter === "all" ? "Nothing recorded here yet. Add the first expense." : `No ${filter} expenses.`}</T></Panel> : null}
       </Pad>

@@ -15,7 +15,7 @@ const OPEN = -112;
  * back to close. A rightward drag is left alone, so the Hub tabs still swipe.
  * `guard` wraps the row's own taps so letting go of a drag never opens the row.
  */
-export function SwipeRow({ children, onRemind, label }: { children: (guard: (action?: () => void) => (() => void) | undefined) => ReactNode; onRemind(): void; label: string }) {
+export function SwipeRow({ children, onRemind, label, background }: { children: (guard: (action?: () => void) => (() => void) | undefined) => ReactNode; onRemind(): void; label: string; background?: string }) {
   const { c } = useTheme();
   const calm = useCalm();
   const x = useSharedValue(0);
@@ -31,8 +31,10 @@ export function SwipeRow({ children, onRemind, label }: { children: (guard: (act
   const close = () => { settle(0); setOpen(false); };
   const opened = () => { setOpen(true); haptic.light(); };
   const pan = Gesture.Pan()
-    .activeOffsetX(open ? [-12, 12] : [-12, 10000])
-    .failOffsetX(open ? [-10000, 10000] : [-10000, 12])
+    // Leftward only while closed: a rightward drag fails at once and goes to
+    // the Hub's tab pager, which waits for 16 px. Vertical moves scroll.
+    .activeOffsetX(open ? [-10, 10] : [-10, 10000])
+    .failOffsetX(open ? [-10000, 10000] : [-10000, 10])
     .failOffsetY([-10, 10])
     .onBegin(() => { from.value = x.value; })
     .onStart(() => { runOnJS(moved)(); })
@@ -55,7 +57,7 @@ export function SwipeRow({ children, onRemind, label }: { children: (guard: (act
       </Pressable>
     </Animated.View>
     <GestureDetector gesture={pan}>
-      <Animated.View style={[{ backgroundColor: c.surface }, front]}>
+      <Animated.View style={[{ backgroundColor: background ?? c.surface }, front]}>
         {children(guard)}
         {open ? <Pressable accessibilityLabel="Close" onPress={close} style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0 }} /> : null}
       </Animated.View>

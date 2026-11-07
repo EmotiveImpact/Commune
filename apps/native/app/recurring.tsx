@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { View } from "react-native";
+import { Pressable, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Pencil } from "lucide-react-native";
 import { memberName } from "../src/lib/derive";
@@ -11,6 +11,7 @@ import { Button, Cal, Panel, State, T, tap } from "../src/ui/kit";
 import { Text } from "../src/ui/text";
 import { useToast } from "../src/ui/toast";
 import { useTheme } from "../src/ui/theme";
+import { HOLD, useRemind } from "../src/ui/remind";
 
 /**
  * Repeating bills, as in v7: each with its next date, who pays and each
@@ -37,6 +38,7 @@ function BillRow({ bill, first }: { bill: RecurringBill; first: boolean }) {
   const toast = useToast();
   const { current, user, today, backend, refresh } = useApp();
   const [busy, setBusy] = useState(false);
+  const remind = useRemind()(`recurring:${bill.id}`);
   const currency = current!.commune.currency;
   const people = bill.allocations.length;
   const payer = bill.paidByUserId === user?.id ? "you pay" : `${firstName(memberName(current!, bill.paidByUserId))} pays`;
@@ -57,7 +59,9 @@ function BillRow({ bill, first }: { bill: RecurringBill; first: boolean }) {
     } finally { setBusy(false); }
   }
 
-  return <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12, paddingVertical: 12, paddingHorizontal: 14, borderTopWidth: first ? 0 : 1, borderTopColor: c.outline2 }}>
+  // Hold the row for a reminder before the next bill.
+  return <Pressable accessibilityHint="Hold for a reminder" onLongPress={remind} delayLongPress={HOLD}
+    style={({ pressed }) => ({ flexDirection: "row", alignItems: "flex-start", gap: 12, paddingVertical: 12, paddingHorizontal: 14, borderTopWidth: first ? 0 : 1, borderTopColor: c.outline2, backgroundColor: pressed ? c.press : "transparent" })}>
     <View style={{ opacity: bill.paused ? 0.5 : 1 }}><Cal iso={bill.nextDueOn} today={today} small /></View>
     <View style={{ flex: 1, minWidth: 0, gap: 2, alignItems: "flex-start" }}>
       <Text style={{ fontSize: 15, lineHeight: 20, fontWeight: "600", color: c.ink }}>{bill.title}</Text>
@@ -70,5 +74,5 @@ function BillRow({ bill, first }: { bill: RecurringBill; first: boolean }) {
         <Button size="sm" variant="secondary" label="Edit" icon={<Pencil size={14} color={c.ink} />} accessibilityLabel={`Edit ${bill.title}`} onPress={() => router.push(`/recurring-edit/${bill.id}`)} />
       </View>
     </View>
-  </View>;
+  </Pressable>;
 }
