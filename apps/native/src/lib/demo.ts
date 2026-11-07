@@ -318,7 +318,8 @@ export function demoBackend(now: () => string = todayIso): Backend {
     async createCommune(input) {
       const id = `demo-${newId()}`;
       data.push({
-        commune: { id, name: input.name, kind: input.kind, currency: input.currency, role: "admin", memberCount: 1 },
+        commune: { id, name: input.name, kind: input.kind, currency: input.currency, role: "admin", memberCount: 1,
+          address: input.address ?? undefined, destination: input.destination ?? undefined },
         members: [{ ...PEOPLE.maya, role: "admin", active: true }],
         expenses: [], funds: [], notifications: [], reminderTargets: [], notes: [], operations: [],
         recurringBills: [], splitTemplates: [], payLinks: {}, activityEvents: [],
@@ -400,6 +401,85 @@ export function demoBackend(now: () => string = todayIso): Backend {
     async readReceipt() {
       // The demo pretends to read the receipt, so the filled-in sheet can be seen.
       return { amountMinor: 2340, title: "Big Tesco shop", date: now() };
+    },
+
+    // ---- Editing ----
+    async updateCommune(communeId, input) {
+      const snapshot = data.find((candidate) => candidate.commune.id === communeId);
+      if (!snapshot) throw new ApiError("Not a commune member", 403);
+      if (snapshot.commune.role !== "admin") throw new ApiError("Only an admin can change the commune", 403);
+      if (input.currency !== snapshot.commune.currency && snapshot.expenses.length) throw new ApiError("The currency can’t change once there are bills", 409);
+      Object.assign(snapshot.commune, { name: input.name, kind: input.kind, currency: input.currency, address: input.address ?? undefined,
+        destination: input.destination ?? undefined, stayName: input.stayName, stayAddress: input.stayAddress });
+    },
+    async leaveCommune(communeId) {
+      const index = data.findIndex((candidate) => candidate.commune.id === communeId);
+      if (index < 0) throw new ApiError("Not a commune member", 403);
+      if (data.length === 1) throw new ApiError("You can’t leave your only commune in the demo", 409);
+      data.splice(index, 1);
+    },
+    async correctExpense(expenseId, input) {
+      const found = data.flatMap((snapshot) => snapshot.expenses).find((item) => item.id === expenseId);
+      if (!found || found.voidedAt) throw new ApiError("That bill is no longer here", 404);
+      if ((found.version ?? 1) !== input.expectedVersion) throw new ApiError("Someone changed this bill while you were editing. Open it again.", 409);
+      if (input.shares.reduce((sum, item) => sum + item.amountMinor, 0) !== input.amountMinor) throw new ApiError("The shares must add up to the amount", 400);
+      if (!input.reason.trim()) throw new ApiError("Say why it changed", 400);
+      const settled = new Map(found.shares.map((share) => [share.userId, share]));
+      found.shares = input.shares.map((share) => {
+        const before = settled.get(share.userId);
+        return before ? { ...before, amountMinor: share.amountMinor, settledMinor: share.userId === input.paidByUserId ? share.amountMinor : Math.min(before.settledMinor, share.amountMinor) }
+          : { id: `share-${newId()}`, userId: share.userId, amountMinor: share.amountMinor, settledMinor: share.userId === input.paidByUserId ? share.amountMinor : 0, paymentReports: [] };
+      });
+      Object.assign(found, { title: input.title, amountMinor: input.amountMinor, category: input.category, dueOn: input.dueOn,
+        paidByUserId: input.paidByUserId, version: (found.version ?? 1) + 1 });
+    },
+    async voidExpense(expenseId, input) {
+      for (const snapshot of data) {
+        const found = snapshot.expenses.find((item) => item.id === expenseId && !item.voidedAt);
+        if (!found) continue;
+        if ((found.version ?? 1) !== input.expectedVersion) throw new ApiError("Someone changed this bill while you were editing. Open it again.", 409);
+        Object.assign(found, { voidedAt: new Date().toISOString(), version: (found.version ?? 1) + 1 });
+        return;
+      }
+      throw new ApiError("That bill is no longer here", 404);
+    },
+    async updateTask(operation, input) {
+      const found = data.flatMap((snapshot) => snapshot.operations ?? []).find((item) => item.id === operation.id);
+      if (!found) throw new ApiError("This task has been removed", 404);
+      if ((found.version ?? 1) !== input.expectedVersion) throw new ApiError("Someone changed this while you were editing. Open it again.", 409);
+      Object.assign(found, { title: input.title, date: input.date, assigneeId: input.assigneeId ?? input.rotationIds?.[0] ?? null,
+        rotationIds: input.rotationIds, repeat: input.repeat, notes: input.notes ?? undefined, version: (found.version ?? 1) + 1 });
+    },
+    async removeTask(operationId) {
+      for (const snapshot of data) {
+        if (!snapshot.operations?.some((item) => item.id === operationId)) continue;
+        snapshot.operations = snapshot.operations.filter((item) => item.id !== operationId);
+        return;
+      }
+      throw new ApiError("This task has been removed", 404);
+    },
+    async updateNote(noteId, input) {
+      const found = data.flatMap((snapshot) => snapshot.notes ?? []).find((item) => item.id === noteId);
+      if (!found) throw new ApiError("This note has been removed", 404);
+      if ((found.version ?? 1) !== input.expectedVersion) throw new ApiError("Someone changed this note while you were editing. Open it again.", 409);
+      Object.assign(found, { title: input.title, pill: input.pill ?? undefined, lede: input.lede ?? undefined, body: input.body ?? undefined,
+        facts: input.facts, version: (found.version ?? 1) + 1 });
+    },
+    async removeNote(noteId) {
+      for (const snapshot of data) {
+        if (!snapshot.notes?.some((item) => item.id === noteId)) continue;
+        snapshot.notes = snapshot.notes.filter((item) => item.id !== noteId);
+        return;
+      }
+      throw new ApiError("This note has been removed", 404);
+    },
+    async archiveAnnouncement(announcementId) {
+      for (const snapshot of data) {
+        if (!snapshot.announcements?.some((item) => item.id === announcementId)) continue;
+        snapshot.announcements = snapshot.announcements.filter((item) => item.id !== announcementId);
+        return;
+      }
+      throw new ApiError("That announcement is no longer here", 404);
     },
   };
 }

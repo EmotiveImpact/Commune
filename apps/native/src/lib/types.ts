@@ -17,6 +17,8 @@ export type Commune = {
   memberCount?: number;
   address?: string;
   destination?: string;
+  stayName?: string | null;
+  stayAddress?: string | null;
 };
 
 export type Member = { userId: string; name: string; email?: string; role: MemberRole; active?: boolean };
@@ -109,10 +111,15 @@ export type Note = {
   pill?: string;
   /** Labelled details such as ["Password", "…"]; secret ones stay hidden until asked for. */
   facts?: Array<[string, string]>;
+  /** The version an edit is based on. */
+  version?: number;
 };
 export type Operation = {
   id: string;
   kind: "task" | "event";
+  category?: "chore" | "delivery" | "visit" | "appointment" | "other";
+  /** The version an edit is based on. */
+  version?: number;
   title: string;
   date: string;
   allDay?: boolean;

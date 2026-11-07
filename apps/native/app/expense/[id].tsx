@@ -2,8 +2,8 @@ import { useState } from "react";
 import { Image, View } from "react-native";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { Text } from "../../src/ui/text";
-import { useLocalSearchParams } from "expo-router";
-import { Check, Clock3 } from "lucide-react-native";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { Check, Clock3, PenLine } from "lucide-react-native";
 import { memberName, outstanding, pendingReport, statusFor } from "../../src/lib/derive";
 import { dayDate, firstName, money, shortDate } from "../../src/lib/format";
 import { failure, useApp } from "../../src/state";
@@ -23,6 +23,7 @@ export default function ExpenseDetail() {
   const { snapshots, user, today, withdrawReport } = useApp();
   const [busy, setBusy] = useState(false);
   const remindFor = useRemind();
+  const router = useRouter();
   const snapshot = snapshots.find((item) => item.expenses.some((expense) => expense.id === id));
   const expense = snapshot?.expenses.find((item) => item.id === id);
   if (!snapshot || !expense) return <Body><Pad><T kind="body" muted>This expense is no longer here.</T></Pad></Body>;
@@ -80,6 +81,10 @@ export default function ExpenseDetail() {
         </Panel>
         {expense.voidedAt ? null : <Button variant="secondary" block label={iOwe ? "Remind me to pay" : "Remind me"} accessibilityLabel={`Remind me about ${expense.title}`}
           icon={<Clock3 size={16} color={c.ink} />} onPress={remindFor(`expense:${expense.id}`)} />}
+        {/* Whoever paid, or an admin, can correct it. The earlier version is kept beside the change. */}
+        {!expense.voidedAt && (expense.paidByUserId === viewerId || snapshot.commune.role === "admin")
+          ? <Button variant="quiet" block label="Edit bill" accessibilityLabel={`Edit ${expense.title}`}
+            icon={<PenLine size={16} color={c.ink} />} onPress={() => router.push(`/edit-expense/${expense.id}`)} /> : null}
         <View style={{ gap: 10 }}>
           <Text style={{ fontSize: 12, lineHeight: 16, fontWeight: "500", color: c.ink2, paddingHorizontal: 4 }}>{expense.shares.every((share) => share.amountMinor === expense.shares[0].amountMinor) ? "Split equally" : "Split"}</Text>
           <Panel>{expense.shares.map((share, index) => {

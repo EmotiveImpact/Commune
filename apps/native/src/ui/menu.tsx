@@ -158,6 +158,7 @@ function MenuPanel() {
       {row("recurring", Repeat2, "Recurring", () => go("/recurring"), bills ? `${bills} repeating ${bills === 1 ? "bill" : "bills"}` : "Nothing repeats here")}
       {row("funds", ShoppingBag, "Funds", () => go("/funds"), funds ? `${funds} shared ${funds === 1 ? "pot" : "pots"}` : "No shared pots yet")}
       {row("templates", Files, "Templates", () => go("/templates"), templates ? `${templates} saved ${templates === 1 ? "split" : "splits"}` : "None saved yet")}
+      {row("commune-settings", Settings, "Commune settings", () => go("/commune-settings"), current?.commune.role === "admin" ? "Name, kind, place and currency" : "Details, and leaving")}
 
       <Divider />
       {row("invite", UsersRound, "Invite people", () => go("/invite"), `To ${name}`)}

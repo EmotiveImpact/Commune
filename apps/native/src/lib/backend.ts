@@ -1,6 +1,6 @@
 import type { PayLink, PayLinkInput, PayProvider } from "./payLinks";
 import { parsePayLinks } from "./payLinks";
-import type { Commune, CurrencyCode, Snapshot, User } from "./types";
+import type { Commune, CurrencyCode, Operation, Snapshot, User } from "./types";
 import { requestId } from "./format";
 
 /**
@@ -49,7 +49,7 @@ export interface Backend {
   /** "I'll do it": takes a chore nobody has yet. expectedDate rejects a stale screen. */
   claimTask(operationId: string, input: { toMemberId: string; expectedDate: string; today: string; requestId: string }): Promise<void>;
   /** Starts a new commune with you as its admin, and returns its id. */
-  createCommune(input: { name: string; kind: "household" | "workspace" | "trip"; currency: CurrencyCode }): Promise<string>;
+  createCommune(input: { name: string; kind: "household" | "workspace" | "trip"; currency: CurrencyCode; address?: string | null; destination?: string | null }): Promise<string>;
   /** Records money you put into a shared pot against your pledge. Returns the contribution, so it can be undone. */
   contribute(commitmentId: string, amountMinor: number, requestId: string): Promise<string>;
   /** Takes a contribution back off the record, keeping it with a reason. */
@@ -64,7 +64,40 @@ export interface Backend {
   acceptInvite(token: string): Promise<string>;
   /** Reads the amount, shop and date from a receipt photo, for the person to check. */
   readReceipt(uri: string): Promise<ReceiptReading>;
+
+  // ---- Editing (communes, bills, chores, notes, announcements) ----
+  /** Changes a commune's name, kind, place and currency. Admins only; the server refuses a currency change once there are bills. */
+  updateCommune(communeId: string, input: CommuneEdit): Promise<void>;
+  /** Leaves a commune. */
+  leaveCommune(communeId: string, userId: string): Promise<void>;
+  /** Corrects a bill from the version you opened. The before and after are kept with your reason. */
+  correctExpense(expenseId: string, input: ExpenseCorrection): Promise<void>;
+  /** Takes a bill off the books, keeping it and the reason on record. */
+  voidExpense(expenseId: string, input: { expectedVersion: number; reason: string; requestId: string }): Promise<void>;
+  /** Changes a chore or event from the version you opened. */
+  updateTask(operation: Operation, input: TaskEdit): Promise<void>;
+  /** Removes a chore or event. Its history is kept. */
+  removeTask(operationId: string): Promise<void>;
+  /** Changes a note from the version you opened; earlier versions are kept. */
+  updateNote(noteId: string, input: NoteInput & { expectedVersion: number }): Promise<void>;
+  /** Removes a note. Its history is kept. */
+  removeNote(noteId: string): Promise<void>;
+  /** Takes an announcement down for everyone. */
+  archiveAnnouncement(announcementId: string): Promise<void>;
 }
+
+export type CommuneEdit = {
+  name: string; kind: "household" | "workspace" | "trip"; currency: CurrencyCode;
+  address: string | null; destination: string | null; stayName: string | null; stayAddress: string | null;
+};
+export type ExpenseCorrection = {
+  expectedVersion: number; title: string; amountMinor: number; category: string; dueOn: string | null; paidByUserId: string;
+  shares: Array<{ userId: string; amountMinor: number }>; reason: string; requestId: string;
+};
+export type TaskEdit = {
+  expectedVersion: number; title: string; date: string; assigneeId: string | null; rotationIds: string[] | null;
+  repeat: "none" | "weekly" | "monthly"; notes: string | null;
+};
 
 export type RecurringInput = {
   id: string; expectedVersion: number; title: string; amountMinor: number; paidByUserId: string;
@@ -118,6 +151,7 @@ export function serverBackend(base: string): Backend {
     return body as T;
   }
   const post = <T>(path: string, payload: unknown = {}) => call<T>(path, { method: "POST", body: JSON.stringify(payload) });
+  const send = <T>(method: "PUT" | "PATCH", path: string, payload: unknown) => call<T>(path, { method, body: JSON.stringify(payload) });
   return {
     mode: "server",
     async me() { return (await call<{ user: User | null }>("/auth/me")).user; },
@@ -187,5 +221,22 @@ export function serverBackend(base: string): Backend {
       // No server reads receipts yet; the photo stays on the phone and the person fills the details in.
       throw new ApiError("Reading receipts isn’t available yet", 501);
     },
+
+    // ---- Editing ----
+    async updateCommune(communeId, input) { await send("PATCH", `/communes/${communeId}`, input); },
+    async leaveCommune(communeId, userId) { await post(`/communes/${communeId}/members/${userId}`, { action: "leave" }); },
+    async correctExpense(expenseId, input) { await send("PUT", `/expenses/${expenseId}`, input); },
+    async voidExpense(expenseId, input) { await post(`/expenses/${expenseId}/void`, input); },
+    async updateTask(operation, input) {
+      await send("PUT", `/operations/${operation.id}`, {
+        expectedVersion: input.expectedVersion, kind: operation.kind, category: operation.category ?? (operation.kind === "task" ? "chore" : "other"),
+        title: input.title, date: input.date, time: operation.time ? operation.time.slice(0, 5) : null, allDay: operation.allDay ?? !operation.time,
+        assigneeId: input.assigneeId, rotationIds: input.rotationIds, repeat: input.repeat, notes: input.notes,
+      });
+    },
+    async removeTask(operationId) { await call(`/operations/${operationId}`, { method: "DELETE" }); },
+    async updateNote(noteId, input) { await send("PUT", `/notes/${noteId}`, { ...input, kicker: null }); },
+    async removeNote(noteId) { await call(`/notes/${noteId}`, { method: "DELETE" }); },
+    async archiveAnnouncement(announcementId) { await post(`/announcements/${announcementId}/archive`); },
   };
 }

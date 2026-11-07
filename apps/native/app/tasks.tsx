@@ -29,13 +29,15 @@ export default function Tasks() {
         const who = !item.assigneeId ? "Nobody yet" : mine ? "Your turn" : `${firstName(memberName(current!, item.assigneeId))}’s turn`;
         const status = statusFor(item.date, today, "task");
         const remind = remindFor(`task:${item.id}`);
-        return <SwipeRow key={item.id} label={item.title} onRemind={remind} background={item.id === focus ? c.settled : c.surface}>{(guard) => <Row first={index === 0} onLongPress={guard(remind)} left={<Cal iso={item.date} today={today} small />} title={item.title}
+        return <SwipeRow key={item.id} label={item.title} onRemind={remind} background={item.id === focus ? c.settled : c.surface}>{(guard) => <Row first={index === 0} onLongPress={guard(remind)} accessibilityLabel={`${item.title}. Tap to edit.`}
+          onPress={guard(() => router.push({ pathname: "/add-chore", params: { id: item.id } }))} left={<Cal iso={item.date} today={today} small />} title={item.title}
           meta={<><T kind="label" muted>{who}{item.repeat !== "none" ? ` · every ${item.repeat === "weekly" ? "week" : "month"}` : ""}</T>{mine && item.date <= today ? <State text={status.text} tone={status.tone} /> : null}</>}
           right={!item.assigneeId ? <Button size="sm" variant="secondary" label="I’ll do it" busy={claimer.busy === item.id}
             onPress={() => void claimer.claim(current!.commune.id, item.id, item.date, item.title)} />
             : mine && item.date <= today ? <Button size="sm" variant="secondary" label="Mark done" busy={task.busy === `task:${item.id}`}
             onPress={() => void task.run({ kind: "task", key: `task:${item.id}`, communeId: current!.commune.id, operationId: item.id, date: item.date, title: item.title, dueOn: item.date, band: "Today", status })} /> : null} />}</SwipeRow>;
       })}</Panel> : <Panel pad><T kind="body" muted>Nothing on the list for {current?.commune.name}.</T></Panel>}
+      {items.length ? <T kind="note" muted style={{ paddingHorizontal: 4 }}>Tap a chore to change it, hold it for a reminder.</T> : null}
       <Button variant="secondary" block label="Add a chore" icon={<Plus size={16} color={c.ink} />} onPress={() => router.push("/add-chore")} />
     </Pad>
   </Body>;

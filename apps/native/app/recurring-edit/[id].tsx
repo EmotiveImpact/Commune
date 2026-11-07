@@ -2,10 +2,10 @@ import { useState } from "react";
 import { ScrollView, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { memberName } from "../../src/lib/derive";
-import { firstName, money, parseAmount, word } from "../../src/lib/format";
+import { addDays, firstName, money, parseAmount, shortDate, word } from "../../src/lib/format";
 import { isEven, rescale } from "../../src/lib/recurringSplit";
 import { failure, useApp } from "../../src/state";
-import { SheetHead } from "../../src/ui/form";
+import { DateChips, SheetHead } from "../../src/ui/form";
 import { Button, ErrorText, FITTED, Panel, Row, T, tap } from "../../src/ui/kit";
 import { Segmented } from "../../src/ui/segmented";
 import { Sheet } from "../../src/ui/sheet";
@@ -28,10 +28,11 @@ function EditBody({ close }: { close(): void }) {
   const { c } = useTheme();
   const toast = useToast();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { current, user, backend, refresh } = useApp();
+  const { current, user, backend, refresh, today } = useApp();
   const bill = current?.recurringBills?.find((item) => item.id === id);
   const [amount, setAmount] = useState(() => (bill ? (bill.amountMinor / 100).toFixed(2) : ""));
   const [freq, setFreq] = useState<Freq>(bill?.frequency ?? "monthly");
+  const [next, setNext] = useState(bill?.nextDueOn ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   if (!current || !bill) {
@@ -43,7 +44,7 @@ function EditBody({ close }: { close(): void }) {
   const people = bill.allocations.length;
   const splitText = !people ? "Not split yet" : isEven(bill.allocations) ? `Equally between ${word(people)}` : `Same proportions between ${word(people)}`;
   const payer = bill.paidByUserId === user?.id ? "You" : firstName(memberName(current, bill.paidByUserId));
-  const changed = minor !== bill.amountMinor || freq !== bill.frequency;
+  const changed = minor !== bill.amountMinor || freq !== bill.frequency || (!!next && next !== bill.nextDueOn);
 
   async function save() {
     if (!minor) { setError("Enter the amount each time, like 17.99."); return; }
@@ -51,7 +52,7 @@ function EditBody({ close }: { close(): void }) {
     try {
       await backend.saveRecurring(current!.commune.id, {
         id: bill!.id, expectedVersion: bill!.version ?? 1, title: bill!.title, amountMinor: minor, paidByUserId: bill!.paidByUserId,
-        allocations: rescale(bill!.allocations, minor), frequency: freq, nextDueOn: bill!.nextDueOn,
+        allocations: rescale(bill!.allocations, minor), frequency: freq, nextDueOn: next || bill!.nextDueOn,
       });
       await refresh();
       tap("success");
@@ -76,6 +77,9 @@ function EditBody({ close }: { close(): void }) {
       <T kind="label" style={{ fontWeight: "600" }}>How often</T>
       <Segmented tone="frame" label="How often" options={FREQS} value={freq} onChange={(value) => setFreq(value as Freq)} />
     </View>
+    <DateChips label="Next bill" chosen={next} onPick={setNext} min={today}
+      options={[...(bill.nextDueOn && bill.nextDueOn >= today ? [[bill.nextDueOn, `As it is, ${shortDate(bill.nextDueOn)}`] as [string, string]] : []),
+        ...[[addDays(today, 1), "Tomorrow"], [addDays(today, 7), `In a week, ${shortDate(addDays(today, 7))}`]].filter(([value]) => value !== bill.nextDueOn) as Array<[string, string]>]} />
     <Panel>
       <Row first title="Paid by" right={<T kind="body" muted>{payer}</T>} />
       <Row title="Split" right={<T kind="body" muted>{splitText}</T>} />

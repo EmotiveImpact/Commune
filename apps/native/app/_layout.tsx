@@ -87,10 +87,12 @@ function Screens() {
       <Stack.Screen name="recurring" options={{ ...pushed, title: "Recurring" }} />
       <Stack.Screen name="funds" options={{ ...pushed, title: "Funds" }} />
       <Stack.Screen name="templates" options={{ ...pushed, title: "Templates" }} />
+      <Stack.Screen name="commune-settings" options={{ ...pushed, title: "Commune settings" }} />
       <Stack.Screen name="record/[shareId]" options={SHEET_SCREEN} />
       <Stack.Screen name="pay/[shareId]" options={SHEET_SCREEN} />
       <Stack.Screen name="paid/[shareId]" options={SHEET_SCREEN} />
       <Stack.Screen name="add-expense" options={SHEET_SCREEN} />
+      <Stack.Screen name="edit-expense/[id]" options={SHEET_SCREEN} />
       <Stack.Screen name="confirm/[reportId]" options={SHEET_SCREEN} />
       <Stack.Screen name="nudge/[expenseId]" options={SHEET_SCREEN} />
       <Stack.Screen name="recurring-edit/[id]" options={SHEET_SCREEN} />

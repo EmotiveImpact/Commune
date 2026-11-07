@@ -25,15 +25,17 @@ export function SheetHead({ title, sub, onClose }: { title: string; sub?: string
 }
 
 /** A labelled text box. */
-export function Field({ label, value, onChange, placeholder, multiline, max = 80, autoFocus }: {
+export function Field({ label, value, onChange, placeholder, multiline, max = 80, autoFocus, keyboardType, note }: {
   label: string; value: string; onChange(value: string): void; placeholder?: string; multiline?: boolean; max?: number; autoFocus?: boolean;
+  keyboardType?: "default" | "decimal-pad" | "email-address"; note?: string;
 }) {
   const { c } = useTheme();
   return <View style={{ gap: 6 }}>
     <T kind="label" style={{ fontWeight: "600" }}>{label}</T>
     <TextInput accessibilityLabel={label} value={value} onChangeText={onChange} maxLength={max} placeholder={placeholder} placeholderTextColor={c.ink2}
-      multiline={multiline} autoFocus={autoFocus}
+      multiline={multiline} autoFocus={autoFocus} keyboardType={keyboardType}
       style={{ minHeight: multiline ? 96 : 48, paddingVertical: multiline ? 12 : 0, textAlignVertical: multiline ? "top" : "center", borderRadius: radius.control, borderWidth: 1, borderColor: c.outline, backgroundColor: c.surface, paddingHorizontal: 14, fontSize: 16, color: c.ink }} />
+    {note ? <T kind="note" muted>{note}</T> : null}
   </View>;
 }
 

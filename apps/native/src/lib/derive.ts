@@ -486,7 +486,7 @@ export function people(snapshot: Snapshot, viewerId: string, today: string): Per
   ];
 }
 
-const SECRET = /password|passcode|door code|access code|pin code|\bcode\b/i;
+export const SECRET = /password|passcode|door code|access code|pin code|\bcode\b/i;
 const PHONE = /^\+?[\d ()-]{7,}$/;
 const PRIORITY = ["Emergency", "Wi-Fi", "Keys / door", "Bins", "Contacts", "House rules", "Other"];
 export type Essential = {
