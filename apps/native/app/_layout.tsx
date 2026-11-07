@@ -67,9 +67,6 @@ function Screens() {
     fullScreenGestureEnabled: true,
     contentStyle: { backgroundColor: c.canvas },
   };
-  // Long forms (add an expense, switch commune) open as iOS page sheets: the
-  // screen behind shrinks back and the sheet swipes down to close.
-  const sheet = { ...pushed, presentation: "modal" as const, headerShown: false };
   return <>
     <StatusBar style="light" />
     <PayReturn />
@@ -90,7 +87,9 @@ function Screens() {
       <Stack.Screen name="record/[shareId]" options={SHEET_SCREEN} />
       <Stack.Screen name="pay/[shareId]" options={SHEET_SCREEN} />
       <Stack.Screen name="paid/[shareId]" options={SHEET_SCREEN} />
-      <Stack.Screen name="add-expense" options={sheet} />
+      <Stack.Screen name="add-expense" options={SHEET_SCREEN} />
+      <Stack.Screen name="confirm/[reportId]" options={SHEET_SCREEN} />
+      <Stack.Screen name="nudge/[expenseId]" options={SHEET_SCREEN} />
       <Stack.Screen name="switch" options={SHEET_SCREEN} />
       <Stack.Screen name="invite" options={SHEET_SCREEN} />
       <Stack.Screen name="add-note" options={SHEET_SCREEN} />

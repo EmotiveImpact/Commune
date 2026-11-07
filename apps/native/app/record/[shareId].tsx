@@ -11,8 +11,13 @@ import { bankDetailsText, payLinkHref, payLinkLabel, PAY_PROVIDER_NAME } from ".
 import { failure, useApp } from "../../src/state";
 import { Button, ErrorText, Panel, Row, T, tap, FITTED } from "../../src/ui/kit";
 import { Sheet } from "../../src/ui/sheet";
+import { BigAmount } from "../../src/ui/form";
+import { Segmented } from "../../src/ui/segmented";
+import { HOW_LABEL, joinReference, roomFor, type How } from "../../src/lib/reference";
 import { useToast } from "../../src/ui/toast";
 import { radius, useTheme } from "../../src/ui/theme";
+
+const HOWS: How[] = ["bank", "cash", "other"];
 
 /**
  * "I’ve sent it". The bill payer's own pay links come first, so you can pay
@@ -31,6 +36,7 @@ function RecordBody({ close }: { close: () => void }) {
   const [amount, setAmount] = useState(left ? (left / 100).toFixed(2) : "");
   const [sentOn, setSentOn] = useState(today);
   const [reference, setReference] = useState("");
+  const [how, setHow] = useState<How>("bank");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
@@ -47,13 +53,15 @@ function RecordBody({ close }: { close: () => void }) {
   const name = firstName(payer);
   const minor = parseAmount(amount);
   const links = payLinksOf(snapshot, expense.paidByUserId);
+  // How it went is saved at the front of the reference, with anything typed after it.
+  const saved = joinReference(how, reference);
 
   async function submit() {
     if (!minor) { setError("Enter the amount you sent, for example 16.00."); return; }
     if (minor > left) { setError(`That’s more than the ${money(left, currency)} left on your share.`); return; }
     setBusy(true); setError("");
     try {
-      await reportPayment(snapshot.commune.id, shareId, minor, sentOn, reference.trim() || null);
+      await reportPayment(snapshot.commune.id, shareId, minor, sentOn, saved);
       tap("success");
       toast(`Recorded. ${name} will confirm your ${money(minor, currency)}.`);
       close();
@@ -77,6 +85,11 @@ function RecordBody({ close }: { close: () => void }) {
         <PressScale scaleTo={0.9} accessibilityRole="button" accessibilityLabel="Close" onPress={close} hitSlop={8} style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: c.recessed, alignItems: "center", justifyContent: "center" }}>
           <X size={18} color={c.ink} />
         </PressScale>
+      </View>
+
+      <View style={{ gap: 2 }}>
+        <BigAmount text={money(minor ?? 0, currency)} empty={!minor} />
+        <T kind="label" muted style={{ textAlign: "center" }}>To {payer}</T>
       </View>
 
       <View style={{ gap: 8 }}>
@@ -108,6 +121,11 @@ function RecordBody({ close }: { close: () => void }) {
         <T kind="note" muted>{money(left, currency)} is left on your share.</T>
       </View>
 
+      <View style={{ gap: 8 }}>
+        <T kind="label" style={{ fontWeight: "600" }}>How did you pay?</T>
+        <Segmented label="How did you pay?" options={HOWS.map((value) => ({ value, label: HOW_LABEL[value] }))} value={how} onChange={(value) => setHow(value as How)} />
+      </View>
+
       <View style={{ gap: 6 }}>
         <T kind="label" style={{ fontWeight: "600" }}>When you sent it</T>
         <View style={{ flexDirection: "row", gap: 8 }}>
@@ -123,7 +141,7 @@ function RecordBody({ close }: { close: () => void }) {
 
       <View style={{ gap: 6 }}>
         <T kind="label" style={{ fontWeight: "600" }}>Reference (optional)</T>
-        <TextInput accessibilityLabel="Reference" value={reference} onChangeText={setReference} maxLength={80} placeholder="What you put on the payment" placeholderTextColor={c.ink2} style={input} />
+        <TextInput accessibilityLabel="Reference" value={reference} onChangeText={setReference} maxLength={roomFor(how)} placeholder="What you put on the payment" placeholderTextColor={c.ink2} style={input} />
       </View>
 
       <ErrorText>{error}</ErrorText>
