@@ -61,9 +61,11 @@ function RecordBody({ close }: { close: () => void }) {
     if (minor > left) { setError(`That’s more than the ${money(left, currency)} left on your share.`); return; }
     setBusy(true); setError("");
     try {
-      await reportPayment(snapshot.commune.id, shareId, minor, sentOn, saved);
+      const result = await reportPayment(snapshot.commune.id, shareId, minor, sentOn, saved, name);
       tap("success");
-      toast(`Recorded. ${name} will confirm your ${money(minor, currency)}.`);
+      toast(result === "queued"
+        ? `Saved on this phone. It sends to ${name} when you’re back online.`
+        : `Recorded. ${name} will confirm your ${money(minor, currency)}.`);
       close();
     } catch (cause) {
       setError(failure(cause, "Couldn’t record it. Try again."));

@@ -28,6 +28,8 @@ export interface Backend {
   addExpense(communeId: string, input: {
     title: string; amountMinor: number; category: string; dueOn: string | null; paidByUserId: string;
     shares: Array<{ userId: string; amountMinor: number }>;
+    /** Lets a resend after a dropped connection count once. */
+    requestId?: string;
   }): Promise<void>;
   nudge(shareId: string, requestId: string): Promise<void>;
   markRead(notificationId: string): Promise<void>;
@@ -48,7 +50,11 @@ export interface Backend {
   claimTask(operationId: string, input: { toMemberId: string; expectedDate: string; today: string; requestId: string }): Promise<void>;
   /** Starts a new commune with you as its admin, and returns its id. */
   createCommune(input: { name: string; kind: "household" | "workspace" | "trip"; currency: CurrencyCode }): Promise<string>;
+  /** Reads the amount, shop and date from a receipt photo, for the person to check. */
+  readReceipt(uri: string): Promise<ReceiptReading>;
 }
+
+export type ReceiptReading = { amountMinor: number | null; title: string | null; date: string | null };
 
 export type NoteInput = { title: string; pill: string | null; lede: string | null; body: string | null; facts: Array<[string, string]> };
 export type TaskInput = { title: string; date: string; assigneeId: string | null; rotationIds: string[] | null; repeat: "none" | "weekly" | "monthly"; notes: string | null };
@@ -137,6 +143,10 @@ export function serverBackend(base: string): Backend {
     },
     async setPreferredPayLink(provider) {
       return parsePayLinks((await call<{ links: unknown }>("/pay-links-preferred", { method: "PUT", body: JSON.stringify({ provider }) })).links);
+    },
+    async readReceipt() {
+      // No server reads receipts yet; the photo stays on the phone and the person fills the details in.
+      throw new ApiError("Reading receipts isn’t available yet", 501);
     },
   };
 }

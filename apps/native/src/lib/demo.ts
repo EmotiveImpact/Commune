@@ -309,5 +309,9 @@ export function demoBackend(now: () => string = todayIso): Backend {
       if (provider && !myLinks().some((item) => item.provider === provider)) throw new ApiError("Add that way to be paid before making it your favourite", 400);
       return setMyLinks(parsePayLinks(myLinks().map((item) => ({ ...item, preferred: item.provider === provider }))));
     },
+    async readReceipt() {
+      // The demo pretends to read the receipt, so the filled-in sheet can be seen.
+      return { amountMinor: 2340, title: "Big Tesco shop", date: now() };
+    },
   };
 }
