@@ -193,7 +193,7 @@ function Hero({ scrollY }: { scrollY: SharedValue<number> }) {
       <PressScale accessibilityRole="button" accessibilityLabel={`Announce something to ${commune.name}`} onPress={() => router.push("/announce")} style={[glass, { width: 36, paddingHorizontal: 0, justifyContent: "center" }]}>
         {frost}<View style={glassIn}><Megaphone size={15} color="#fff" /></View>
       </PressScale>
-      <PressScale accessibilityRole="button" accessibilityLabel={`Invite people to ${commune.name}`} onPress={() => router.push("/members")} style={glass}>
+      <PressScale accessibilityRole="button" accessibilityLabel={`Invite people to ${commune.name}`} onPress={() => router.push("/invite")} style={glass}>
         {frost}<View style={glassIn}><UsersRound size={15} color="#fff" /><Text style={{ color: "#fff", fontSize: 13, fontWeight: "500" }}>Invite</Text></View>
       </PressScale>
     </Animated.View>
