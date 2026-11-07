@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
 import { Text } from "../../src/ui/text";
 import { useRouter } from "expo-router";
 import { Check, Plus, ReceiptText } from "lucide-react-native";
@@ -36,10 +36,10 @@ export default function Expenses() {
           <View accessibilityRole="radiogroup" style={{ flexDirection: "row", padding: 3, gap: 2, borderRadius: radius.pill, backgroundColor: c.recessed }}>
             {(["all", "open", "settled"] as Filter[]).map((value) => {
               const on = filter === value;
-              return <Pressable key={value} accessibilityRole="radio" accessibilityState={{ selected: on }} onPress={() => setFilter(value)}
+              return <PressScale key={value} accessibilityRole="radio" accessibilityState={{ selected: on }} onPress={() => setFilter(value)}
                 style={{ height: 32, paddingHorizontal: 14, borderRadius: radius.pill, justifyContent: "center", backgroundColor: on ? c.frame : "transparent" }}>
                 <Text style={{ fontSize: 13, fontWeight: "500", color: on ? c.onFrame : c.ink2 }}>{value[0].toUpperCase() + value.slice(1)}</Text>
-              </Pressable>;
+              </PressScale>;
             })}
           </View>
           <Button label="Add" icon={<Plus size={16} color={c.onAction} />} onPress={() => router.push("/add-expense")} />

@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { Pressable, View, type LayoutRectangle } from "react-native";
+import { View, type LayoutRectangle } from "react-native";
 import { Text } from "./text";
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
-import { haptic, springs, useCalm } from "./motion";
+import { haptic, springs, useCalm, PressScale } from "./motion";
 import { useTheme } from "./theme";
 
 /**
@@ -29,12 +29,12 @@ export function Segmented<V extends string>({ options, value, onChange, label }:
     <Animated.View pointerEvents="none" style={[{ position: "absolute", top: 3, bottom: 3, left: 0, borderRadius: 999, backgroundColor: c.surface, shadowColor: "#1a1e2b", shadowOpacity: 0.12, shadowRadius: 4, shadowOffset: { width: 0, height: 1 }, elevation: 2 }, pill]} />
     {options.map((option) => {
       const on = option.value === value;
-      return <Pressable key={option.value} accessibilityRole="radio" accessibilityState={{ selected: on }} accessibilityLabel={option.label}
+      return <PressScale key={option.value} accessibilityRole="radio" accessibilityState={{ selected: on }} accessibilityLabel={option.label}
         onLayout={(event) => { const layout = event.nativeEvent.layout; setBoxes((all) => ({ ...all, [option.value]: layout })); }}
         onPress={() => { if (!on) { haptic.select(); onChange(option.value); } }}
         style={{ flex: 1, height: 38, alignItems: "center", justifyContent: "center", paddingHorizontal: 10 }}>
         <Text style={{ fontSize: 14, fontWeight: on ? "600" : "500", color: on ? c.ink : c.ink2 }}>{option.label}</Text>
-      </Pressable>;
+      </PressScale>;
     })}
   </View>;
 }

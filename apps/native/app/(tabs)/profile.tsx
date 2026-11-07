@@ -11,7 +11,7 @@ import { failure, useApp } from "../../src/state";
 import { Body, TopBar } from "../../src/ui/chrome";
 import { Avatar, Panel, Row, SectionHead, T } from "../../src/ui/kit";
 import { PayMark } from "../../src/ui/marks";
-import { haptic, Still } from "../../src/ui/motion";
+import { haptic, Still, PressScale } from "../../src/ui/motion";
 import { useToast } from "../../src/ui/toast";
 import { useTheme } from "../../src/ui/theme";
 
@@ -92,11 +92,11 @@ export default function Profile() {
                 </View> : null}
               </View>}
               meta={<T kind="label" muted lines={1}>{payLinkLabel(link)}</T>}
-              right={<Pressable accessibilityRole="button" disabled={busy} accessibilityState={{ selected: !!link.preferred }}
+              right={<PressScale accessibilityRole="button" disabled={busy} accessibilityState={{ selected: !!link.preferred }}
                 accessibilityLabel={link.preferred ? `${PAY_PROVIDER_NAME[link.provider]} is your favourite` : `Make ${PAY_PROVIDER_NAME[link.provider]} your favourite`}
                 onPress={() => void star(link.provider)} hitSlop={6} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
                 <Star size={20} color={link.preferred ? c.attention : c.ink2} fill={link.preferred ? c.attention : "transparent"} strokeWidth={1.7} />
-              </Pressable>} />)}
+              </PressScale>} />)}
             {missing.length ? <Row first={!links.length && myPayLinks != null} onPress={() => router.push("/pay-links")}
               left={icon(<Plus size={17} color={c.ink} />)} title={`Add ${missing.slice(0, 2).join(" or ")}`} right={<ChevronRight size={17} color={c.ink2} />} /> : null}
           </Panel>

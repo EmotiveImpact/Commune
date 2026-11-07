@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { Modal, Pressable, StyleSheet, View } from "react-native";
 import { Text } from "./text";
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
-import { haptic, springs, useCalm } from "./motion";
+import { PressScale, haptic, springs, useCalm } from "./motion";
 import { radius, useTheme } from "./theme";
 
 type Ask = { title: string; message?: string; yes: string; no?: string; destructive?: boolean };
@@ -43,11 +43,11 @@ function Card({ ask, answer }: { ask: Ask; answer: (yes: boolean) => void }) {
   useEffect(() => { shown.value = calm ? withTiming(1, { duration: 160 }) : withSpring(1, springs.snappy); }, []);
   const dim = useAnimatedStyle(() => ({ opacity: Math.min(1, shown.value) * 0.42 }));
   const card = useAnimatedStyle(() => ({ opacity: Math.min(1, shown.value * 1.6), transform: calm ? [] : [{ scale: 0.94 + 0.06 * shown.value }] }));
-  const button = (label: string, filled: boolean, onPress: () => void) => <Pressable accessibilityRole="button" onPress={onPress}
+  const button = (label: string, filled: boolean, onPress: () => void) => <PressScale accessibilityRole="button" onPress={onPress}
     style={({ pressed }) => ({ flex: 1, height: 46, borderRadius: radius.pill, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.85 : 1,
       backgroundColor: filled ? (ask.destructive ? c.late : c.action) : c.recessed })}>
     <Text style={{ color: filled ? "#ffffff" : c.ink, fontSize: 15.5, fontWeight: "600" }}>{label}</Text>
-  </Pressable>;
+  </PressScale>;
   return <View style={styles.fill}>
     <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: "#0e1018" }, dim]} />
     <Pressable accessibilityRole="button" accessibilityLabel={ask.no ?? "Cancel"} style={StyleSheet.absoluteFill} onPress={() => answer(false)} />

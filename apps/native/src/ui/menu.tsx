@@ -10,7 +10,7 @@ import {
 } from "lucide-react-native";
 import { standing } from "../lib/derive";
 import { useApp } from "../state";
-import { haptic, springs, useCalm } from "./motion";
+import { haptic, springs, useCalm, PressScale } from "./motion";
 import { useConfirm } from "./confirm";
 import { sheetDepth } from "./origin";
 import { useToast } from "./toast";
@@ -104,7 +104,7 @@ function MenuPanel() {
   const name = current?.commune.name ?? "your commune";
 
   const row = (key: string, icon: Icon, label: string, onPress: () => void, sub?: string, badge?: string) =>
-    <Pressable key={key} accessibilityRole="button" accessibilityLabel={[label, sub, badge].filter(Boolean).join(". ")} onPress={onPress}
+    <PressScale scaleTo={0.985} key={key} accessibilityRole="button" accessibilityLabel={[label, sub, badge].filter(Boolean).join(". ")} onPress={onPress}
       style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 16, minHeight: sub ? 58 : 50, paddingHorizontal: 12, borderRadius: 12, backgroundColor: pressed ? c.frameRaised : "transparent" })}>
       {(() => { const I = icon; return <I size={20} color={c.onFrame2} strokeWidth={1.7} />; })()}
       <View style={{ flex: 1, minWidth: 0 }}>
@@ -114,7 +114,7 @@ function MenuPanel() {
       {badge ? <View style={{ backgroundColor: c.dot, borderRadius: 11, paddingHorizontal: 9, height: 22, justifyContent: "center" }}>
         <Text style={{ color: "#1a1e2b", fontSize: 12.5, fontWeight: "600" }}>{badge}</Text>
       </View> : null}
-    </Pressable>;
+    </PressScale>;
 
   const ops = (current?.operations ?? []).filter((item) => item.status === "open").length;
   const notes = current?.notes?.length ?? 0;
@@ -125,15 +125,15 @@ function MenuPanel() {
   return <View style={{ flex: 1, paddingTop: insets.top + 6 }}>
     <View style={{ flexDirection: "row", alignItems: "center", paddingLeft: 24, paddingRight: 10, height: 50 }}>
       <Text accessibilityRole="header" style={{ flex: 1, color: c.onFrame2, fontSize: 14.5, fontWeight: "600" }}>Your communes</Text>
-      <Pressable accessibilityRole="button" accessibilityLabel="Close menu" onPress={close} hitSlop={6} style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}>
+      <PressScale scaleTo={0.9} accessibilityRole="button" accessibilityLabel="Close menu" onPress={close} hitSlop={6} style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}>
         <X size={22} color={c.onFrame} strokeWidth={1.8} />
-      </Pressable>
+      </PressScale>
     </View>
     <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: insets.bottom + 16, gap: 2 }}>
       {snapshots.map((snapshot) => {
         const on = snapshot.commune.id === current?.commune.id;
         const line = standing(snapshot, needs, waiting, recorded).line;
-        return <Pressable key={snapshot.commune.id} accessibilityRole="button" accessibilityState={{ selected: on }}
+        return <PressScale scaleTo={0.985} key={snapshot.commune.id} accessibilityRole="button" accessibilityState={{ selected: on }}
           accessibilityLabel={`${snapshot.commune.name}. ${KIND_NAME[snapshot.commune.kind]}. ${line}.`}
           onPress={() => { setCurrent(snapshot.commune.id); haptic.select(); close(); router.navigate("/hub"); toast(`Showing ${snapshot.commune.name}`); }}
           style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 14, padding: 8, borderRadius: 14, backgroundColor: on || pressed ? c.frameRaised : "transparent" })}>
@@ -143,15 +143,15 @@ function MenuPanel() {
             <Text numberOfLines={1} style={{ color: c.onFrame2, fontSize: 13.5 }}>{KIND_NAME[snapshot.commune.kind]} · {line}</Text>
           </View>
           {on ? <Check size={18} color={c.onFrame} /> : null}
-        </Pressable>;
+        </PressScale>;
       })}
-      <Pressable accessibilityRole="button" onPress={() => { close(); toast("New communes are set up on the web for now."); }}
+      <PressScale scaleTo={0.985} accessibilityRole="button" onPress={() => { close(); toast("New communes are set up on the web for now."); }}
         style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 14, padding: 8, borderRadius: 14, backgroundColor: pressed ? c.frameRaised : "transparent" })}>
         <View style={{ width: 44, height: 44, borderRadius: 10, borderWidth: 1, borderColor: "rgba(245,241,234,0.3)", alignItems: "center", justifyContent: "center" }}>
           <Plus size={18} color={c.onFrame} />
         </View>
         <Text style={{ color: c.onFrame, fontSize: 16.5, fontWeight: "600" }}>New commune</Text>
-      </Pressable>
+      </PressScale>
 
       <Divider />
       <Text style={{ color: c.onFrame2, fontSize: 13, fontWeight: "600", paddingHorizontal: 12, paddingBottom: 4 }} numberOfLines={1}>In {name}</Text>

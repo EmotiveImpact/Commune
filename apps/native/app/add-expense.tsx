@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Pressable, ScrollView, View } from "react-native";
+import { PressScale } from "../src/ui/motion";
+import { ScrollView, View } from "react-native";
 import { Text, TextInput } from "../src/ui/text";
 import { useRouter } from "expo-router";
 import { X } from "lucide-react-native";
@@ -64,9 +65,9 @@ export default function AddExpense() {
           <T kind="title" accessibilityRole="header">Add an expense</T>
           <T kind="body" muted>{current.commune.name}</T>
         </View>
-        <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={close} hitSlop={8} style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: c.recessed, alignItems: "center", justifyContent: "center" }}>
+        <PressScale scaleTo={0.9} accessibilityRole="button" accessibilityLabel="Close" onPress={close} hitSlop={8} style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: c.recessed, alignItems: "center", justifyContent: "center" }}>
           <X size={18} color={c.ink} />
-        </Pressable>
+        </PressScale>
       </View>
       <View style={{ gap: 6 }}>
         <T kind="label" style={{ fontWeight: "600" }}>What was it for?</T>
@@ -79,9 +80,9 @@ export default function AddExpense() {
       <View style={{ gap: 8 }}>
         <T kind="label" style={{ fontWeight: "600" }}>Who paid</T>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-          {people.map((member) => <Pressable key={member.userId} accessibilityRole="radio" accessibilityState={{ selected: payer === member.userId }} onPress={() => setPayer(member.userId)} style={chip(payer === member.userId)}>
+          {people.map((member) => <PressScale key={member.userId} accessibilityRole="radio" accessibilityState={{ selected: payer === member.userId }} onPress={() => setPayer(member.userId)} style={chip(payer === member.userId)}>
             <Text style={chipText(payer === member.userId)}>{member.userId === user?.id ? "You" : firstName(member.name)}</Text>
-          </Pressable>)}
+          </PressScale>)}
         </View>
       </View>
       <View style={{ gap: 8 }}>
@@ -89,10 +90,10 @@ export default function AddExpense() {
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
           {people.map((member) => {
             const on = included.includes(member.userId);
-            return <Pressable key={member.userId} accessibilityRole="checkbox" accessibilityState={{ checked: on }}
+            return <PressScale key={member.userId} accessibilityRole="checkbox" accessibilityState={{ checked: on }}
               onPress={() => setIncluded(on ? included.filter((value) => value !== member.userId) : people.map((p) => p.userId).filter((value) => value === member.userId || included.includes(value)))} style={chip(on)}>
               <Text style={chipText(on)}>{member.userId === user?.id ? "You" : firstName(member.name)}</Text>
-            </Pressable>;
+            </PressScale>;
           })}
         </View>
         {preview ? <T kind="note" muted>{preview}{minor && included.length && minor % included.length ? ", the first people carry the spare penny" : ""}.</T> : null}
@@ -100,9 +101,9 @@ export default function AddExpense() {
       <View style={{ gap: 8 }}>
         <T kind="label" style={{ fontWeight: "600" }}>Category</T>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-          {CATEGORIES.map((value) => <Pressable key={value} accessibilityRole="radio" accessibilityState={{ selected: category === value }} onPress={() => setCategory(value)} style={chip(category === value)}>
+          {CATEGORIES.map((value) => <PressScale key={value} accessibilityRole="radio" accessibilityState={{ selected: category === value }} onPress={() => setCategory(value)} style={chip(category === value)}>
             <Text style={chipText(category === value)}>{value}</Text>
-          </Pressable>)}
+          </PressScale>)}
         </View>
       </View>
       <View style={{ gap: 8 }}>
@@ -110,9 +111,9 @@ export default function AddExpense() {
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
           {[[today, "Today"], [addDays(today, 7), `In a week, ${shortDate(addDays(today, 7))}`], [null, "No due date"]].map(([value, label]) => {
             const on = due === value;
-            return <Pressable key={label} accessibilityRole="radio" accessibilityState={{ selected: on }} onPress={() => setDue(value)} style={chip(on)}>
+            return <PressScale key={label} accessibilityRole="radio" accessibilityState={{ selected: on }} onPress={() => setDue(value)} style={chip(on)}>
               <Text style={chipText(on)}>{label}</Text>
-            </Pressable>;
+            </PressScale>;
           })}
         </View>
       </View>

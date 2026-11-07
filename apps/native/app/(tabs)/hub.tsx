@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
-import { ImageBackground, Linking, Pressable, RefreshControl, StyleSheet, View, useWindowDimensions } from "react-native";
+import { ImageBackground, Linking, RefreshControl, StyleSheet, View, useWindowDimensions } from "react-native";
 import { Text } from "../../src/ui/text";
 import { useRouter, type Href } from "expo-router";
 import * as Clipboard from "expo-clipboard";
@@ -225,7 +225,7 @@ function HubPills({ tab, onPick, left, right, floating }: {
       <Animated.View pointerEvents="none" style={[{ position: "absolute", top: 4, bottom: 4, left: 0, borderRadius: 999, backgroundColor: c.surface, shadowColor: "#1a1e2b", shadowOpacity: 0.12, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 2 }, pill]} />
       {HUB_TABS.map((item, i) => {
         const on = item.id === tab;
-        return <Pressable key={item.id} accessibilityRole="tab" accessibilityState={{ selected: on }} accessibilityLabel={item.label}
+        return <PressScale key={item.id} accessibilityRole="tab" accessibilityState={{ selected: on }} accessibilityLabel={item.label}
           onLayout={(event) => {
             const { x, width } = event.nativeEvent.layout;
             sizes.current[i * 2] = x; sizes.current[i * 2 + 1] = width;
@@ -234,7 +234,7 @@ function HubPills({ tab, onPick, left, right, floating }: {
           onPress={() => onPick(item.id)}
           style={{ flex: 1, height: 40, alignItems: "center", justifyContent: "center" }}>
           <Text style={{ fontSize: 15, fontWeight: on ? "600" : "500", color: on ? c.ink : c.ink2 }}>{item.label}</Text>
-        </Pressable>;
+        </PressScale>;
       })}
     </View>
   </View>;
@@ -277,7 +277,7 @@ function YourPart({ onMore }: { onMore(): void }) {
     </Text>
     <T kind="label" muted>{hubMoneyLine(owe, owed, commune.currency)}</T>
     {first ? <View style={{ backgroundColor: c.surface, borderRadius: 12, padding: 12, gap: 10 }}>
-      <Pressable accessibilityRole="button" onPress={() => router.push(`/expense/${first.expenseId}`)} style={{ flexDirection: "row", gap: 8, alignItems: "flex-start" }}>
+      <PressScale scaleTo={0.985} accessibilityRole="button" onPress={() => router.push(`/expense/${first.expenseId}`)} style={{ flexDirection: "row", gap: 8, alignItems: "flex-start" }}>
         <View style={{ flex: 1, minWidth: 0 }}>
           <T kind="body" style={{ fontSize: 15, fontWeight: "500" }}>{first.title}</T>
           <View style={{ flexDirection: "row", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
@@ -286,7 +286,7 @@ function YourPart({ onMore }: { onMore(): void }) {
           </View>
         </View>
         <T kind="amount" style={{ fontSize: 19, lineHeight: 24 }}>{money(first.amountMinor, first.currency)}</T>
-      </Pressable>
+      </PressScale>
       <PayPrimary size="md" target={{ shareId: first.shareId, communeId: first.communeId, payerId: first.payerId, payerName: first.payerName, amountMinor: first.amountMinor, currency: first.currency, title: first.title }} />
       {shares.length > 1 ? <TextLink centred label={`${shares.length - 1} more to settle`} onPress={onMore} /> : null}
     </View> : toConfirm?.debtor.pending ? <View style={{ backgroundColor: c.surface, borderRadius: 12, padding: 12, gap: 10 }}>
@@ -361,7 +361,7 @@ function WeekRow({ item, late }: { item: WeekItem; late?: boolean }) {
     ? `Bill due · ${money(item.amountMinor ?? 0, item.currency)}${item.yourShareMinor ? ` · your share ${money(item.yourShareMinor, item.currency)}` : item.mine ? " · you paid it" : ""}`
     : [item.operation?.time ? item.operation.time.slice(0, 5) : "", item.assigneeId ? item.who : ""].filter(Boolean).join(" · ") || "Event";
   const Icon = bill ? ReceiptText : CalendarDays;
-  return <Pressable accessibilityRole="button" accessibilityLabel={`${item.title}. ${meta}`}
+  return <PressScale scaleTo={0.985} accessibilityRole="button" accessibilityLabel={`${item.title}. ${meta}`}
     onPress={() => (bill ? router.push(`/expense/${item.expenseId}`) : router.push("/tasks"))}
     style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10, paddingHorizontal: 16, backgroundColor: pressed ? c.press : "transparent" })}>
     <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: c.recessed, alignItems: "center", justifyContent: "center" }}><Icon size={15} color={c.ink2} /></View>
@@ -369,7 +369,7 @@ function WeekRow({ item, late }: { item: WeekItem; late?: boolean }) {
       <T kind="body" style={{ fontSize: 15, lineHeight: 21, fontWeight: "500" }}>{item.title}</T>
       <T kind="label" muted>{meta}</T>
     </View>
-  </Pressable>;
+  </PressScale>;
 }
 
 /** Each person's balance with you here, and what they have on next. */
@@ -381,7 +381,7 @@ function PeoplePanel() {
   const lines = people(current, user?.id ?? "", today);
   return <View style={{ gap: 12 }}>
     <SectionHead title="People" right={<TextLink label="Members" onPress={() => router.push("/members")} />} />
-    <Panel>{lines.map((line, index) => <Pressable key={line.userId} accessibilityRole="button" accessibilityLabel={`${line.name}. ${line.balance}. ${line.job}.`}
+    <Panel>{lines.map((line, index) => <PressScale scaleTo={0.985} key={line.userId} accessibilityRole="button" accessibilityLabel={`${line.name}. ${line.balance}. ${line.job}.`}
       onPress={() => router.push("/settle")}
       style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 11, paddingHorizontal: 16, borderTopWidth: index ? StyleSheet.hairlineWidth : 0, borderTopColor: c.outline, backgroundColor: pressed ? c.press : "transparent" })}>
       <Avatar name={line.isYou ? user?.name ?? "You" : line.name} size={36} />
@@ -390,7 +390,7 @@ function PeoplePanel() {
         <T kind="label" muted lines={1}>{line.job}</T>
       </View>
       <T kind="label" color={line.coming ? c.action : c.ink} style={{ fontWeight: "600" }}>{line.balance}</T>
-    </Pressable>)}</Panel>
+    </PressScale>)}</Panel>
   </View>;
 }
 

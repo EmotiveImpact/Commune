@@ -1,6 +1,6 @@
 import { useState } from "react";
 import Svg, { Path } from "react-native-svg";
-import { Image, Pressable, View } from "react-native";
+import { Image, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Check, ChevronDown } from "lucide-react-native";
 import { standing, tilePulse, type Need, type Waiting } from "../lib/derive";
@@ -88,10 +88,10 @@ export function NeedsList({ items, initial = Infinity }: { items: Need[]; initia
   return <>
     {rows}
     {items.length > initial
-      ? <Pressable accessibilityRole="button" onPress={() => setOpen(!open)} style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, borderTopWidth: 1, borderTopColor: c.outline }}>
+      ? <PressScale scaleTo={0.985} accessibilityRole="button" onPress={() => setOpen(!open)} style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, borderTopWidth: 1, borderTopColor: c.outline }}>
         <T kind="label" style={{ fontWeight: "500" }}>{open ? "Show less" : `Show ${items.length - initial} more`}</T>
         <ChevronDown size={15} color={c.ink} style={{ transform: [{ rotate: open ? "180deg" : "0deg" }] }} />
-      </Pressable>
+      </PressScale>
       : null}
   </>;
 }
@@ -167,7 +167,7 @@ function Tile({ snapshot, info, pulse, onPress, c, placeholder }: {
   snapshot: Snapshot; info: ReturnType<typeof standing>; pulse: ReturnType<typeof tilePulse>; onPress: () => void; c: string; placeholder: string;
 }) {
   const { c: palette } = useTheme();
-  return <Pressable accessibilityRole="button" accessibilityLabel={`${snapshot.commune.name}. ${info.line}. ${pulse.text}.`} onPress={onPress}
+  return <PressScale accessibilityRole="button" accessibilityLabel={`${snapshot.commune.name}. ${info.line}. ${pulse.text}.`} onPress={onPress}
     style={({ pressed }) => ({ flex: 1, minWidth: 0, gap: 8, opacity: pressed ? 0.85 : 1 })}>
     <Image source={{ uri: photoOf(snapshot.commune.kind) }} style={{ width: "100%", aspectRatio: 1 / 0.9, borderRadius: 12, backgroundColor: placeholder }} />
     <View>
@@ -176,7 +176,7 @@ function Tile({ snapshot, info, pulse, onPress, c, placeholder }: {
       {info.state && info.state.tone !== "late" ? <View style={{ marginTop: 3 }}><State text={info.state.text} tone={info.state.tone} /></View> : null}
       <T kind="note" color={pulse.late ? palette.late : palette.action} style={{ marginTop: 3, fontWeight: "500" }}>{pulse.text}</T>
     </View>
-  </Pressable>;
+  </PressScale>;
 }
 
 /** The first thing to do, raised over the dark band on Home. */
@@ -204,7 +204,7 @@ export function NextStep({ need, total }: { need: Need | undefined; total: numbe
       <T kind="note" muted style={{ fontWeight: "500" }}>Your next step</T>
       <T kind="note" muted style={{ fontWeight: "500" }}>1 of {total}</T>
     </View>
-    <Pressable accessibilityRole="button" onPress={() => router.push(need.kind === "share" ? `/expense/${need.expenseId}` : "/tasks")} style={{ flexDirection: "row", gap: 14, alignItems: "center" }}>
+    <PressScale scaleTo={0.985} accessibilityRole="button" onPress={() => router.push(need.kind === "share" ? `/expense/${need.expenseId}` : "/tasks")} style={{ flexDirection: "row", gap: 14, alignItems: "center" }}>
       {need.kind === "share" && commune ? <Who name={need.payerName} photo={photoOf(commune.kind)} /> : <Cal iso={need.dueOn} today={today} small />}
       <View style={{ flex: 1, minWidth: 0 }}>
         <T kind="strong" style={{ fontSize: 17, lineHeight: 23 }}>{need.title}</T>
@@ -212,7 +212,7 @@ export function NextStep({ need, total }: { need: Need | undefined; total: numbe
         <View style={{ marginTop: 6 }}><State text={need.status.text} tone={need.status.tone} /></View>
       </View>
       {need.kind === "share" ? <T kind="amount" style={{ fontSize: 22, lineHeight: 26 }}>{money(need.amountMinor, need.currency)}</T> : null}
-    </Pressable>
+    </PressScale>
     <View style={{ gap: 10 }}>
       {need.kind === "share"
         ? <>
