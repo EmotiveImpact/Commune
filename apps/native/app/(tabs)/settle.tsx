@@ -1,9 +1,8 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { View } from "react-native";
 import { useRouter } from "expo-router";
 import { hasAny, payLinksOf } from "../../src/lib/derive";
-import { debtWeb } from "../../src/lib/debtWeb";
-import { AllSquare, DebtFold, Sent, useInPlace, withLanded } from "../../src/ui/settled";
+import { AllSquare, Sent, useInPlace, withLanded } from "../../src/ui/settled";
 import type { Landed } from "../../src/lib/settled";
 import { firstName, money, moneyList, shortDate, word } from "../../src/lib/format";
 import type { CurrencyCode } from "../../src/lib/types";
@@ -33,8 +32,7 @@ export default function Settle() {
   // Paying or confirming from a row ends in that row's place, as in the opening flow.
   const owePlace = useInPlace();
   const owedPlace = useInPlace();
-  const { settle, owe, owed, recorded, resolveReport, nudge, snapshots, current, user } = useApp();
-  const web = useMemo(() => (current && user ? debtWeb(current, user.id) : null), [current, user]);
+  const { settle, owe, owed, recorded, resolveReport, nudge, snapshots } = useApp();
   const payable = (communeId: string, userId: string) => payLinksOf(snapshots.find((item) => item.commune.id === communeId), userId).length > 0;
   const toast = useToast();
   const remindFor = useRemind();
@@ -76,11 +74,6 @@ export default function Settle() {
           <T kind="title" accessibilityRole="header">{payTotalCurrencies.length ? `You owe ${moneyList(owe)} to ${word(people)} ${people === 1 ? "person" : "people"}.` : "You owe nobody."}</T>
           <T kind="body" muted>{hasAny(owed) ? `You’re owed ${moneyList(owed)}.` : "Nobody owes you anything."} Each currency is kept separate.</T>
         </Still>
-
-        {web && web.debts.length > 1 ? <Still index={1} style={{ gap: 10 }}>
-          <Kicker>You and the others in {current?.commune.name}</Kicker>
-          <DebtFold web={web} viewerId={user?.id ?? ""} />
-        </Still> : null}
 
         {youOweCurrencies.map((currency, panel) => <Still key={`owe-${currency}`} index={1 + panel} style={{ gap: 10 }}>
           <Kicker>You owe · {CURRENCY_WORD[currency]}</Kicker>
