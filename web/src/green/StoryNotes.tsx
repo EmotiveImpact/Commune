@@ -64,3 +64,55 @@ export function StoryNotes() {
     {open === null ? null : <StoryViewer at={open} setAt={setOpen} />}
   </>;
 }
+
+const JOURNAL_STORIES = ['crisps', 'lunch', 'villa'];
+/** Journal-style headlines for the stories, when they sit as articles. */
+const ARTICLE: Record<string, string> = {
+  crisps: 'Six friends, one house and a lot of shared crisps.',
+  lunch: 'Four people, one coffee machine and the team lunch.',
+  villa: 'Five friends, one villa and a lot of euros.',
+};
+
+/** One story's photos, crossfading slide by slide while the card is on screen. */
+function MiniStory({ at }: { at: number }) {
+  const story = STORIES[at];
+  const [n, setN] = useState(0);
+  const [seen, setSeen] = useState(false);
+  const ref = useRef<HTMLSpanElement>(null);
+  const photos = [...new Set(story.beats.map(b => b.img))];
+  useEffect(() => {
+    const el = ref.current; if (!el) return;
+    const io = new IntersectionObserver(([e]) => setSeen(e.isIntersecting), { threshold: 0.3 });
+    io.observe(el); return () => io.disconnect();
+  }, []);
+  useEffect(() => {
+    if (!seen || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const t = window.setInterval(() => setN(v => (v + 1) % story.beats.length), 3600);
+    return () => window.clearInterval(t);
+  }, [seen, story.beats.length]);
+  const img = story.beats[n].img;
+  return <span className="t-sj__photo" ref={ref}>
+    {photos.map(k => <img key={k} className={k === img ? 'is-on' : ''} src={storyImage(k)} alt="" loading="lazy" style={{ objectPosition: `${Math.round((FOCAL[k]?.[0] ?? 0.5) * 100)}% 30%` }} />)}
+    <span className="t-sj__bars" aria-hidden="true">{story.beats.map((_, i) => <i key={i} className={i < n ? 'is-done' : i === n && seen ? 'is-now' : ''} />)}</span>
+    <span className="t-snote__play" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z" /></svg></span>
+  </span>;
+}
+
+/** The journal's three cards, each one a story that plays in its photo and opens full screen. */
+export function StoryJournal({ still = false }: { still?: boolean }) {
+  const [open, setOpen] = useState<number | null>(null);
+  const picks = JOURNAL_STORIES.map(id => STORIES.findIndex(s => s.id === id)).filter(i => i >= 0);
+  return <>
+    <div className="l-journal__grid">{picks.map(i => {
+      const s = STORIES[i];
+      return <article className="l-journal__card t-sj" key={s.id}>
+        <button type="button" className="t-sj__open" onClick={() => setOpen(i)} aria-label={`Watch ${s.title}`}>{still ? <span className="t-sj__photo"><img className="is-on" src={storyImage(s.beats[0].img)} alt="" loading="lazy" style={{ objectPosition: `${Math.round((FOCAL[s.beats[0].img]?.[0] ?? 0.5) * 100)}% 30%` }} /><span className="t-sj__badge">A Commune story · {s.beats.length} slides</span></span> : <MiniStory at={i} />}</button>
+        <span className="l-eyebrow">{s.cat}{still ? '' : ' · A Commune story'}</span>
+        <h3>{still ? ARTICLE[s.id] ?? s.title : s.title}</h3>
+        <p>{still ? `${s.beats[1].h} ${s.beats[2].h}` : s.beats[0].h}</p>
+        <button type="button" className="l-journal__guide t-sj__link" onClick={() => setOpen(i)}>{still ? 'Read the story' : 'Watch the story'}</button>
+      </article>;
+    })}</div>
+    {open === null ? null : <StoryViewer at={open} setAt={setOpen} />}
+  </>;
+}

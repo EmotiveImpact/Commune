@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { BrandWordmark } from '../BrandWordmark';
 import { SiteMenu, useSiteMenu } from './SiteMenu';
-import { StoryNotes } from './StoryNotes';
+import { StoryJournal } from './StoryNotes';
 import './story-notes.css';
 
 const heroScenes = [
@@ -193,6 +193,12 @@ export function Faq({ items }: { items: string[][] }) {
     </div>;
   })}</div>;
 }
+const journalWay = typeof window === 'undefined' ? 'a' : (new URLSearchParams(window.location.search).get('v') ?? 'a');
+const ways: Array<[string, string]> = [['a', 'A · Photos play'], ['b', 'B · Stories as articles'], ['c', 'C · On the Journal page']];
+function ProtoSwitch() {
+  return <nav className="t-proto" aria-label="Journal options"><span>Journal</span>{ways.map(([k, label]) => <a key={k} href={`?v=${k}#journal`} aria-current={journalWay === k}>{label}</a>)}</nav>;
+}
+
 export default function TogetherMock() {
   const plansRef = useRef<HTMLDivElement>(null);
   const [planAt, setPlanAt] = useState(0);
@@ -371,7 +377,7 @@ export default function TogetherMock() {
         <p className="t-plans__line">Every plan starts with a 7-day free trial. Commune records what you pay each other and never moves your money.</p>
       </div></section>
 
-      <section className="l-journal l-section t-snotes" id="journal" aria-labelledby="journal-title"><div className="l-container"><div className="l-section-heading"><div><span className="l-eyebrow">The shared life journal</span><h2 id="journal-title">Notes on doing life together.</h2></div><p>Stories from the homes, nights out{' '}<br />and trips we share.</p><a className="t-journal-btn" href="./journal.html">Explore the journal</a></div></div><StoryNotes /></section>
+      <section className="l-journal l-section t-snotes" id="journal" aria-labelledby="journal-title"><div className="l-container"><div className="l-section-heading"><div><span className="l-eyebrow">The shared life journal</span><h2 id="journal-title">Notes on doing life together.</h2></div><p>Ideas for the homes, workspaces{' '}<br />and adventures we share.</p><a className="t-journal-btn" href={journalWay === 'c' ? './journal-g.html' : './journal.html'}>Explore the journal</a></div>{journalWay === 'c' ? <div className="l-journal__grid">{journal.map(article => <article className="l-journal__card" key={article.category}><img src={article.image} alt={article.alt} loading="lazy" /><span className="l-eyebrow">{article.category}</span><h3>{article.title}</h3><p>{article.description}</p><a className="l-journal__guide" href={`./journal.html#${article.category.toLowerCase()}`}>Read the guide</a></article>)}</div> : <StoryJournal still={journalWay === 'b'} />}</div></section>
 
       <section className="l-faq l-section" aria-labelledby="faq-title"><div className="l-container l-faq__layout"><div><span className="l-eyebrow">Good to know</span><h2 id="faq-title">A few things, made clear.</h2></div><Faq items={questions} /></div></section>
     </main>
@@ -380,5 +386,6 @@ export default function TogetherMock() {
       <section className="l-final-cta" aria-labelledby="closing-title"><div className="l-container"><span className="l-eyebrow">Less admin. More living.</span><h2 id="closing-title">Make space for the good stuff.</h2><p>The costs, the jobs, the little details. A shared place for it all.{' '}<br />Start with 7 days on Standard.</p><LinkButton variant="white">Start your 7-day free trial</LinkButton></div></section>
       <footer className="l-footer"><div className="l-container l-footer__inner"><div className="l-footer__links"><div><BrandWordmark href="/" /><p>For people who do life together.</p></div><nav aria-label="Explore"><h3>Explore</h3><a href="/how-it-works.html">How it works</a><a href="/life-together.html">Life together</a><a href="/pricing.html">Pricing</a><a href="./journal.html">Journal</a><a href="/about.html">About</a></nav><nav aria-label="Get in touch"><h3>Your Commune</h3><a href="https://app.ourcommune.io/login">Log in</a><a href={signup}>Get started</a><a href="mailto:support@ourcommune.io">Contact us</a></nav></div><div className="l-footer__bottom"><span>© {new Date().getFullYear()} Commune</span><div><a href="https://app.ourcommune.io/privacy">Privacy policy</a><a href="https://app.ourcommune.io/terms">Terms of service</a></div></div></div></footer>
       </div></div>
+    <ProtoSwitch />
   </div>;
 }
