@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { handBack } from "../../src/lib/settled";
 import { paidOutcome, memberName, outstanding, pendingReport } from "../../src/lib/derive";
 import { SheetDone } from "../../src/ui/settled";
 import { firstName, money } from "../../src/lib/format";
@@ -42,7 +43,8 @@ function PaidBody({ close }: { close: () => void }) {
     try {
       await reportPayment(snapshot.commune.id, shareId, left, today, provider || null);
       tap("success");
-      setFinished(paidOutcome(snapshot, user?.id ?? "", shareId, expense.paidByUserId, name, left, 0));
+      const end = paidOutcome(snapshot, user?.id ?? "", shareId, expense.paidByUserId, name, left, 0);
+      if (handBack({ shareId, ...end })) close(); else setFinished(end);
     } catch (cause) {
       setError(failure(cause, "Couldn’t record it. Try again."));
     } finally {

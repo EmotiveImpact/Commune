@@ -21,15 +21,15 @@ export type PayTarget = {
  * amount filled in; with several and no favourite, it opens a sheet of all of
  * them; with none, it records a payment made however you usually pay them.
  */
-export function PayPrimary({ target, size = "lg" }: { target: PayTarget; size?: "lg" | "md" }) {
+export function PayPrimary({ target, size = "lg", onStart }: { target: PayTarget; size?: "lg" | "md"; onStart?(): void }) {
   const { c } = useTheme();
   const router = useRouter();
   const { snapshots, openPayLink } = useApp();
   const links = payLinksOf(snapshots.find((item) => item.commune.id === target.communeId), target.payerId);
   const amount = money(target.amountMinor, target.currency);
   const name = firstName(target.payerName);
-  const tell = () => router.push(`/record/${target.shareId}`);
-  const sheet = () => router.push(`/pay/${target.shareId}`);
+  const tell = () => { onStart?.(); router.push(`/record/${target.shareId}`); };
+  const sheet = () => { onStart?.(); router.push(`/pay/${target.shareId}`); };
   if (!links.length) {
     return <>
       <Button size={size} block label={`I’ve paid ${name} ${amount}`} onPress={tell} />
@@ -44,7 +44,7 @@ export function PayPrimary({ target, size = "lg" }: { target: PayTarget; size?: 
     return <>
       {href
         ? <Button size={size} block label={`Pay ${amount} with ${provider}`} accessibilityLabel={`Pay ${amount} with ${provider}, opens ${provider}`}
-          trailing={<ArrowUpRight size={16} color={c.onAction} />} onPress={() => openPayLink(target.shareId, provider, href.href)} />
+          trailing={<ArrowUpRight size={16} color={c.onAction} />} onPress={() => { onStart?.(); openPayLink(target.shareId, provider, href.href); }} />
         : <Button size={size} block label={`Pay ${amount} by bank transfer`} onPress={sheet} />}
       <View style={{ flexDirection: "row", gap: 10 }}>
         {others > 0 ? <View style={{ flex: 1 }}><Button block variant="secondary" label={`Other ways (${others})`} onPress={sheet} /></View> : null}

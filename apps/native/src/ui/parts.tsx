@@ -1,6 +1,6 @@
 import { SwipeRow } from "./swipe";
 import { HOLD, useRemind } from "./remind";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Svg, { Path } from "react-native-svg";
 import { Pressable, View } from "react-native";
 import { useRouter } from "expo-router";
@@ -13,10 +13,12 @@ import { photoOf } from "./chrome";
 import type { Rect as Box } from "./origin";
 import { Avatar, Button, Cal, FadeImage, Faces, Group, Meta, Row, State, T, Who, tap } from "./kit";
 import { PayPrimary, usePayable } from "./pay";
+import { AllSquare } from "./settled";
+import { claimSettle, onSettled, type Settled } from "../lib/settled";
 import { Rolling, Swap } from "./rolling";
 import { useToast } from "./toast";
 import { useTheme } from "./theme";
-import Animated, { Easing, FadeOut, useAnimatedProps, useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from "react-native-reanimated";
+import Animated, { Easing, FadeIn, FadeOut, useAnimatedProps, useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from "react-native-reanimated";
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 import { PressScale, springs, useCalm } from "./motion";
@@ -224,6 +226,19 @@ export function NextStep({ need, total }: { need: Need | undefined; total: numbe
   const remindFor = useRemind();
   const remind = need ? remindFor(need.key) : undefined;
   const card = { backgroundColor: c.surface, borderRadius: 15, padding: 18, paddingBottom: 20, gap: 16, shadowColor: "#121622", shadowOpacity: 0.18, shadowRadius: 20, shadowOffset: { width: 0, height: 12 }, elevation: 6 };
+  // Paid from this card: the card itself says All square, as in the opening flow, then moves on.
+  const [done, setDone] = useState<Settled | null>(null);
+  useEffect(() => onSettled((event) => setDone(event)), []);
+  useEffect(() => {
+    if (!done) return;
+    const timer = setTimeout(() => setDone(null), 2800);
+    return () => clearTimeout(timer);
+  }, [done]);
+  if (done) {
+    return <Animated.View key={`done-${done.shareId}`} entering={FadeIn.duration(220)} style={card} accessibilityLabel="Your next step">
+      <AllSquare compact title={done.title} body={done.body} />
+    </Animated.View>;
+  }
   if (!need) {
     const late = waiting.find((entry) => entry.status.tone === "attention");
     return <View style={card} accessibilityLabel="Your next step">
@@ -263,7 +278,7 @@ export function NextStep({ need, total }: { need: Need | undefined; total: numbe
     <View style={{ gap: 10 }}>
       {need.kind === "share"
         ? <>
-          <PayPrimary target={{ shareId: need.shareId, communeId: need.communeId, payerId: need.payerId, payerName: need.payerName, amountMinor: need.amountMinor, currency: need.currency, title: need.title }} />
+          <PayPrimary onStart={() => claimSettle(need.shareId)} target={{ shareId: need.shareId, communeId: need.communeId, payerId: need.payerId, payerName: need.payerName, amountMinor: need.amountMinor, currency: need.currency, title: need.title }} />
         </>
         : <Button size="lg" block label="Mark done" busy={task.busy === need.key} onPress={() => void task.run(need)} />}
     </View>
