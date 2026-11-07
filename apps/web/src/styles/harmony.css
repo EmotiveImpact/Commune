@@ -79,7 +79,7 @@
 }
 
 /* Buttons: the website's round shape, in the app's green. */
-.a-body :is(.a-btn, .c-home-btn, .ops-add, .c-hub-button) {
+.a-body :is(.a-btn, .c-home-btn, .ops-add, .c-hub-button, .c-pay-primary, .c-pay-secondary) {
   border-radius: var(--radius-pill);
 }
 .a-body .a-btn:not(.ghost, .danger, .nudge),

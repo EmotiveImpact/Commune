@@ -1,7 +1,13 @@
 import type { ReactNode } from "react";
 import { Link } from "wouter";
+import type { Story } from "@commune/core/stories";
+import { AuthStory, InviteScene } from "../stories/StoryParts";
 
-export function AuthLayout({ children }: { children: ReactNode }) {
+/**
+ * `story`: the opening story to show beside the form (sign-in, sign-up).
+ * `invite`: the invitation page's panel instead, which never shows the cast.
+ */
+export function AuthLayout({ children, story, invite }: { children: ReactNode; story?: Story; invite?: { communeName?: string; role?: string } }) {
   const year = new Date().getFullYear();
   return (
     <div className="commune-auth-shell">
@@ -15,6 +21,7 @@ export function AuthLayout({ children }: { children: ReactNode }) {
           <h1>Effortlessly manage your shared expenses.</h1>
           <p>Track group spending, settle balances, and keep shared money clear.</p>
         </div>
+        {invite ? <InviteScene {...invite} /> : story ? <AuthStory story={story} /> : null}
         <p className="commune-auth-copy">© {year} Commune</p>
       </header>
 
@@ -27,7 +34,10 @@ export function AuthLayout({ children }: { children: ReactNode }) {
           <em>for people who do life, together.</em>
           <h1 className="sr-only">Effortlessly manage your shared expenses.</h1>
         </header>
-        <main className="commune-auth-form-wrap">{children}</main>
+        <main className="commune-auth-form-wrap">
+          {invite ? <div className="c-story-stack"><InviteScene {...invite} compact />{children}</div>
+            : story ? <div className="c-story-stack"><AuthStory story={story} compact />{children}</div> : children}
+        </main>
         <footer className="commune-auth-desktop-footer">
           <Link href="/privacy">Privacy</Link>
           <Link href="/terms">Terms</Link>

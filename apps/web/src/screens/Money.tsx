@@ -12,6 +12,8 @@ import { CalendarDate } from "../ui/CalendarDate";
 import { initialsOf } from "../data/household";
 import { formatMoney } from "@commune/core";
 import "./Money.css";
+import { seenStory } from "../stories/choose";
+import { FirstBillCard } from "../stories/StoryParts";
 
 // Months start at midnight UTC, as the shared records count them.
 function monthName(month: string): string {
@@ -141,6 +143,7 @@ export function ExpensesEmptyScreen() {
         <h2>No expenses yet.</h2>
         <p>Add something you’ve paid for and share it with your commune.</p>
       </div>
+      <FirstBillCard story={seenStory()} onAdd={() => go("add-expense")} quiet />
     </>
   );
 }

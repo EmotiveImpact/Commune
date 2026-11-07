@@ -75,7 +75,7 @@ export function InvitePage() {
   const elsewhere = !loading && !invite && session && hint ? hint : null;
 
   return (
-    <AuthLayout>
+    <AuthLayout invite={{ communeName: invite?.communeName, role: invite?.role }}>
       <div className="commune-auth-panel">
         <h2>{loading ? "Loading invitation…" : invite ? `Join ${invite.communeName}` : token && !session ? "You have a Commune invitation" : elsewhere ? "This invitation is for another address" : "Invitation unavailable"}</h2>
         <p className="commune-auth-lede">

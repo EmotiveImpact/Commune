@@ -33,6 +33,14 @@ function listenIpv6Too(): Plugin {
   };
 }
 
+/** The Data API host the Neon SDK derives from a Neon Auth URL: ep-x.neonauth.… becomes ep-x.apirest.… */
+export function derivedDataApiOrigin(authUrl: string): string | undefined {
+  const url = new URL(authUrl);
+  if (!url.hostname.includes(".neonauth.")) return undefined;
+  url.hostname = url.hostname.replace(".neonauth.", ".apirest.");
+  return url.origin;
+}
+
 /**
  * vercel.json allows connections to any HTTPS host, so a preview built for a
  * new Neon branch cannot break on its host name. A build that knows its Neon
@@ -43,7 +51,12 @@ export function exactConnectPolicy(env: Record<string, string | undefined>): Plu
     name: "exact-connect-policy",
     apply: "build",
     transformIndexHtml(html) {
-      const origins = [env.VITE_NEON_AUTH_URL, env.VITE_NEON_DATA_API_URL, env.VITE_REMINDER_FUNCTION_URL]
+      const authUrl = env.VITE_NEON_AUTH_URL?.trim();
+      // Without its own Data API URL, the app derives it from the Neon Auth
+      // URL (src/live/neon.ts), so the policy must name that host too, or the
+      // browser refuses every read and nobody can get past signing in.
+      const dataUrl = env.VITE_NEON_DATA_API_URL?.trim() || (authUrl ? derivedDataApiOrigin(authUrl) : undefined);
+      const origins = [authUrl, dataUrl, env.VITE_REMINDER_FUNCTION_URL]
         .map((value) => value?.trim())
         .filter((value): value is string => Boolean(value))
         .map((value) => new URL(value).origin);
@@ -95,9 +108,10 @@ export function releaseId(env: Record<string, string | undefined>): string {
   return /^[0-9a-f]{7,40}$/.test(commit) ? commit.slice(0, 12) : "local";
 }
 
-/** packages/core by name, as tsconfig.json's paths and vitest.config.ts name it. */
+/** packages/core by name, as tsconfig.json's paths and vitest.config.ts name it, with the opening stories as an entry of their own. */
 export const sharedCode = [
   { find: /^@commune\/core$/, replacement: fileURLToPath(new URL("../../packages/core/src/index.ts", import.meta.url)) },
+  { find: /^@commune\/core\/stories$/, replacement: fileURLToPath(new URL("../../packages/core/src/stories/index.ts", import.meta.url)) },
 ];
 
 export default defineConfig(({ mode }) => ({
