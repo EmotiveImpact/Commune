@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ComponentType, type ReactNode } from "react";
-import { Image, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native";
+import { Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native";
+import { FadeImage } from "./kit";
 import { Text } from "./text";
 import Animated, { interpolate, runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
@@ -133,7 +134,7 @@ function MenuPanel() {
           accessibilityLabel={`${snapshot.commune.name}. ${KIND_NAME[snapshot.commune.kind]}. ${line}.`}
           onPress={() => { setCurrent(snapshot.commune.id); haptic.select(); close(); router.navigate("/hub"); toast(`Showing ${snapshot.commune.name}`); }}
           style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, padding: 8, minHeight: 60, borderRadius: 14, backgroundColor: on || pressed ? c.frameRaised : "transparent" })}>
-          <Image source={{ uri: KIND_PHOTO[snapshot.commune.kind] }} style={{ width: 44, height: 44, borderRadius: 11, backgroundColor: c.frameRaised }} />
+          <FadeImage uri={KIND_PHOTO[snapshot.commune.kind]} placeholder={c.frameRaised} style={{ width: 44, height: 44, borderRadius: 11 }} />
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text numberOfLines={1} style={{ color: c.onFrame, fontSize: 14.5, lineHeight: 19, fontWeight: "600" }}>{snapshot.commune.name}</Text>
             <Text numberOfLines={1} style={{ color: c.onFrame2, fontSize: 12.5, lineHeight: 17 }}>{KIND_NAME[snapshot.commune.kind]} · {line}</Text>

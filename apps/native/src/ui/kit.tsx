@@ -1,7 +1,7 @@
 import { useId, useRef, type ReactNode } from "react";
-import { useAnimatedStyle } from "react-native-reanimated";
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { hiddenButton, lastPress } from "./origin";
-import { ActivityIndicator, Image, View, type GestureResponderEvent, type StyleProp, type TextStyle, type ViewStyle } from "react-native";
+import { ActivityIndicator, Image, View, type GestureResponderEvent, type ImageStyle, type StyleProp, type TextStyle, type ViewStyle } from "react-native";
 import { Text } from "./text";
 import * as Haptics from "expo-haptics";
 import { calParts, initials } from "../lib/format";
@@ -235,4 +235,18 @@ export function ErrorText({ children }: { children: ReactNode }) {
 /** A list of tappable settings-style rows. */
 export function List({ children }: { children: ReactNode }) {
   return <Panel>{children}</Panel>;
+}
+
+/**
+ * A photo that sits on a quiet placeholder and fades in once it has loaded,
+ * so tiles never flash empty and then pop.
+ */
+export function FadeImage({ uri, style, placeholder }: { uri: string; style: StyleProp<ImageStyle>; placeholder?: string }) {
+  const { c } = useTheme();
+  const shown = useSharedValue(0);
+  const fade = useAnimatedStyle(() => ({ opacity: shown.value }));
+  return <View style={[style as StyleProp<ViewStyle>, { backgroundColor: placeholder ?? c.recessed, overflow: "hidden" }]}>
+    <Animated.Image source={{ uri }} onLoad={() => { shown.value = withTiming(1, { duration: 200 }); }}
+      style={[{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }, fade]} />
+  </View>;
 }

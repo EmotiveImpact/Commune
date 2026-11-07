@@ -1,7 +1,7 @@
 import { SwipeRow } from "./swipe";
 import { useRef, useState } from "react";
 import Svg, { Path } from "react-native-svg";
-import { Image, View } from "react-native";
+import { View } from "react-native";
 import { useRouter } from "expo-router";
 import { Check, ChevronDown } from "lucide-react-native";
 import { standing, tilePulse, type Need, type Waiting } from "../lib/derive";
@@ -10,7 +10,7 @@ import { failure, useApp } from "../state";
 import type { Snapshot } from "../lib/types";
 import { photoOf } from "./chrome";
 import type { Rect as Box } from "./origin";
-import { Avatar, Button, Cal, Faces, Group, Meta, Row, State, T, Who, tap } from "./kit";
+import { Avatar, Button, Cal, FadeImage, Faces, Group, Meta, Row, State, T, Who, tap } from "./kit";
 import { PayPrimary, usePayable } from "./pay";
 import { Rolling, Swap } from "./rolling";
 import { useToast } from "./toast";
@@ -176,7 +176,7 @@ function Tile({ snapshot, info, pulse, onPress, c, placeholder, isCurrent }: {
   return <PressScale accessibilityRole="button" accessibilityLabel={`${snapshot.commune.name}. ${info.line}. ${pulse.text}.`} onPress={open}
     style={({ pressed }) => ({ flex: 1, minWidth: 0, gap: 8, opacity: pressed ? 0.85 : 1 })}>
     <View ref={photo} collapsable={false}>
-      <Image source={{ uri: photoOf(snapshot.commune.kind) }} style={{ width: "100%", aspectRatio: 1 / 0.9, borderRadius: 12, backgroundColor: placeholder }} />
+      <FadeImage uri={photoOf(snapshot.commune.kind)} placeholder={placeholder} style={{ width: "100%", aspectRatio: 1 / 0.9, borderRadius: 12 }} />
       {/* v7's "Current" tag: a small dark glass label on the photo. */}
       {isCurrent ? <View style={{ position: "absolute", left: 6, top: 6, height: 18, paddingHorizontal: 7, borderRadius: 9, backgroundColor: "rgba(14,16,24,0.55)", borderWidth: 1, borderColor: "rgba(255,255,255,0.18)", justifyContent: "center" }}>
         <T kind="note" color="#fff" style={{ fontSize: 10.5, lineHeight: 14, fontWeight: "600" }}>Current</T>
