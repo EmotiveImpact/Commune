@@ -73,6 +73,7 @@ function Screens() {
     <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: c.canvas } }}>
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="sign-in" />
+      <Stack.Screen name="join/[token]" options={{ headerShown: false, animation: "fade" }} />
       <Stack.Screen name="expense/[id]" options={{ ...pushed, title: "Expense" }} />
       <Stack.Screen name="notifications" options={{ ...pushed, title: "Notifications" }} />
       <Stack.Screen name="account" options={{ ...pushed, title: "Settings" }} />

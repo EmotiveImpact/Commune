@@ -48,7 +48,20 @@ export interface Backend {
   claimTask(operationId: string, input: { toMemberId: string; expectedDate: string; today: string; requestId: string }): Promise<void>;
   /** Starts a new commune with you as its admin, and returns its id. */
   createCommune(input: { name: string; kind: "household" | "workspace" | "trip"; currency: CurrencyCode }): Promise<string>;
+  /** What an invitation is for, before joining. Null when it has expired or been used. */
+  previewInvite(token: string): Promise<InvitePreview | null>;
+  /** Joins the commune an invitation is for, and returns its id. */
+  acceptInvite(token: string): Promise<string>;
 }
+
+export type InvitePreview = {
+  communeName: string;
+  kind?: "household" | "workspace" | "trip";
+  /** Who sent it, when the server says. */
+  inviterName?: string;
+  /** Who is in it already, when the server says. */
+  people?: string[];
+};
 
 export type NoteInput = { title: string; pill: string | null; lede: string | null; body: string | null; facts: Array<[string, string]> };
 export type TaskInput = { title: string; date: string; assigneeId: string | null; rotationIds: string[] | null; repeat: "none" | "weekly" | "monthly"; notes: string | null };
@@ -137,6 +150,13 @@ export function serverBackend(base: string): Backend {
     },
     async setPreferredPayLink(provider) {
       return parsePayLinks((await call<{ links: unknown }>("/pay-links-preferred", { method: "PUT", body: JSON.stringify({ provider }) })).links);
+    },
+    async previewInvite(token) {
+      const result = await call<{ invite: { communeName: string } | null }>(`/invites/${encodeURIComponent(token)}`);
+      return result.invite ? { communeName: result.invite.communeName } : null;
+    },
+    async acceptInvite(token) {
+      return (await post<{ communeId: string }>(`/invites/${encodeURIComponent(token)}/accept`)).communeId;
     },
   };
 }

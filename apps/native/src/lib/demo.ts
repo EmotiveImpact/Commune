@@ -309,5 +309,39 @@ export function demoBackend(now: () => string = todayIso): Backend {
       if (provider && !myLinks().some((item) => item.provider === provider)) throw new ApiError("Add that way to be paid before making it your favourite", 400);
       return setMyLinks(parsePayLinks(myLinks().map((item) => ({ ...item, preferred: item.provider === provider }))));
     },
+    // "demo" is the invitation the Help screen's "Preview joining" opens: Sam
+    // asks Maya to join 22 Elm Road. Joining adds a commune with one bill and
+    // one chore that are hers from today, and nothing from before.
+    async previewInvite(token) {
+      if (token !== "demo") return null;
+      if (data.some((snapshot) => snapshot.commune.id === "demo-elm")) return null;
+      return { communeName: "22 Elm Road", kind: "household", inviterName: "Sam Okafor", people: ["Sam Okafor", "Jordan Hale", "Alex Rivera"] };
+    },
+    async acceptInvite(token) {
+      if (token !== "demo") throw new ApiError("This invitation has expired or been used", 410);
+      if (data.some((snapshot) => snapshot.commune.id === "demo-elm")) return "demo-elm";
+      const today = now();
+      const people = [MAYA.id, "demo-sam", "demo-jordan", "demo-alex"];
+      const share = (n: number, userId: string, amountMinor: number, paid: boolean): Share =>
+        ({ id: `share-elm-${n}-${userId}`, userId, amountMinor, settledMinor: paid ? amountMinor : 0, paymentReports: [] });
+      data.push({
+        commune: { id: "demo-elm", name: "22 Elm Road", kind: "household", currency: "GBP", role: "member", memberCount: 4 },
+        members: [
+          { ...PEOPLE.sam, role: "admin", active: true }, { ...PEOPLE.jordan, role: "member", active: true },
+          { ...PEOPLE.alex, role: "member", active: true }, { ...PEOPLE.maya, role: "member", active: true },
+        ],
+        expenses: [{
+          id: "exp-elm-1", title: "Broadband", category: "Bills", amountMinor: 4000, paidByUserId: "demo-sam",
+          dueOn: addDays(today, 3), createdAt: `${today}T08:00:00Z`, version: 1, voidedAt: null,
+          shares: people.map((userId) => share(1, userId, 1000, userId === "demo-sam")),
+        }],
+        funds: [], notifications: [], reminderTargets: [],
+        notes: [{ id: "note-elm-wifi", title: "Wi-Fi and bins", lede: "Network ElmRoad5G. Bins go out on Thursday night." }],
+        operations: [{ id: "op-elm-bins", kind: "task", title: "Put the bins out", date: addDays(today, 2), allDay: true,
+          assigneeId: MAYA.id, rotationIds: [MAYA.id, "demo-jordan", "demo-alex", "demo-sam"], repeat: "weekly", status: "open" }],
+        recurringBills: [], splitTemplates: [], payLinks: {}, activityEvents: [],
+      });
+      return "demo-elm";
+    },
   };
 }
