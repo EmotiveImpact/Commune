@@ -17,6 +17,7 @@ import { useRemind } from "../../src/ui/remind";
 import { Swap } from "../../src/ui/rolling";
 import { FirstDayCard } from "../../src/ui/firstday";
 import { JoinWaitingCard } from "../../src/ui/joins";
+import { OpeningCards } from "../../src/opening/homeCards";
 
 /** Home, Direction B: your standing on the dark band, the next step raised over it. */
 export default function Home() {
@@ -63,6 +64,7 @@ export default function Home() {
           </View>
         </ImageBackground>
         <View style={{ padding: 16, paddingTop: 28, gap: 28 }}>
+          <OpeningCards />
           <FirstDayCard />
           <JoinWaitingCard />
           <Still index={0} style={{ gap: 12 }}><SectionHead title="Your communes" /><CommuneTiles /></Still>
@@ -103,6 +105,7 @@ export default function Home() {
       </View>
       <Still index={0} style={{ marginTop: -46, marginHorizontal: 16 }}><NextStep needs={needs} /></Still>
       <View style={{ padding: 16, paddingTop: 28, gap: 28 }}>
+        <OpeningCards />
         <FirstDayCard />
         <JoinWaitingCard />
         <Still index={1} style={{ gap: 12 }}><SectionHead title="Your communes" /><CommuneTiles /></Still>

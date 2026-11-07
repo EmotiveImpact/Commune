@@ -25,6 +25,9 @@ export default function Help() {
         <T kind="body" muted>Write to us at {SUPPORT}.</T>
         <Button variant="secondary" label="Email us" icon={<Mail size={15} color={c.ink} />} onPress={() => void Linking.openURL(`mailto:${SUPPORT}?subject=Commune%20for%20iPhone`).catch(() => undefined)} />
       </Panel>
+      <TextLink label="Play the opening flow again" centred muted onPress={() => router.push("/opening")} />
+      {backend.mode === "demo" ? <TextLink label="Open it as if invited to a trip" centred muted onPress={() => router.push("/opening?from=invite-trip")} /> : null}
+      {backend.mode === "demo" ? <TextLink label="Open it from the villa ad" centred muted onPress={() => router.push("/opening?from=link-villa")} /> : null}
       <TextLink label="Preview joining from an invitation" centred muted onPress={() => router.push("/join/demo")} />
       {backend.mode === "demo" ? <TextLink label="Preview joining by QR code" centred muted onPress={() => router.push(`/join-code/${DEMO_ELM_STICKER}`)} /> : null}
     </Pad>

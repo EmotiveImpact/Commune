@@ -7,6 +7,7 @@ import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } f
 import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { PrefsProvider } from "../src/prefs";
+import { OpeningProvider } from "../src/opening/store";
 import { AppProvider, useApp } from "../src/state";
 import { ConfirmProvider } from "../src/ui/confirm";
 import { HeroFlight } from "../src/ui/hero";
@@ -74,6 +75,7 @@ function Screens() {
     <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: c.canvas } }}>
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="sign-in" />
+      <Stack.Screen name="opening" options={{ headerShown: false, animation: "fade", gestureEnabled: false }} />
       <Stack.Screen name="join/[token]" options={{ headerShown: false, animation: "fade" }} />
       <Stack.Screen name="join-code/[token]" options={{ headerShown: false, animation: "fade" }} />
       <Stack.Screen name="j/[token]" options={{ headerShown: false, animation: "none" }} />
@@ -118,6 +120,6 @@ export default function Root() {
   const [ready, fontError] = useFonts({ CommuneWordmark25: require("../assets/fonts/commune-wordmark-25.ttf"), CommuneWordmark36: require("../assets/fonts/commune-wordmark-36.ttf"), DMSans_400Regular, DMSans_500Medium, DMSans_600SemiBold, DMSans_700Bold, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold });
   if (!ready && !fontError) return null;
   return <GestureHandlerRootView style={{ flex: 1 }}>
-    <PrefsProvider><AppProvider><ToastProvider><ConfirmProvider><Screens /></ConfirmProvider></ToastProvider></AppProvider></PrefsProvider>
+    <PrefsProvider><OpeningProvider><AppProvider><ToastProvider><ConfirmProvider><Screens /></ConfirmProvider></ToastProvider></AppProvider></OpeningProvider></PrefsProvider>
   </GestureHandlerRootView>;
 }

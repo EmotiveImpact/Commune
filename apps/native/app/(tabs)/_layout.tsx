@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { ArrowRightLeft, House, LayoutGrid, ReceiptText } from "lucide-react-native";
 import { useApp } from "../../src/state";
+import { useOpening } from "../../src/opening/store";
 import { Avatar, Button, T } from "../../src/ui/kit";
 import { MenuShell } from "../../src/ui/menu";
 import { PressScale, haptic, springs, useCalm } from "../../src/ui/motion";
@@ -63,8 +64,11 @@ function TabButton({ tab, on, onPress }: { tab: (typeof TABS)[number]; on: boole
 export default function TabsLayout() {
   const { c } = useTheme();
   const { status, error, refresh } = useApp();
+  const opening = useOpening();
+  // The first time Commune opens, the opening flow comes first.
+  if (opening.loaded && !opening.done) return <Redirect href="/opening" />;
   if (status === "signed-out") return <Redirect href="/sign-in" />;
-  if (status === "starting" || status === "loading") {
+  if (status === "starting" || status === "loading" || !opening.loaded) {
     return <View style={{ flex: 1, backgroundColor: c.frame, alignItems: "center", justifyContent: "center", gap: 16 }}>
       <Text style={{ color: c.onFrame, fontSize: 34, fontFamily: "CommuneWordmark36", letterSpacing: -2 }}>commune.</Text>
       <ActivityIndicator color={c.onFrame} />
