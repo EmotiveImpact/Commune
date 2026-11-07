@@ -58,8 +58,16 @@ CREATE INDEX commune_join_requests_user_idx ON public.commune_join_requests (use
 
 ALTER TABLE public.commune_join_codes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.commune_join_requests ENABLE ROW LEVEL SECURITY;
-REVOKE ALL ON public.commune_join_codes FROM PUBLIC, authenticated, anonymous;
-REVOKE ALL ON public.commune_join_requests FROM PUBLIC, authenticated, anonymous;
+REVOKE ALL ON public.commune_join_codes FROM PUBLIC, authenticated;
+REVOKE ALL ON public.commune_join_requests FROM PUBLIC, authenticated;
+-- The anonymous role exists on hosted Neon but not on every test database.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anonymous') THEN
+    REVOKE ALL ON public.commune_join_codes FROM anonymous;
+    REVOKE ALL ON public.commune_join_requests FROM anonymous;
+  END IF;
+END $$;
 
 CREATE TRIGGER change_mark AFTER INSERT OR UPDATE OR DELETE ON public.commune_join_codes
   FOR EACH ROW EXECUTE FUNCTION commune_private.note_commune_change('commune_id');
