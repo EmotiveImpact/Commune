@@ -1,4 +1,5 @@
-import { ImageBackground, RefreshControl, Text, View } from "react-native";
+import { ImageBackground, RefreshControl, StyleSheet, Text, View } from "react-native";
+import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { useState } from "react";
 import { aheadBy, comingUp, hasAny, oweTotals, standingClause, type Need } from "../../src/lib/derive";
 import { cap, feedTime, firstName, joinAnd, longDate, money, moneyList, plural, word } from "../../src/lib/format";
@@ -29,11 +30,24 @@ export default function Home() {
     return <View style={{ flex: 1, backgroundColor: c.canvas }}>
       <TopBar />
       <Body refreshControl={pull} ground={c.frame}>
-        <ImageBackground source={photo ? { uri: photo } : undefined} style={{ minHeight: 300, justifyContent: "flex-end", backgroundColor: c.frame }}>
-          <View style={{ padding: 20, paddingBottom: 26, gap: 10, backgroundColor: "rgba(14,16,24,0.55)" }}>
-            <Text style={{ color: c.onFrame2, fontSize: 13, fontWeight: "500" }}>{longDate(today)}</Text>
+        <ImageBackground source={photo ? { uri: photo } : undefined} style={{ minHeight: 340, justifyContent: "flex-end", backgroundColor: c.frame }}>
+          {/* A soft fade, clear at the top and dark under the words, instead of a hard band. */}
+          <Svg style={StyleSheet.absoluteFill} width="100%" height="100%" preserveAspectRatio="none" pointerEvents="none">
+            <Defs>
+              <LinearGradient id="allSquareScrim" x1="0" y1="0" x2="0" y2="1">
+                <Stop offset="0" stopColor="#0e1018" stopOpacity={0.2} />
+                <Stop offset="0.22" stopColor="#0e1018" stopOpacity={0.05} />
+                <Stop offset="0.48" stopColor="#0e1018" stopOpacity={0.45} />
+                <Stop offset="0.75" stopColor="#0e1018" stopOpacity={0.78} />
+                <Stop offset="1" stopColor="#0e1018" stopOpacity={0.92} />
+              </LinearGradient>
+            </Defs>
+            <Rect x="0" y="0" width="100%" height="100%" fill="url(#allSquareScrim)" />
+          </Svg>
+          <View style={{ padding: 20, paddingBottom: 26, gap: 10 }}>
+            <Text style={{ color: "rgba(245,241,234,0.85)", fontSize: 13, fontWeight: "500" }}>{longDate(today)}</Text>
             <Text accessibilityRole="header" style={{ color: c.onFrame, fontSize: 34, lineHeight: 38, fontWeight: "500", letterSpacing: -0.8 }}>You’re all square, {firstName(user?.name ?? "")}.</Text>
-            <Text style={{ color: c.onFrame2, fontSize: 14.5, lineHeight: 21 }}>Nothing owed and nothing waiting in your {snapshots.length === 1 ? "commune" : `${word(snapshots.length)} communes`}.</Text>
+            <Text style={{ color: "rgba(245,241,234,0.85)", fontSize: 14.5, lineHeight: 21 }}>Nothing owed and nothing waiting in your {snapshots.length === 1 ? "commune" : `${word(snapshots.length)} communes`}.</Text>
           </View>
         </ImageBackground>
         <View style={{ padding: 16, gap: 24 }}>
@@ -68,7 +82,7 @@ export default function Home() {
     <TopBar />
     <Body refreshControl={pull} ground={c.frame}>
       <View style={{ backgroundColor: c.frame, paddingHorizontal: 20, paddingTop: 14, paddingBottom: 66, gap: 10 }}>
-        <Text style={{ color: c.onFrame2, fontSize: 13, fontWeight: "500" }}>{longDate(today)}</Text>
+        <Text style={{ color: "rgba(245,241,234,0.85)", fontSize: 13, fontWeight: "500" }}>{longDate(today)}</Text>
         <Text accessibilityRole="header" style={{ color: c.onFrame2, fontSize: 31, lineHeight: 35, fontWeight: "500", letterSpacing: -0.7 }}>{head}</Text>
         <Text style={{ color: c.onFrame2, fontSize: 14.5, lineHeight: 21 }}>{sub}</Text>
       </View>
