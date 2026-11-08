@@ -451,7 +451,7 @@ describe("older expenses", () => {
     expect(loadExpenseRecords).toHaveBeenCalledExactlyOnceWith(home.id, [sofa.id]);
     await act(async () => pending.resolve({ expenses: [sofa] }));
     const shown = await screen.findByRole("dialog", { name: "Sofa" });
-    expect(within(shown).getByText(/All shares are settled/)).toBeTruthy();
+    expect(within(shown).getByText(/Everyone has paid you back|Your share is settled/)).toBeTruthy();
     // Kept with the other older expenses, so it opens again without a request.
     act(() => app.closeWindow());
     act(() => app.go("expense", { expense: sofa.id }));

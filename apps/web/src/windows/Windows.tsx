@@ -29,7 +29,8 @@ import { SplitEditor } from "../ui/SplitEditor";
 import { moneyInputError, parseMoneyInput } from "../data/moneyInput";
 import type { Notification, UnreadNotice } from "../live/model";
 import { lazyComponent } from "../shell/lazyComponent";
-import { PayeeLinks, PayLinksEditor } from "../ui/PayLinks";
+import { PayeeLinks, PayLinksEditor, PayPrimary } from "../ui/PayLinks";
+import { CalendarDate } from "../ui/CalendarDate";
 
 // Schedule items and announcements open less often: their windows load when
 // first opened (or once the browser is idle), behind the record skeleton.
@@ -131,6 +132,8 @@ export function Windows() {
       : window === "operation" || window === "operation-edit"
         ? selectedOperation?.title ?? "Schedule item"
         : titleFor(window);
+  const barLabel = window === "expense" && selectedExpense ? "Expense"
+    : window === "operation" && selectedOperation ? (selectedOperation.kind === "task" ? "Task" : "Event") : "";
 
   return (
     <div className="a-windows">
@@ -138,7 +141,9 @@ export function Windows() {
       <button className="a-window-back" data-leave="scrim" type="button" tabIndex={-1} aria-hidden="true" onClick={() => { frameRef.current?.focus(); dismiss(); }} />
       <div ref={frameRef} data-leave="surface" tabIndex={-1} className={cx("a-window-frame", window === "add-expense" && "c-expense-frame")} role="dialog" aria-modal="true" aria-labelledby="commune-window-title" onInput={typed.onInput}>
         <header className="a-window-bar">
-          <h2 id="commune-window-title">{title}</h2>
+          {/* A record's window says what it is, as the phone app's screens do; its name leads the page below. */}
+          {barLabel ? <h2 id="commune-window-title"><span className="c-visually-hidden">{title}</span><span aria-hidden="true">{barLabel}</span></h2>
+            : <h2 id="commune-window-title">{title}</h2>}
           <button className="a-window-x" type="button" aria-label="Close" disabled={mutationPending} onClick={dismiss}>
             <Icon name="close" size={16} />
           </button>
@@ -536,20 +541,41 @@ function Expense() {
   return (
     <section className="a-window">
       <p className="a-window-kicker">Expense</p>
-      <div className="a-fund-hero">
+      <div className="a-fund-hero c-expense-hero">
+        {selectedExpense.dueOn ? <CalendarDate className="c-expense-hero-date" date={selectedExpense.dueOn} /> : null}
         <div>
-          <span className="a-hero-kicker">{selectedExpense.dueOn ? `Due ${selectedExpense.due}` : "No due date"}</span>
           <strong>{selectedExpense.name}</strong>
-          <p>
-            {personName(selectedExpense.paidByUserId, selectedExpense.paidBy, { left: true })} paid {formatMoney(selectedExpense.amountMinor, hub.currency)}. {voided ? "This expense is voided and no longer counts towards any balance." : remaining ? `${formatMoney(remaining, hub.currency)} of shares remain open.` : "All shares are settled."}
-          </p>
+          <p>{hub.name} · {hub.type}{selectedExpense.category ? ` · ${selectedExpense.category}` : ""}</p>
         </div>
         <Pill tone={voided ? undefined : selectedExpense.status}>{selectedExpense.statusLabel}</Pill>
       </div>
       {voided ? <p className="c-expense-voided" role="note">Voided by {fullName(selectedExpense.voidedBy ?? "")} on {formatTimestampDay(selectedExpense.voidedAt)}: {selectedExpense.voidReason}</p> : null}
+      {/* Your part first, as the phone app's expense screen opens. */}
+      {(() => {
+        const mine = selectedExpense.shares.find((share) => share.userId === session?.userId);
+        const owed = mine && !isPayer && !voided ? mine.amountMinor - mine.settledMinor : 0;
+        const payerName = personName(selectedExpense.paidByUserId, selectedExpense.paidBy, { left: true });
+        const paidOn = selectedExpense.createdAt ? ` on ${formatTimestampDay(selectedExpense.createdAt)}` : "";
+        const target = owed > 0 && mine && !pendingReport(mine)
+          ? { shareId: mine.id, payerName: personName(selectedExpense.paidByUserId, "the bill payer"), payerId: selectedExpense.paidByUserId, expenseName: selectedExpense.name, outstandingMinor: owed, currency: hub.currency, communeId: hub.id, expenseId: selectedExpense.id }
+          : null;
+        return <div className="c-expense-yours">
+          <span className="c-expense-yours-label">{isPayer ? "You paid" : mine ? "Your share" : "Total"}</span>
+          <strong className="c-expense-yours-amount">{formatMoney(isPayer || !mine ? selectedExpense.amountMinor : mine.amountMinor, hub.currency)}</strong>
+          <p>{voided ? "This expense is voided and no longer counts towards any balance."
+            : isPayer ? (remaining ? `${formatMoney(remaining, hub.currency)} still to come in from the others.` : "Everyone has paid you back.")
+            : `${payerName} paid ${formatMoney(selectedExpense.amountMinor, hub.currency)}${paidOn}.${mine ? owed ? "" : " Your share is settled." : " You’re not in this one."}`}</p>
+          {selectedExpense.dueOn && !voided ? <p className="c-expense-yours-due">Due {selectedExpense.due}</p> : null}
+          {target ? <div className="c-expense-yours-pay"><PayPrimary target={target} busy={receipts.busy}
+            onPay={() => { setMessage(""); receipts.pay(target); }}
+            onTell={() => { setMessage(""); receipts.report(target); }}
+            onOpened={(link) => receipts.opened(target, link)} /></div> : null}
+        </div>;
+      })()}
       {isPayer && !voided ? <ReminderUsageMeter usage={reminderUsage} /> : null}
       {isPayer && !voided && selectedExpense.shares.some((share) => share.userId !== selectedExpense.paidByUserId &&
         share.amountMinor > share.settledMinor && !pendingReport(share)) ? <ReminderAllowanceNotice usage={reminderUsage} /> : null}
+      <h3 className="c-expense-split-title">Shares</h3>
       <div className="a-split">
         {selectedExpense.shares.map((share) => {
           const member = hub.members.find((item) => item.userId === share.userId);
@@ -582,10 +608,6 @@ function Expense() {
                   <button className="a-btn ghost" type="button" onClick={() => { setMessage(""); receipts.record({ shareId: share.id, debtorName: memberName, expenseName: selectedExpense.name, shareMinor: share.amountMinor, outstandingMinor: outstanding, currency: hub.currency }); }}>Confirm received{" "}<span className="c-visually-hidden">from {memberName}</span></button>
                   {eligibility.reason && <p className="c-action-hint">{eligibility.reason}</p>}
                 </div>
-              ) : ownDebt && !report ? (
-                <div className="a-row-actions">
-                  <button className="a-btn ghost" type="button" onClick={() => { setMessage(""); receipts.report({ shareId: share.id, payerName: personName(selectedExpense.paidByUserId, "the bill payer"), payerId: selectedExpense.paidByUserId, expenseName: selectedExpense.name, outstandingMinor: outstanding, currency: hub.currency }); }}>I’ve sent it</button>
-                </div>
               ) : null}
             </div>
             {report ? <PendingReport share={share} currency={hub.currency} viewerId={session?.userId} payerId={selectedExpense.paidByUserId}
@@ -601,7 +623,6 @@ function Expense() {
       </div>
       <ExpenseHistory revisions={selectedExpense.revisions} names={fullName} currency={hub.currency} />
       {message ? <p className="a-window-note" role="status">{message}</p> : null}
-      {!isPayer && remaining && !voided ? <p className="a-window-note">Pay the bill payer outside Commune, then use I’ve sent it. Only they can confirm receipt.</p> : null}
       <div className="a-field-row">
         <button className="a-btn" type="button" onClick={() => go("settle")}>Open settlement</button>
         {canChange ? <button className="a-btn ghost" type="button" onClick={() => { setMessage(""); change.correct(selectedExpense.id); }}>Correct</button> : null}

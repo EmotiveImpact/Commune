@@ -91,7 +91,7 @@ describe("dates and amounts", () => {
     const expense = await screen.findByRole("dialog", { name: "Internet" });
     expect(within(expense).getByText(`Due ${formatReminderDay("2026-10-06")}`)).toBeTruthy();
     expect(expense.textContent).not.toContain("2026-10-06");
-    expect(expense.textContent).toContain("Housemate paid $64.20.");
+    expect(expense.textContent).toContain("Housemate paid $64.20 on");
   });
 
   it("dates a notice the same way", async () => {
