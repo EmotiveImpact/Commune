@@ -142,6 +142,8 @@ export function Windows() {
       <div ref={frameRef} data-leave="surface" tabIndex={-1} className={cx("a-window-frame", window === "add-expense" && "c-expense-frame")} role="dialog" aria-modal="true" aria-labelledby="commune-window-title" onInput={typed.onInput}>
         <header className="a-window-bar">
           {/* A record's window says what it is, as the phone app's screens do; its name leads the page below. */}
+          {/* Left of the bar: a record's own quiet action, such as a task's Remove, placed here by the record. */}
+          {barLabel ? <div className="a-window-lead" id="commune-window-lead" /> : null}
           {barLabel ? <h2 id="commune-window-title"><span className="c-visually-hidden">{title}</span><span aria-hidden="true">{barLabel}</span></h2>
             : <h2 id="commune-window-title">{title}</h2>}
           <button className="a-window-x" type="button" aria-label="Close" disabled={mutationPending} onClick={dismiss}>

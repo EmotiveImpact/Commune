@@ -2500,7 +2500,7 @@ button.a-item {
 }
 
 /* On a phone the buttons sit closer together so the row still fits on one
-   line. Only the narrowest screens wrap, with Remove last at the right. */
+   line. Only the narrowest screens wrap. Remove sits at the top left of the window. */
 @media (max-width: 560px) {
   .a-window .a-field-row.operation-actions {
     flex-wrap: wrap;

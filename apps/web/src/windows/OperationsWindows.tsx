@@ -1,4 +1,5 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   dateFromIso,
   firstNameOf,
@@ -54,6 +55,8 @@ export function OperationView() {
     personName,
   } = useApp();
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [removeSlot, setRemoveSlot] = useState<HTMLElement | null>(null);
+  useEffect(() => { setRemoveSlot(document.getElementById("commune-window-lead")); }, []);
   // One small panel at a time: skip with a reason, hand over the turn, or
   // say who did someone else's task.
   const [panel, setPanel] = useState<"" | "skip" | "handover" | "doneby">("");
@@ -279,6 +282,11 @@ export function OperationView() {
           </div>
         </div>
       ) : null}
+      {/* Remove sits at the top left of the window, away from Done and Edit. */}
+      {canRemove && !confirmDelete && removeSlot ? createPortal(
+        <button className="operation-remove" type="button" onClick={() => setConfirmDelete(true)}>
+          Remove
+        </button>, removeSlot) : null}
       {confirmDelete ? (
         <div className="operation-delete">
           <p>Remove this from the calendar? It won’t come back.</p>
@@ -350,15 +358,6 @@ export function OperationView() {
           >
             Edit
           </button>
-          {canRemove ? (
-            <button
-              className="operation-remove"
-              type="button"
-              onClick={() => setConfirmDelete(true)}
-            >
-              Remove
-            </button>
-          ) : null}
         </div>
       )}
     </section>
