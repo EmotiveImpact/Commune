@@ -873,11 +873,23 @@ route("GET", /^\/api\/communes\/([0-9a-f-]{36})\/invites$/, async (req, res, mat
     createdAt: row.created_at, expiresAt: row.expires_at,
     acceptedAt: row.accepted_at, revokedAt: row.revoked_at,
     invitedBy: row.invited_by, invitedByName: row.invited_by_name, acceptedBy: row.accepted_by,
+    inviteeName: row.invitee_name, sentVia: row.sent_via,
   })) });
 });
 
 route("POST", /^\/api\/communes\/([0-9a-f-]{36})\/invites$/, async (req, res, match) => {
   const input = await body(req);
+  // A personal invitation: a name and how it will be sent, no email (0046).
+  if (input.email === undefined && input.name !== undefined) {
+    const sentVia = input.sentVia ?? "link";
+    if (sentVia !== "whatsapp" && sentVia !== "text" && sentVia !== "link") throw new ApiError(400, "Invalid sentVia");
+    const result = await userAction(req, async (client) => client.query(
+      "SELECT public.create_personal_invite($1, $2, $3) AS token",
+      [uuid(match[1]), text(input.name, "name", 80), sentVia]));
+    const token: string = result.rows[0].token;
+    send(res, { token, url: `${appOrigin}/invite?token=${token}` }, 201);
+    return;
+  }
   const address = email(input.email);
   const role = input.role ?? "member";
   if (role !== "member" && role !== "admin") throw new ApiError(400, "Invalid role");

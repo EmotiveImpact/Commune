@@ -170,6 +170,8 @@ export async function sendInvitationEmail(pool: Pool, actor: string, token: stri
       JOIN commune_private.accounts(ARRAY[$2::text]) u ON u.id=m.user_id AND u."emailVerified" IS TRUE
       WHERE i.token_hash=$1 AND i.accepted_at IS NULL
         AND i.revoked_at IS NULL AND i.expires_at > now()
+        -- A personal invitation (0046) has no address: it goes by WhatsApp or text.
+        AND i.email IS NOT NULL
       FOR UPDATE OF i`, [tokenHash, actor]);
     const invite = rows[0];
     if (!invite) throw new InvitationEmailError(404, "Invitation is unavailable or you are no longer a commune admin.");

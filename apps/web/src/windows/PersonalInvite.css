@@ -1,0 +1,97 @@
+/* Inviting one person by name: a name, the message in a bubble, two small buttons.
+   In the screens layer (see styles/index.css); the two rules that must beat
+   the dark theme's field colours and the shared button size are in overrides. */
+@layer screens {
+.c-pinvite {
+  display: grid;
+  gap: 10px;
+  padding: 4px 0 18px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 8px;
+}
+.c-pinvite-title {
+  margin: 4px 0 0;
+  font-size: 15px;
+  font-weight: 650;
+  color: var(--ink);
+}
+.c-pinvite .a-field { padding: 0; }
+.c-pinvite-name {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.c-pinvite-name input { flex: 1; min-width: 0; }
+.c-pinvite-pick,
+.c-pinvite-link {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-green);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.c-pinvite-pick:hover,
+.c-pinvite-link:hover:not(:disabled) { text-decoration: underline; }
+.c-pinvite-link:disabled { opacity: 0.5; cursor: default; }
+.c-pinvite-phone {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin: 4px 0 0;
+}
+
+/* The message reads as a chat bubble: square at the bottom left, like the one they will receive. */
+.c-pinvite-bubble {
+  display: grid;
+  gap: 6px;
+  padding: 10px 13px 11px;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 16px 16px 16px 6px;
+}
+.c-pinvite-bubble:focus-within { border-color: var(--focus-ring); box-shadow: 0 0 0 1px var(--focus-ring); }
+.c-pinvite-url {
+  font-size: 12.5px;
+  font-weight: 550;
+  color: var(--text-green);
+  overflow-wrap: anywhere;
+}
+
+.c-pinvite-send {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.c-pinvite-btn svg { flex: none; }
+.c-pinvite-copy { margin-left: auto; }
+.c-pinvite-more { justify-self: start; padding: 6px 0 2px; }
+}
+
+@layer overrides {
+.a-body .c-pinvite .c-pinvite-bubble textarea {
+  width: 100%;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  resize: none;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink);
+  field-sizing: content;
+}
+.a-body .c-pinvite .c-pinvite-bubble textarea:focus { outline: none; }
+.a-body .c-pinvite .c-pinvite-btn {
+  height: 34px;
+  min-width: 0;
+  padding: 0 14px;
+  font-size: 13px;
+}
+}

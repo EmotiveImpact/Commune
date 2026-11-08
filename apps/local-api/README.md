@@ -49,10 +49,10 @@ browser code sends same-origin `/api` requests. Non-2xx errors are
 | POST | `/api/reminders` | `{kind:"nudge"\|"chase",sourceId,requestId?}`; a repeated `requestId` returns the reminder it already created | `{id,duplicate,delivery:"in-app",emailStatus:"none",email:"not-configured"}` (201, or 200 for a repeat) |
 | POST | `/api/notifications/:id/read` | `{}` | `{ok:true}` |
 | GET | `/api/notices/unread` | | `{notices}`: the unread notices of every commune the reader belongs to, newest first, each as in `snapshot.notifications` with `senderName` and, for a pledge notice whose fund is open, `fundId` (0039) |
-| GET | `/api/communes/:id/invites` | admin | `{invites:[...]}` with `invitedBy` and `invitedByName`; an invitation works only while its sender is an admin |
-| POST | `/api/communes/:id/invites` | `{email,role}` admin | `{token,url}` to copy; no email sent |
-| GET | `/api/invites/:token` | matching signed-in email | `{invite}` or `{invite:null}` |
-| POST | `/api/invites/:token/accept` | `{}` matching signed-in email | `{communeId}` |
+| GET | `/api/communes/:id/invites` | admin | `{invites:[...]}` with `invitedBy` and `invitedByName`, and `inviteeName` and `sentVia` for a personal invitation (0046); an invitation works only while its sender is an admin |
+| POST | `/api/communes/:id/invites` | `{email,role}` admin, or for a personal invitation `{name,sentVia}` with `sentVia` one of `whatsapp`, `text`, `link` (0046: no email, member only, works once, at most 20 waiting per admin) | `{token,url}` to copy; no email sent |
+| GET | `/api/invites/:token` | matching signed-in email, or any signed-in account for a personal invitation | `{invite}` or `{invite:null}` |
+| POST | `/api/invites/:token/accept` | `{}` matching signed-in email, or any signed-in account for a personal invitation, which is then used up | `{communeId}` |
 | POST | `/api/invites/:id/revoke` | `{}` admin | `{ok:true}` |
 | GET/PUT | `/api/preferences` | PUT `{emailReminders:boolean}` | `{emailReminders}` |
 | POST | `/api/communes/:id/notes` | `{title,pill,kicker,lede,body,facts,requestId}`; any member; at most 500 notes per commune; a repeated `requestId` returns the same note, or 409 once it has been removed | `{id,version,duplicate}` (201, or 200 for a repeat) |

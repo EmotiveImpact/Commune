@@ -1428,13 +1428,19 @@ CREATE FUNCTION public.accept_commune_invite(p_token text) RETURNS uuid
     AS $_$
 DECLARE v_invite public.commune_invites%ROWTYPE;v_actor text:=commune_private.data_api_user_id();v_email text;
 BEGIN
-  SELECT lower(email) INTO v_email FROM commune_private.accounts(ARRAY[v_actor]) WHERE "emailVerified" IS TRUE;
-  IF v_email IS NULL OR p_token IS NULL OR p_token !~ '^[0-9a-f]{64}$' THEN RAISE EXCEPTION 'Invite unavailable for this verified account' USING ERRCODE='42501'; END IF;
+  IF v_actor IS NULL OR p_token IS NULL OR p_token !~ '^[0-9a-f]{64}$'
+    OR NOT EXISTS(SELECT 1 FROM commune_private.accounts(ARRAY[v_actor])) THEN
+    RAISE EXCEPTION 'Invite unavailable for this verified account' USING ERRCODE='42501'; END IF;
   -- Use the same commune -> invitation order as invitation creation.
   PERFORM 1 FROM public.communes co JOIN public.commune_invites i ON i.commune_id=co.id WHERE i.token_hash=digest(p_token,'sha256') FOR UPDATE OF co;
   SELECT * INTO v_invite FROM public.commune_invites WHERE token_hash=digest(p_token,'sha256') FOR UPDATE;
-  IF NOT FOUND OR v_invite.email<>v_email OR v_invite.expires_at<=now() OR v_invite.accepted_at IS NOT NULL OR v_invite.revoked_at IS NOT NULL THEN
+  IF NOT FOUND OR v_invite.expires_at<=now() OR v_invite.accepted_at IS NOT NULL OR v_invite.revoked_at IS NOT NULL THEN
     RAISE EXCEPTION 'Invite unavailable for this verified account' USING ERRCODE='42501'; END IF;
+  IF v_invite.email IS NOT NULL THEN
+    SELECT lower(email) INTO v_email FROM commune_private.accounts(ARRAY[v_actor]) WHERE "emailVerified" IS TRUE;
+    IF v_email IS NULL OR v_invite.email<>v_email THEN
+      RAISE EXCEPTION 'Invite unavailable for this verified account' USING ERRCODE='42501'; END IF;
+  END IF;
   -- The sender must still be an active admin of this commune.
   IF NOT EXISTS(SELECT 1 FROM public.commune_members m WHERE m.commune_id=v_invite.commune_id AND m.user_id=v_invite.invited_by AND m.active AND m.role='admin') THEN
     RAISE EXCEPTION 'Invite unavailable for this verified account' USING ERRCODE='42501'; END IF;
@@ -2250,6 +2256,43 @@ $$;
 
 
 --
+-- Name: create_personal_invite(uuid, text, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.create_personal_invite(p_commune_id uuid, p_name text, p_sent_via text DEFAULT 'link'::text) RETURNS text
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public', 'pg_temp'
+    AS $$
+DECLARE
+  v_actor text := commune_private.data_api_user_id();
+  v_name text := regexp_replace(btrim(coalesce(p_name, '')), '\s+', ' ', 'g');
+  v_token text;
+BEGIN
+  -- The same commune -> invitation lock order as email invitations.
+  PERFORM 1 FROM public.communes WHERE id = p_commune_id FOR UPDATE;
+  IF NOT public.is_commune_admin(p_commune_id) THEN
+    RAISE EXCEPTION 'Only an admin can invite members' USING ERRCODE = '42501';
+  END IF;
+  IF length(v_name) NOT BETWEEN 1 AND 80 OR v_name ~ '[[:cntrl:]]' THEN
+    RAISE EXCEPTION 'Give their name, up to 80 characters' USING ERRCODE = '22023';
+  END IF;
+  IF p_sent_via IS NULL OR p_sent_via NOT IN ('whatsapp', 'text', 'link') THEN
+    RAISE EXCEPTION 'Invalid invite details' USING ERRCODE = '22023';
+  END IF;
+  IF (SELECT count(*) FROM public.commune_invites i
+      WHERE i.commune_id = p_commune_id AND i.invited_by = v_actor AND i.email IS NULL
+        AND i.accepted_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > now()) >= 20 THEN
+    RAISE EXCEPTION 'You have 20 invitations waiting. Withdraw some before sending more.' USING ERRCODE = 'P0001';
+  END IF;
+  v_token := encode(gen_random_bytes(32), 'hex');
+  INSERT INTO public.commune_invites (commune_id, email, invitee_name, sent_via, role, token_hash, invited_by)
+    VALUES (p_commune_id, NULL, v_name, p_sent_via, 'member', digest(v_token, 'sha256'), v_actor);
+  RETURN v_token;
+END;
+$$;
+
+
+--
 -- Name: decide_join_request(uuid, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -2435,7 +2478,7 @@ $$;
 -- Name: list_commune_invites(uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.list_commune_invites(p_commune_id uuid) RETURNS TABLE(id uuid, email text, role text, created_at timestamp with time zone, expires_at timestamp with time zone, accepted_at timestamp with time zone, revoked_at timestamp with time zone, invited_by text, invited_by_name text, accepted_by text)
+CREATE FUNCTION public.list_commune_invites(p_commune_id uuid) RETURNS TABLE(id uuid, email text, role text, created_at timestamp with time zone, expires_at timestamp with time zone, accepted_at timestamp with time zone, revoked_at timestamp with time zone, invited_by text, invited_by_name text, accepted_by text, invitee_name text, sent_via text)
     LANGUAGE plpgsql STABLE SECURITY DEFINER
     SET search_path TO 'public', 'pg_temp'
     AS $$
@@ -2447,7 +2490,10 @@ BEGIN
   RETURN QUERY
   SELECT i.id, CASE WHEN i.accepted_by IS NULL OR EXISTS (SELECT 1 FROM public.commune_members m
       WHERE m.commune_id = i.commune_id AND m.user_id = i.accepted_by AND m.active) THEN i.email END, i.role, i.created_at, i.expires_at,
-    i.accepted_at, i.revoked_at, i.invited_by, u.name, i.accepted_by
+    i.accepted_at, i.revoked_at, i.invited_by, u.name, i.accepted_by,
+    CASE WHEN i.accepted_by IS NULL OR EXISTS (SELECT 1 FROM public.commune_members m
+      WHERE m.commune_id = i.commune_id AND m.user_id = i.accepted_by AND m.active) THEN i.invitee_name END,
+    i.sent_via
   FROM public.commune_invites i
   LEFT JOIN commune_private.accounts(ARRAY(SELECT DISTINCT x.invited_by FROM public.commune_invites x WHERE x.commune_id = p_commune_id)) u ON u.id = i.invited_by
   WHERE i.commune_id = p_commune_id
@@ -2806,20 +2852,24 @@ CREATE FUNCTION public.preview_commune_invite(p_token text) RETURNS TABLE(commun
     SET search_path TO 'public', 'pg_temp'
     AS $_$
 DECLARE
+  v_actor text := commune_private.data_api_user_id();
   v_email text;
 BEGIN
-  SELECT lower(u.email) INTO v_email
-  FROM commune_private.accounts(ARRAY[commune_private.data_api_user_id()]) u
-  WHERE u."emailVerified" IS TRUE;
-  IF v_email IS NULL OR p_token !~ '^[0-9a-f]{64}$' THEN
+  IF v_actor IS NULL OR p_token IS NULL OR p_token !~ '^[0-9a-f]{64}$' THEN
     RETURN;
   END IF;
+  IF NOT EXISTS (SELECT 1 FROM commune_private.accounts(ARRAY[v_actor])) THEN
+    RETURN;
+  END IF;
+  SELECT lower(u.email) INTO v_email
+  FROM commune_private.accounts(ARRAY[v_actor]) u
+  WHERE u."emailVerified" IS TRUE;
   RETURN QUERY
   SELECT c.name, i.role, i.expires_at
   FROM public.commune_invites i
   JOIN public.communes c ON c.id = i.commune_id
   WHERE i.token_hash = digest(p_token, 'sha256')
-    AND i.email = v_email AND i.expires_at > now()
+    AND (i.email IS NULL OR i.email = v_email) AND i.expires_at > now()
     AND i.accepted_at IS NULL AND i.revoked_at IS NULL
     AND EXISTS (SELECT 1 FROM public.commune_members m WHERE m.commune_id = i.commune_id
       AND m.user_id = i.invited_by AND m.active AND m.role = 'admin');
@@ -5231,7 +5281,7 @@ CREATE TABLE public.commune_events (
 CREATE TABLE public.commune_invites (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     commune_id uuid NOT NULL,
-    email text NOT NULL,
+    email text,
     role text NOT NULL,
     token_hash bytea NOT NULL,
     invited_by text NOT NULL,
@@ -5240,10 +5290,17 @@ CREATE TABLE public.commune_invites (
     accepted_at timestamp with time zone,
     accepted_by text,
     revoked_at timestamp with time zone,
+    invitee_name text,
+    sent_via text,
     CONSTRAINT commune_invites_check CHECK (((accepted_at IS NULL) = (accepted_by IS NULL))),
     CONSTRAINT commune_invites_check1 CHECK (((accepted_at IS NULL) OR (revoked_at IS NULL))),
     CONSTRAINT commune_invites_email_check CHECK (((length(email) >= 3) AND (length(email) <= 254))),
-    CONSTRAINT commune_invites_role_check CHECK ((role = ANY (ARRAY['admin'::text, 'member'::text])))
+    CONSTRAINT commune_invites_invitee_name_check CHECK (((invitee_name IS NULL) OR ((invitee_name = btrim(invitee_name)) AND ((length(invitee_name) >= 1) AND (length(invitee_name) <= 80)) AND (invitee_name !~ '[[:cntrl:]]'::text)))),
+    CONSTRAINT commune_invites_one_kind CHECK (((email IS NULL) = (invitee_name IS NOT NULL))),
+    CONSTRAINT commune_invites_personal_fields CHECK (((email IS NULL) OR (sent_via IS NULL))),
+    CONSTRAINT commune_invites_personal_member CHECK (((email IS NOT NULL) OR (role = 'member'::text))),
+    CONSTRAINT commune_invites_role_check CHECK ((role = ANY (ARRAY['admin'::text, 'member'::text]))),
+    CONSTRAINT commune_invites_sent_via_check CHECK (((sent_via IS NULL) OR (sent_via = ANY (ARRAY['whatsapp'::text, 'text'::text, 'link'::text]))))
 );
 
 
@@ -8348,6 +8405,14 @@ GRANT ALL ON FUNCTION public.create_note(p_commune_id uuid, p_title text, p_pill
 
 REVOKE ALL ON FUNCTION public.create_operation(p_commune_id uuid, p_kind text, p_category text, p_title text, p_date date, p_time time without time zone, p_all_day boolean, p_assignee_id text, p_rotation_ids jsonb, p_repeat text, p_notes text, p_request_id uuid) FROM PUBLIC;
 GRANT ALL ON FUNCTION public.create_operation(p_commune_id uuid, p_kind text, p_category text, p_title text, p_date date, p_time time without time zone, p_all_day boolean, p_assignee_id text, p_rotation_ids jsonb, p_repeat text, p_notes text, p_request_id uuid) TO authenticated;
+
+
+--
+-- Name: FUNCTION create_personal_invite(p_commune_id uuid, p_name text, p_sent_via text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.create_personal_invite(p_commune_id uuid, p_name text, p_sent_via text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.create_personal_invite(p_commune_id uuid, p_name text, p_sent_via text) TO authenticated;
 
 
 --

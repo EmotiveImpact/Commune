@@ -65,6 +65,18 @@ The commune address box (New commune and Commune settings) suggests addresses as
 The hosted app (Neon Auth and the Data API) is not connected yet. That needs
 Neon Auth sign-in to work from a phone, which is the next piece of work.
 
+## Inviting from contacts
+
+Invite > From your contacts opens the phone's own contact picker
+(`expo-contacts`) for one person. On an iPhone this needs no permission; on
+Android the app asks once to read contacts, and if the person says no they
+type the name instead. The app reads only the person picked, and only to
+write the message and open WhatsApp or Messages on that chat. The server gets
+the name and how it was sent (migration 0046), never the number. The
+number-reading rules are in `src/lib/contactInvite.ts`, a copy of
+`packages/core/src/contactInvite.ts` kept identical by a web test. Adding
+`expo-contacts` needs a new build: an over-the-air update is not enough.
+
 ## Running it
 
 It keeps its own lockfile so the web CI install is unchanged.

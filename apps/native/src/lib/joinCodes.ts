@@ -21,7 +21,7 @@ export const EMPTY_JOIN: JoinState = { joinMode: "approve", codes: [], requests:
 export const JOIN_MODES: Array<{ mode: JoinMode; label: string; line: string }> = [
   { mode: "approve", label: "Ask, then an admin approves", line: "Anyone who scans asks to join. They see nothing until an admin taps Approve." },
   { mode: "instant", label: "Join straight away", line: "Scanning adds them as a member at once." },
-  { mode: "off", label: "Off (email invites only)", line: "Every QR code, join link and sticker stops working. Email invitations still do." },
+  { mode: "off", label: "Off (invitations only)", line: "Every QR code, join link and sticker stops working. Email and contact invitations still do." },
 ];
 
 /** Shown under "Join straight away", which lets anyone holding the code in. */

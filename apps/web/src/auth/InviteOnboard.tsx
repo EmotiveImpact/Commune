@@ -79,7 +79,7 @@ export function InvitePage() {
       <div className="commune-auth-panel">
         <h2>{loading ? "Loading invitation…" : invite ? `Join ${invite.communeName}` : token && !session ? "You have a Commune invitation" : elsewhere ? "This invitation is for another address" : "Invitation unavailable"}</h2>
         <p className="commune-auth-lede">
-          {invite ? `You’ve been invited as a ${invite.role.toLowerCase()}.` : token && !session ? "Sign in or create an account using the invited email address to see and accept this invitation."
+          {invite ? `You’ve been invited as a ${invite.role.toLowerCase()}.` : token && !session ? "Sign in or create an account to see and accept this invitation. If it came by email, use that address."
             : elsewhere && session ? `It was sent to ${elsewhere}, and you’re signed in as ${session.email}. To join, sign in with the address it was sent to.`
               : "This link may be invalid, expired, already used, or addressed to a different account."}
         </p>

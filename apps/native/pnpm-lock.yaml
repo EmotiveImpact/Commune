@@ -38,6 +38,9 @@ importers:
       expo-constants:
         specifier: 18.0.9
         version: 18.0.9(expo@54.0.13)(react-native@0.81.4(@babel/core@7.29.7)(@types/react@19.1.10)(react@19.1.0))
+      expo-contacts:
+        specifier: 15.0.11
+        version: 15.0.11(expo@54.0.13)(react-native@0.81.4(@babel/core@7.29.7)(@types/react@19.1.10)(react@19.1.0))(react@19.1.0)
       expo-font:
         specifier: 14.0.12
         version: 14.0.12(expo@54.0.13)(react-native@0.81.4(@babel/core@7.29.7)(@types/react@19.1.10)(react@19.1.0))(react@19.1.0)
@@ -2013,6 +2016,13 @@ packages:
     resolution: {integrity: sha512-sqoXHAOGDcr+M9NlXzj1tGoZyd3zxYDy215W6E0Z0n8fgBaqce9FAYQE2bu5X4G629AYig5go7U6sQz7Pjcm8A==}
     peerDependencies:
       expo: '*'
+      react-native: '*'
+
+  expo-contacts@15.0.11:
+    resolution: {integrity: sha512-buKkoQuWJgVSEvR1Yloa5SvGC/ud7T2YeYDe0R7Aa0oz8pwQpjk3W7OoL3QrXIfYcuKTrIz6ffqC8lc3peaAyg==}
+    peerDependencies:
+      expo: '*'
+      react: '*'
       react-native: '*'
 
   expo-file-system@19.0.24:
@@ -6155,6 +6165,12 @@ snapshots:
       react-native: 0.81.4(@babel/core@7.29.7)(@types/react@19.1.10)(react@19.1.0)
     transitivePeerDependencies:
       - supports-color
+
+  expo-contacts@15.0.11(expo@54.0.13)(react-native@0.81.4(@babel/core@7.29.7)(@types/react@19.1.10)(react@19.1.0))(react@19.1.0):
+    dependencies:
+      expo: 54.0.13(@babel/core@7.29.7)(@expo/metro-runtime@6.1.2)(expo-router@6.0.11)(react-native@0.81.4(@babel/core@7.29.7)(@types/react@19.1.10)(react@19.1.0))(react@19.1.0)(typescript@5.9.3)
+      react: 19.1.0
+      react-native: 0.81.4(@babel/core@7.29.7)(@types/react@19.1.10)(react@19.1.0)
 
   expo-file-system@19.0.24(expo@54.0.13)(react-native@0.81.4(@babel/core@7.29.7)(@types/react@19.1.10)(react@19.1.0)):
     dependencies:
