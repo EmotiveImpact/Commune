@@ -45,7 +45,7 @@
 /* ---------- Tab bar: five tabs, no pill; the others rest at 55% ---------- */
 
 @media (max-width: 560px) {
-  .a-bottom { padding: 8px 6px calc(10px + env(safe-area-inset-bottom)); background: #1a1e2b; }
+  .a-bottom { padding: 8px 6px calc(10px + env(safe-area-inset-bottom)); background: var(--navy); }
   .a-bottom button {
     gap: 4px;
     color: #f5f1ea;
@@ -60,7 +60,6 @@
   .a-bottom .a-tab-you .avatar { width: 28px; height: 28px; font-size: 11px; border: 0; }
   .a-bottom button.is-active .a-tab-you .avatar { box-shadow: 0 0 0 2px #f5f1ea; }
 }
-.a-body.is-dark .a-bottom { background: #0d1016; }
 
 /* ---------- The push menu ---------- */
 
@@ -73,12 +72,11 @@
   z-index: 41;
   display: flex;
   flex-direction: column;
-  background: #1a1e2b;
+  background: var(--navy);
   color: #f5f1ea;
   padding-top: env(safe-area-inset-top, 0px);
   animation: c-pmenu-in var(--motion-medium) var(--ease-standard);
 }
-.a-body.is-dark .c-pmenu { background: #0d1016; }
 @keyframes c-pmenu-in { from { transform: translateX(48px); opacity: 0; } to { transform: none; opacity: 1; } }
 
 .c-pmenu-head { display: flex; align-items: center; min-height: 56px; padding: 0 8px 0 24px; }
@@ -115,9 +113,9 @@
 .c-pmenu-row { min-height: 52px; padding: 0 8px; border-radius: 12px; }
 .c-pmenu-commune.is-current,
 .c-pmenu-commune:active,
-.c-pmenu-row:active { background: #262b3a; }
+.c-pmenu-row:active { background: rgba(255, 255, 255, 0.08); }
 @media (hover: hover) {
-  .c-pmenu-commune:hover, .c-pmenu-row:hover, .c-pmenu-x:hover { background: #262b3a; }
+  .c-pmenu-commune:hover, .c-pmenu-row:hover, .c-pmenu-x:hover { background: rgba(255, 255, 255, 0.08); }
 }
 
 .c-pmenu-photo {
@@ -127,7 +125,7 @@
   height: 44px;
   overflow: hidden;
   border-radius: 11px;
-  background: #262b3a;
+  background: rgba(255, 255, 255, 0.08);
 }
 .c-pmenu-photo .c-cover-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .c-pmenu-photo.is-new {
