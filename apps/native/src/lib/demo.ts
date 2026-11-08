@@ -2,6 +2,7 @@ import { addDays, requestId as newId, todayIso } from "./format";
 import type { Backend } from "./backend";
 import { ApiError } from "./backend";
 import { parsePayLinks, type PayLink, type PayLinkInput, type PayProvider } from "./payLinks";
+import { tidyGroupLink } from "./whatsapp";
 import type { Commune, Expense, Operation, PaymentReport, ReminderTarget, Share, Snapshot, User } from "./types";
 
 /**
@@ -80,7 +81,7 @@ function demoData(today: string): Snapshot[] {
     ({ id: cid, name, kind, currency, role: "admin", memberCount: people.length, ...extra });
   return [
     {
-      commune: commune("demo-park", "14 Park Street", "household", "GBP", everyone, { address: "Walthamstow, London" }),
+      commune: commune("demo-park", "14 Park Street", "household", "GBP", everyone, { address: "Walthamstow, London", chatLink: "https://chat.whatsapp.com/ParkStreetDemoGroup14" }),
       members: members(everyone, "maya"),
       expenses: parkExpenses,
       funds: [], notifications: [], reminderTargets: nudges(parkExpenses),
@@ -264,6 +265,15 @@ export function demoBackend(now: () => string = todayIso): Backend {
     async setPreferredPayLink(provider) {
       if (provider && !myLinks().some((item) => item.provider === provider)) throw new ApiError("Add that way to be paid before making it your favourite", 400);
       return setMyLinks(parsePayLinks(myLinks().map((item) => ({ ...item, preferred: item.provider === provider }))));
+    },
+    async setChatLink(communeId, link) {
+      const snapshot = data.find((candidate) => candidate.commune.id === communeId);
+      if (!snapshot) throw new ApiError("Not a commune member", 403);
+      if (snapshot.commune.role !== "admin") throw new ApiError("Only a commune admin can change the group chat link", 403);
+      const tidy = tidyGroupLink(link);
+      if (tidy === null) throw new ApiError("Paste a WhatsApp group invite link. It starts with https://chat.whatsapp.com/", 400);
+      snapshot.commune.chatLink = tidy;
+      return tidy;
     },
   };
 }

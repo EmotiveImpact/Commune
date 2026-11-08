@@ -545,6 +545,9 @@
   border: 1px solid var(--border);
 }
 
+/* Links styled as buttons, such as Share to WhatsApp and Open group chat. */
+a.a-btn { text-decoration: none; }
+
 .a-photo-bar {
   display: flex;
   flex-wrap: wrap;

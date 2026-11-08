@@ -15,6 +15,7 @@ import { communeExportJson, downloadText, expensesCsv } from "../data/export";
 import { todayIso } from "../data/operations";
 import { currencyHint, currencyLockedBy } from "../data/currency";
 import type { Snapshot } from "../live/model";
+import { tidyGroupLink } from "../data/whatsapp";
 
 export function SettingsScreen() {
   const {
@@ -325,6 +326,7 @@ export function CommuneSettingsScreen() {
             {canEdit ? <div className="a-field-row"><button className="a-btn" type="submit" disabled={busy || !hasChanges}>{busy ? "Saving…" : "Save changes"}</button></div> : <p className="hint">Only a commune admin can edit shared details.</p>}
           </form>
         </div>
+        <GroupChatSetting key={hub.id} />
         <div className="a-set-group">
           <h3>Records</h3>
           <div className="a-set-list">
@@ -361,4 +363,60 @@ export function CommuneSettingsScreen() {
       </div>
     </div>
   );
+}
+
+/**
+ * The commune's WhatsApp group. Commune leaves the chatting to the group the
+ * house already has: an admin pastes its invite link and everyone gets
+ * "Open group chat" on this commune's page.
+ */
+function GroupChatSetting() {
+  const { hub, setCommuneChatLink } = useApp();
+  const saved = hub.chatLink ?? "";
+  // What the admin is typing; until they type, the saved link.
+  const [draft, setDraft] = useState<string | null>(null);
+  const link = draft ?? saved;
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [done, setDone] = useState("");
+  const canEdit = hub.role === "admin";
+
+  async function save(next: string) {
+    setError(""); setDone("");
+    const tidy = tidyGroupLink(next);
+    if (tidy === null) {
+      setError("Paste a WhatsApp group invite link. It starts with https://chat.whatsapp.com/");
+      return;
+    }
+    setBusy(true);
+    try {
+      const stored = await setCommuneChatLink(tidy);
+      setDraft(null);
+      setDone(stored ? "Group chat linked for everyone." : "Group chat link removed.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not save the group chat link.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return <div className="a-set-group">
+    <h3>Group chat</h3>
+    <form className="a-set-list a-commune-details" onSubmit={(event) => { event.preventDefault(); void save(link); }}>
+      {canEdit ? <div className="a-field">
+        <label htmlFor="commune-setting-chat">WhatsApp group link</label>
+        <input id="commune-setting-chat" type="url" inputMode="url" autoComplete="off" spellCheck={false}
+          placeholder="https://chat.whatsapp.com/…" value={link} maxLength={300} disabled={busy}
+          onChange={(event) => { setDraft(event.target.value); setDone(""); setError(""); }} />
+        <p className="hint">In WhatsApp, open the group, tap its name, then Invite via link, and copy the link here. Only people in this commune see it.</p>
+      </div> : <p className="hint">{saved ? "Your admin has linked this commune’s WhatsApp group." : "No group chat linked yet. An admin can add one here."}</p>}
+      {error ? <p className="a-form-error" role="alert">{error}</p> : null}
+      {done ? <p className="a-form-success" role="status">{done}</p> : null}
+      <div className="a-field-row">
+        {canEdit ? <button className="a-btn" type="submit" disabled={busy || link.trim() === saved}>{busy ? "Saving…" : saved ? "Save link" : "Link group chat"}</button> : null}
+        {saved ? <a className="a-btn ghost" href={saved} target="_blank" rel="noopener noreferrer">Open group chat</a> : null}
+        {canEdit && saved ? <button className="a-btn ghost" type="button" disabled={busy} onClick={() => void save("")}>Remove link</button> : null}
+      </div>
+    </form>
+  </div>;
 }

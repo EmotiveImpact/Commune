@@ -67,6 +67,7 @@ function Screens() {
       <Stack.Screen name="notifications" options={{ ...pushed, title: "Notifications" }} />
       <Stack.Screen name="account" options={{ ...pushed, title: "Account" }} />
       <Stack.Screen name="pay-links" options={{ ...pushed, title: "How people pay you" }} />
+      <Stack.Screen name="group-chat" options={{ ...pushed, title: "Group chat" }} />
       <Stack.Screen name="tasks" options={{ ...pushed, title: "Chores and tasks" }} />
       <Stack.Screen name="notes" options={{ ...pushed, title: "Notes" }} />
       <Stack.Screen name="members" options={{ ...pushed, title: "Members" }} />

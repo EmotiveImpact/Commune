@@ -1,3 +1,5 @@
+import { appLink } from "../data/whatsapp";
+import { addressOf } from "../nav";
 import { memo, useState } from "react";
 import { useApp, type AppState, type CurrencyCode, type LiveExpenseRow } from "../state";
 import { Avatar, Pill } from "../ui/widgets";
@@ -282,7 +284,7 @@ export function SettleScreen() {
         <p className="c-settle-explainer">A receipt record in Commune, not bank verification. Open an expense to see its full history.</p>
       </section>}
       <div data-flip="" className="c-settle-footer"><p>Each share is tracked separately. Commune does not move money.</p><button className="a-btn ghost" type="button" onClick={() => go("breakdown")}>View breakdown</button></div>
-      <ReminderFlowDialog flow={reminder} usage={reminderUsage} />
+      <ReminderFlowDialog flow={reminder} usage={reminderUsage} link={appLink(addressOf("settle", { commune: hub.id }))} />
       {receipts.dialogs}
     </>
   );

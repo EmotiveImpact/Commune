@@ -128,6 +128,13 @@
 
 
 
+/* The house's WhatsApp group: a sage pill under the week, or a quiet one for an admin to link it. */
+.c-hub-chat { display: inline-flex; align-items: center; gap: 7px; width: fit-content; min-height: 40px; margin-top: 10px; padding: 8px 16px; border: 0; border-radius: var(--radius-pill); background: var(--hub-action); color: var(--hub-action-text); text-shadow: none; font-size: 13px !important; font-weight: 500 !important; text-decoration: none; }
+.c-hub-chat:hover { background: var(--hub-action-hover); }
+.c-hub-chat.is-empty { border: 1px solid #ffffff66; background: rgba(21, 34, 28, 0.55); color: #fff; }
+.c-hub-chat.is-empty:hover { background: rgba(21, 34, 28, 0.75); }
+.c-hub-identity:not(.has-photo) .c-hub-chat.is-empty { border-color: var(--border-strong); background: var(--hub-panel); color: var(--hub-ink); }
+
 /* The week on the photo, in one sentence. */
 .c-hub-pulse { width: fit-content; max-width: 100%; margin: 16px 0 0 !important; padding: 7px 14px; border-radius: var(--radius-pill); background: var(--hub-panel); color: var(--hub-ink); text-shadow: none; font-size: 13px; font-weight: 500; }
 .c-hub-over { margin: 0; color: var(--hub-muted); font-size: 12px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; }

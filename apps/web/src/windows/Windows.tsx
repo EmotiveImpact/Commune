@@ -30,6 +30,9 @@ import { moneyInputError, parseMoneyInput } from "../data/moneyInput";
 import type { Notification, UnreadNotice } from "../live/model";
 import { lazyComponent } from "../shell/lazyComponent";
 import { PayeeLinks, PayLinksEditor } from "../ui/PayLinks";
+import { WhatsAppShare } from "../ui/WhatsAppShare";
+import { appLink, billMessage } from "../data/whatsapp";
+import { addressOf } from "../nav";
 
 // Schedule items and announcements open less often: their windows load when
 // first opened (or once the browser is idle), behind the record skeleton.
@@ -507,6 +510,12 @@ function AddExpense() {
   );
 }
 
+/** Each share's amount when everyone's share is the same, for the message; otherwise none. */
+function evenShare(shares: Array<{ amountMinor: number }>, currency: Parameters<typeof formatMoney>[1]): string | undefined {
+  if (shares.length < 2 || shares.some((share) => share.amountMinor !== shares[0].amountMinor)) return undefined;
+  return formatMoney(shares[0].amountMinor, currency);
+}
+
 function Expense() {
   const {
     go, closeWindow, hub, selectedExpense, session,
@@ -606,11 +615,18 @@ function Expense() {
         <button className="a-btn" type="button" onClick={() => go("settle")}>Open settlement</button>
         {canChange ? <button className="a-btn ghost" type="button" onClick={() => { setMessage(""); change.correct(selectedExpense.id); }}>Correct</button> : null}
         {canChange ? <button className="a-btn ghost" type="button" onClick={() => { setMessage(""); change.void(selectedExpense.id); }}>Void</button> : null}
+        {!voided ? <WhatsAppShare hidden={selectedExpense.name} text={billMessage({
+          title: selectedExpense.name, amount: formatMoney(selectedExpense.amountMinor, hub.currency),
+          payerName: personName(selectedExpense.paidByUserId, selectedExpense.paidBy), communeName: hub.name,
+          due: selectedExpense.dueOn ? selectedExpense.due : undefined,
+          shareAmount: evenShare(selectedExpense.shares, hub.currency),
+          link: appLink(addressOf("expenses", { window: "expense", record: selectedExpense.id, commune: hub.id })),
+        })} /> : null}
         <button className="a-btn ghost" type="button" onClick={closeWindow}>
           Close
         </button>
       </div>
-      <ReminderFlowDialog flow={reminder} usage={reminderUsage} />
+      <ReminderFlowDialog flow={reminder} usage={reminderUsage} link={appLink(addressOf("settle", { commune: hub.id }))} />
       {receipts.dialogs}
       {change.dialogs}
     </section>

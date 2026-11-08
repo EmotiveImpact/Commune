@@ -11,6 +11,8 @@ import { PayPrimary } from "../../src/ui/pay";
 import { useToast } from "../../src/ui/toast";
 import { useTheme } from "../../src/ui/theme";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { appLink, billMessage } from "../../src/lib/whatsapp";
+import { WhatsAppButton } from "../../src/ui/whatsapp";
 
 export default function ExpenseDetail() {
   const { c } = useTheme();
@@ -78,6 +80,13 @@ export default function ExpenseDetail() {
                 : <T kind="amount">{money(share.amountMinor, currency)}</T>} />;
           })}</Panel>
         </View>
+        {!expense.voidedAt ? <WhatsAppButton accessibilityLabel={`Share ${expense.title} to WhatsApp, opens WhatsApp`} text={billMessage({
+          title: expense.title, amount: money(expense.amountMinor, currency), communeName: snapshot.commune.name,
+          payerName: memberName(snapshot, expense.paidByUserId),
+          due: expense.dueOn ? shortDate(expense.dueOn) : undefined,
+          shareAmount: expense.shares.length > 1 && expense.shares.every((share) => share.amountMinor === expense.shares[0].amountMinor) ? money(expense.shares[0].amountMinor, currency) : undefined,
+          link: appLink(`/expenses/${expense.id}`, { commune: snapshot.commune.id }),
+        })} /> : null}
       </Pad>
     </Body>
     {iOwe && mine ? <View style={{ padding: 16, paddingBottom: Math.max(insets.bottom, 16), gap: 8, backgroundColor: c.canvas, borderTopWidth: 1, borderTopColor: c.outline }}>

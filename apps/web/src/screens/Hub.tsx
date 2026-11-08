@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Archive, CalendarDays, ChevronRight, Copy, Eye, Megaphone, Phone, ReceiptText, UsersRound, type LucideIcon } from "lucide-react";
+import { Archive, CalendarDays, ChevronRight, Copy, Eye, Megaphone, MessageCircle, Phone, ReceiptText, UsersRound, type LucideIcon } from "lucide-react";
 import { useApp } from "../state";
 import { Avatar } from "../ui/widgets";
 import { Icon } from "../ui/Icon";
@@ -281,6 +281,23 @@ function Essential({ id, note }: { id: string; note: NoteCard }) {
   </article>;
 }
 
+/**
+ * The house's WhatsApp group, where the chatting happens. Commune has no chat
+ * of its own; an admin links the group in commune settings.
+ */
+function GroupChat() {
+  const { hub, go } = useApp();
+  if (hub.chatLink) {
+    return <a className="c-hub-chat" href={hub.chatLink} target="_blank" rel="noopener noreferrer">
+      <MessageCircle size={16} strokeWidth={1.75} aria-hidden="true" />Open group chat<span className="c-visually-hidden"> on WhatsApp (opens WhatsApp)</span>
+    </a>;
+  }
+  if (hub.role !== "admin") return null;
+  return <button className="c-hub-chat is-empty" type="button" onClick={() => go("commune-settings")}>
+    <MessageCircle size={16} strokeWidth={1.75} aria-hidden="true" />Link your WhatsApp group
+  </button>;
+}
+
 const PRIORITY = ["Emergency", "Wi-Fi", "Keys / door", "Bins", "Contacts", "House rules", "Other"];
 
 export function HubScreen() {
@@ -305,6 +322,7 @@ export function HubScreen() {
           <span>{hub.members.length} {hub.members.length === 1 ? "person" : "people"}</span>{" "}<span className="c-visually-hidden">in this commune, view members</span>
         </button>
         <p className="c-hub-pulse">{weekSentence(late, dueToday, bills)}</p>
+        <GroupChat />
       </div>
       <div className="c-hub-hero-actions">
         {canInvite && <button className="c-hub-settings" type="button" onClick={() => go("announcement-new")}><Megaphone size={16} strokeWidth={1.5} />Announce</button>}

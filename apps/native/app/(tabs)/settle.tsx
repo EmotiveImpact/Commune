@@ -2,7 +2,9 @@ import { useState } from "react";
 import { Alert, Platform, View } from "react-native";
 import { useRouter } from "expo-router";
 import { hasAny, payLinksOf } from "../../src/lib/derive";
-import { firstName, money, moneyList, shortDate, word } from "../../src/lib/format";
+import { firstName, joinAnd, money, moneyList, shortDate, word } from "../../src/lib/format";
+import { appLink, nudgeMessage } from "../../src/lib/whatsapp";
+import { WhatsAppButton } from "../../src/ui/whatsapp";
 import type { CurrencyCode } from "../../src/lib/types";
 import { failure, useApp } from "../../src/state";
 import { Body, Pad, TopBar } from "../../src/ui/chrome";
@@ -115,6 +117,11 @@ export default function Settle() {
                       onPress={() => void sendNudge(nudgeable[0].waiting.communeId, nudgeable.map((item) => item.debtor.shareId), row.name)} />
                     : <T kind="note" muted>{nudged ? "Nudged today" : "Not due yet"}</T>}
                 </View>} />
+              {pending.length ? null : <View style={{ paddingLeft: 60, paddingRight: 16, paddingBottom: 10, marginTop: -6 }}>
+                <WhatsAppButton variant="quiet" label={`Nudge ${firstName(row.name)} on WhatsApp`} accessibilityLabel={`Nudge ${row.name} on WhatsApp, opens WhatsApp`}
+                  text={nudgeMessage({ name: row.name, amount: money(row.amountMinor, currency), subject: joinAnd(row.items.map((item) => item.waiting.title)),
+                    link: appLink("/settle", { commune: row.items[0].waiting.communeId }) })} />
+              </View>}
               {pending.map(({ waiting: entry, debtor }) => <View key={debtor.pending!.id} style={{ marginHorizontal: 16, marginBottom: 14, padding: 14, borderRadius: 12, backgroundColor: c.attentionSoft, gap: 10 }}>
                 <T kind="body">{firstName(row.name)} says they’ve paid you {money(debtor.pending!.amountMinor, currency)} for {entry.title}, sent {shortDate(debtor.pending!.sentOn)}{debtor.pending!.reference ? `, reference “${debtor.pending!.reference}”` : ""}.</T>
                 <View style={{ flexDirection: "row", gap: 10, flexWrap: "wrap" }}>

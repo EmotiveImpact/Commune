@@ -24,6 +24,13 @@ link (the favourite listed first, at most one per person) and
 `set_preferred_pay_link`. Apply it after 0042, then deploy the client that
 offers it. The previous client ignores the new field. Test: `tests/pay_links.sql`.
 
+A group chat link, **0045** (local only), adds `chat_link` to each commune
+(a WhatsApp group invite link or empty), `set_commune_chat_link` (admins
+only) and `chatLink` in `my_communes` and the snapshot's commune. It is
+numbered 0045 to leave 0044 to join codes on their own branch; apply it after
+0043 (and after 0044 if that is released first), then deploy the client that
+shows it. The previous client ignores the new field. Test: `tests/group_chat_link.sql`.
+
 Migrations **0015 to 0041 are local only**. They have not been applied to any
 Neon branch. Release order when they are: apply 0013 to 0041 in numeric order
 to the preview branch, refresh that branch's Data API schema cache, then

@@ -58,6 +58,8 @@ type App = {
   savePayLink(provider: PayProvider, input: PayLinkInput): Promise<void>;
   removePayLink(provider: PayProvider): Promise<void>;
   setPreferredPayLink(provider: PayProvider | null): Promise<void>;
+  /** An admin links a commune's WhatsApp group, or removes it with "". */
+  setChatLink(communeId: string, link: string): Promise<string>;
   /**
    * Opens one of their apps to pay a share, remembering it, so that coming
    * back to Commune asks whether the payment went (see PayReturn).
@@ -197,6 +199,12 @@ export function AppProvider({ children, backend: given }: { children: ReactNode;
       async setPreferredPayLink(provider) {
         setMyPayLinks(await backend.setPreferredPayLink(provider));
         await Promise.all(snapshots.map((item) => reload(item.commune.id)));
+      },
+      async setChatLink(communeId, link) {
+        const stored = await backend.setChatLink(communeId, link);
+        setCommunes((list) => list.map((item) => (item.id === communeId ? { ...item, chatLink: stored } : item)));
+        await reload(communeId);
+        return stored;
       },
       openPayLink(shareId, provider, href) {
         setPayingAway({ shareId, provider });

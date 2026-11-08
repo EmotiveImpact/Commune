@@ -17,6 +17,8 @@ export type Commune = {
   memberCount?: number;
   address?: string;
   destination?: string;
+  /** The commune's WhatsApp group invite link, or "" (0045). */
+  chatLink?: string;
 };
 
 export type Member = { userId: string; name: string; email?: string; role: MemberRole; active?: boolean };
