@@ -69,7 +69,7 @@ describe("an invitation sent to another address", () => {
     expect(screen.getByText("It was sent to e•••@g•••.com, and you’re signed in as test@example.test. To join, sign in with the address it was sent to.")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Sign out and use another account" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Continue to Commune" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Join commune" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Join / })).toBeNull();
   });
 
   it("signs out, and comes back to the invitation after signing in again", async () => {
@@ -114,13 +114,15 @@ describe("an invitation sent to another address", () => {
     preview = { communeName: "Flat 4", role: "member", expiresAt: "2026-10-16T10:00:00Z" };
     mount();
     await screen.findByRole("heading", { name: "Join Flat 4" });
-    expect(screen.getByRole("button", { name: "Join commune" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Join Flat 4" })).toBeTruthy();
     expect(hintRequests()).toBe(0);
     cleanup();
     signedIn = null;
     mount();
-    await screen.findByRole("heading", { name: "You have a Commune invitation" });
-    expect(screen.getByRole("button", { name: "Sign in" })).toBeTruthy();
+    await screen.findByRole("heading", { name: "Join a house on Commune" });
+    // Signed out, joining asks for a sign-in first.
+    fireEvent.click(screen.getByRole("button", { name: "Join the house" }));
+    await screen.findByRole("heading", { name: "Sign in to join" });
     expect(hintRequests()).toBe(0);
   });
 });

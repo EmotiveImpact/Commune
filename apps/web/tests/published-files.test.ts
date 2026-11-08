@@ -15,7 +15,7 @@ describe("published files", () => {
   it("publishes only the app's own files", () => {
     const root = join(process.cwd(), "public");
     expect(files(root).map((file) => relative(root, file)).sort())
-      .toEqual(["apple-touch-icon.png", "favicon.svg", "icons/icon-192.png", "icons/icon-512.png", "icons/icon-maskable-512.png",
+      .toEqual(["apple-touch-icon.png", "favicon.svg", "icons/icon-192.png", "icons/icon-512.png", "icons/icon-maskable-512.png", "join/hall.jpg",
         "logo-mark.svg", "logo.png", "manifest.webmanifest"]);
   });
 });

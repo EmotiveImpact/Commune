@@ -786,7 +786,7 @@ describe("complete shared workflows", () => {
     expect(vi.mocked(post).mock.calls.some(([path]) => path === "/communes/home-1/invites")).toBe(false);
     await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Create new link" })); });
     expect(vi.mocked(post)).toHaveBeenCalledWith("/communes/home-1/invites", { email: "late@example.test", role: "admin" });
-    expect((within(dialog).getByLabelText("New invitation link") as HTMLInputElement).value).toBe("http://localhost:3000/invite?token=new");
+    expect((within(dialog).getByLabelText("New invitation link") as HTMLInputElement).value).toBe("http://localhost:3000/invite?token=new&house=Our+home&by=Test");
     fireEvent.click(within(dialog).getByRole("button", { name: "Done" }));
     expect(await screen.findByText("New link ready for late@example.test. The earlier link no longer works.")).toBeTruthy();
   });

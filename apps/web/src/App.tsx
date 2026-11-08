@@ -4,7 +4,8 @@ import { Signpost } from "lucide-react";
 import { LoginPage } from "./auth/Login";
 import { SignupPage, VerifyEmailPage } from "./auth/Signup";
 import { ForgotPasswordPage, ResetPasswordPage } from "./auth/ForgotPassword";
-import { InvitePage, OnboardPage } from "./auth/InviteOnboard";
+import { OnboardPage } from "./auth/InviteOnboard";
+import { InvitePage } from "./auth/JoinFlow";
 import { PrivacyPage, TermsPage } from "./legal/LegalPages";
 import { useApp } from "./state";
 import { forgetReturn, keepSearch, readAddress, readReturn, rememberReturn } from "./nav";
@@ -54,7 +55,7 @@ export function App() {
         <ResetPasswordPage />
       </Route>
       <Route path="/invite">
-        <PageTitle title="Invitation" />
+        <PageTitle title="Join a house" />
         <InvitePage />
       </Route>
       <Route path="/privacy">

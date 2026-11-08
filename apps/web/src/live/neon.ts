@@ -401,6 +401,18 @@ async function route<T>(path: string, init: RequestInit): Promise<T> {
     if (result.error) message(result.error);
     forgetReturn();
     response = { ok: true };
+  } else if (path === "/auth/apple" && method === "POST") {
+    if (import.meta.env.VITE_APPLE_OAUTH_ENABLED !== "true") throw new ApiError("Apple sign-in is not configured", 503);
+    // As Google: back to the page that asked for a sign-in, only ever on this site.
+    const callbackURL = new URL(readReturn() ?? "/", window.location.origin).href;
+    const result = await db().auth.signIn.social({
+      provider: "apple",
+      callbackURL,
+      errorCallbackURL: new URL("/login?oauth=error", window.location.origin).href,
+    });
+    if (result.error) message(result.error);
+    forgetReturn();
+    response = { ok: true };
   } else if (path === "/auth/signup" && method === "POST") {
     const result = await db().auth.signUp.email({ name: inputString(body.name, "name"), email: inputString(body.email, "email"), password: inputString(body.password, "password") });
     if (result.error) message(result.error);
