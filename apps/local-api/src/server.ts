@@ -892,8 +892,12 @@ route("GET", /^\/api\/invites\/([0-9a-f]{64})$/, async (req, res, match) => {
   const result = await userAction(req, async (client) => client.query(
     "SELECT * FROM public.preview_commune_invite($1)", [match[1]]));
   const row = result.rows[0];
+  // Who lives there (0047), for the joining page. Only for the invited account.
+  const people = row ? (await userAction(req, async (client) => client.query(
+    "SELECT public.invite_people($1) AS people", [match[1]]))).rows[0]?.people ?? null : null;
   send(res, { invite: row ? {
     communeName: row.commune_name, role: row.role, expiresAt: row.expires_at,
+    inviterName: people?.inviter ?? null, members: Array.isArray(people?.members) ? people.members : [],
   } : null });
 });
 

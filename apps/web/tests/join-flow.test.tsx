@@ -26,6 +26,8 @@ const link = `/invite?token=${token}&house=14+Park+Street&by=Maya`;
 
 let signedIn: typeof user | null = null;
 let member = false;
+let payLinks: unknown[] = [];
+let people: { inviterName?: string; members?: string[] } = {};
 function mount(path = link) {
   const location = memoryLocation({ path, record: true });
   render(<Router hook={location.hook}><AppProvider><App /></AppProvider></Router>);
@@ -39,13 +41,16 @@ beforeEach(() => {
   setViewer(null);
   signedIn = null;
   member = false;
+  payLinks = [];
+  people = {};
+  localStorage.clear();
   vi.mocked(api).mockImplementation(async (path) => {
     if (path === "/auth/me") return { user: signedIn };
     if (path === "/reminders/usage") return { totalUsed: 0, totalLimit: 60, recipientLimit: 6, recipientUsage: {}, nextSlotAt: null };
     if (path.endsWith("/invites")) return { invites: [] };
     if (path === "/preferences") return { emailReminders: true };
-    if (path === "/pay-links") return { links: [] };
-    if (path === `/invites/${token}`) return { invite: { communeName: "14 Park Street", role: "member", expiresAt: "2026-11-15T10:00:00Z" } };
+    if (path === "/pay-links") return { links: payLinks };
+    if (path === `/invites/${token}`) return { invite: { communeName: "14 Park Street", role: "member", expiresAt: "2026-11-15T10:00:00Z", ...people } };
     if (path.startsWith("/communes/house-1/")) return {};
     throw new Error(`Unexpected API request ${path}`);
   });
@@ -88,6 +93,37 @@ describe("joining a house", () => {
     await screen.findByRole("heading", { name: "You owe nothing today." });
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "That looks right" })); });
     expect(location.history?.at(-1)).toBe("/");
+    // Home then shows the first-day card, with what is left (reminders are already on here).
+    await screen.findByRole("heading", { name: "Your first day in 14 Park Street" });
+    expect(await screen.findByText("3 of 4")).toBeTruthy();
+    expect(screen.getByText("Email reminders are on")).toBeTruthy();
+    expect(screen.getByText("Say how people pay you")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Hide this" }));
+    expect(screen.queryByRole("heading", { name: "Your first day in 14 Park Street" })).toBeNull();
+    expect(localStorage.getItem(`commune.first-day.${user.id}`)).toBeNull();
+  });
+
+  it("shows who lives there once the invited account is signed in", async () => {
+    signedIn = user;
+    people = { inviterName: "Maya", members: ["Maya", "Ama"] };
+    mount(`/invite?token=${token}`);
+    await screen.findByRole("heading", { name: "Who lives here" });
+    expect(screen.getByText("Maya invited you")).toBeTruthy();
+    const list = screen.getByRole("list");
+    expect(list.textContent).toContain("MayaInvited you");
+    expect(list.textContent).toContain("AmaLives here");
+    expect(list.textContent).toContain("YouJoining");
+  });
+
+  it("skips the about-you step for someone who has already said how to pay them", async () => {
+    signedIn = user;
+    payLinks = [{ provider: "monzo", handle: "priya", accountName: null, sortCode: null, accountNumber: null, preferred: true }];
+    mount();
+    const join = await screen.findByRole("button", { name: "Join 14 Park Street" });
+    await waitFor(() => expect((join as HTMLButtonElement).disabled).toBe(false));
+    await act(async () => { fireEvent.click(join); });
+    await screen.findByRole("heading", { name: "You owe nothing today." });
+    expect(screen.queryByRole("heading", { name: "This is how the house sees you" })).toBeNull();
   });
 });
 

@@ -5,6 +5,7 @@ import { formatMoney } from "@commune/core";
 import { useApp, type InvitePreview } from "../state";
 import { rememberReturn } from "../nav";
 import { readInviteHints } from "../data/inviteHints";
+import { rememberFirstDay } from "../data/firstDay";
 import { coverSource } from "../data/covers";
 import { PayLinksEditor } from "../ui/PayLinks";
 import { ImagePick } from "../ui/photos";
@@ -70,7 +71,7 @@ export function InvitePage() {
   const returnHere = `/invite?${search}`;
   const joined = joinedId ? places.find((place) => place.id === joinedId) ?? null : null;
   const house = joined?.name ?? invite?.communeName ?? hints.house;
-  const by = hints.by;
+  const by = hints.by ?? invite?.inviterName ?? null;
   const elsewhere = !loading && !invite && session && hint ? hint : null;
   const unavailable = !loading && session && !invite && !joinedId && !elsewhere;
 
@@ -80,9 +81,12 @@ export function InvitePage() {
     setBusy(true);
     setError("");
     try {
+      // Someone already on Commune, or who has said how to be paid, has nothing to set up.
+      const hadOthers = places.length > 0;
       const id = await acceptInvite(token, { stay: true });
+      const links = await app.loadMyPayLinks().catch(() => null);
       setJoinedId(id);
-      setStep("you");
+      setStep(hadOthers || links?.length ? "part" : "you");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not join. Try again.");
     } finally {
@@ -109,7 +113,10 @@ export function InvitePage() {
 
   const back = (to: Step) => <button className="c-join-back" type="button" onClick={() => setStep(to)}><ChevronLeft size={20} aria-hidden="true" />Back</button>;
   const photo = joined ? coverSource(joined, "hero") : { src: HALL };
-  const people = joined?.members ?? [];
+  // The house's faces: its members once joined, or the first names the invitation shows (0047).
+  const people: Face[] = joined
+    ? joined.members.map((member) => ({ key: member.userId, name: member.name.split(/\s+/)[0] ?? member.name, initials: member.ini, tone: member.cls }))
+    : (invite?.members ?? []).map((name, index) => ({ key: `${index}-${name}`, name, initials: initialsOf(name), tone: TONES[index % TONES.length] }));
 
   let body: ReactNode;
   if (!token) {
@@ -132,6 +139,15 @@ export function InvitePage() {
         <p className="c-join-body">This link may have expired, been used already, or been cancelled. Ask {by ?? "whoever invited you"} for a new one.</p>
         <button className="c-join-pill is-quiet" type="button" onClick={() => go("home")}>Continue to Commune</button>
       </> : <>
+        {people.length ? <section className="c-join-section" aria-labelledby="join-people">
+          <h3 id="join-people" className="c-join-over">Who lives here</h3>
+          <ul className="c-join-people">{people.map((face, index) => <li key={face.key}>
+            <Avatar tone={face.tone} initials={face.initials} decorative />
+            <strong>{face.name}</strong><span>{index === 0 && by && face.name === by ? "Invited you" : "Lives here"}</span>
+          </li>)}
+            <li className="is-you"><Avatar tone="maya" initials={app.you.initials} decorative /><strong>You</strong><span>Joining</span></li>
+          </ul>
+        </section> : null}
         <p className="c-join-body">The house keeps its bills, chores and notes on Commune. You’ll see your share of the bills that include you, and the chores that are yours.</p>
         <p className="c-join-free"><CheckDot />The house already has Commune. It’s free for you.</p>
         {error ? <p className="c-join-alert" role="alert">{error}</p> : null}
@@ -160,7 +176,10 @@ export function InvitePage() {
   } else if (step === "you") {
     body = <YouStep onNext={() => setStep("part")} />;
   } else {
-    body = <PartStep hub={joined} by={by} onDone={() => go("home")} onBack={() => setStep("you")} />;
+    body = <PartStep hub={joined} by={by} onBack={() => setStep("you")} onDone={() => {
+      if (session && joinedId) rememberFirstDay(session.userId, joinedId, house ?? "the house");
+      go("home");
+    }} />;
   }
 
   return (
@@ -177,7 +196,7 @@ export function InvitePage() {
             <h1 className="c-join-house">{house}</h1>
           </> : <h1 className="c-join-house">Commune</h1>}
           {by ? <span className="c-join-by">{by} invited you to join</span> : null}
-          {people.length ? <span className="c-join-faces">{people.slice(0, 6).map((member) => <Avatar key={member.userId} tone={member.cls} initials={member.ini} />)}</span> : null}
+          {people.length ? <span className="c-join-faces">{people.slice(0, 6).map((face) => <Avatar key={face.key} tone={face.tone} initials={face.initials} decorative />)}</span> : null}
           <span className="c-join-tag">for people who do life, together.</span>
         </div>
       </aside>
@@ -187,6 +206,13 @@ export function InvitePage() {
       </main>
     </div>
   );
+}
+
+type Face = { key: string; name: string; initials: string; tone: string };
+// Never "maya": that tone shows the viewer's own photo.
+const TONES = ["jordan", "alex", "priya", "sam", "ness"];
+function initialsOf(name: string): string {
+  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]!.toUpperCase()).join("") || "?";
 }
 
 function Panel({ title, children }: { title: string; children: ReactNode }) {

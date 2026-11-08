@@ -24,6 +24,13 @@ link (the favourite listed first, at most one per person) and
 `set_preferred_pay_link`. Apply it after 0042, then deploy the client that
 offers it. The previous client ignores the new field. Test: `tests/pay_links.sql`.
 
+Who lives there, **0047** (local only), adds `invite_people`: the inviter's
+first name and the members' first names for the joining page, readable only
+by the signed-in, verified account an open invitation was sent to. It
+depends on 0038 and is numbered after 0044 to 0046 on open branches. The
+client works with or without it (no faces are shown until it is applied), so
+it can be applied before or after the client. Test: `tests/invite_people.sql`.
+
 Migrations **0015 to 0041 are local only**. They have not been applied to any
 Neon branch. Release order when they are: apply 0013 to 0041 in numeric order
 to the preview branch, refresh that branch's Data API schema cache, then

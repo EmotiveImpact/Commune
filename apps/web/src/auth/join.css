@@ -98,6 +98,14 @@
     -webkit-box-decoration-break: clone;
   }
   .c-join-nowrap { white-space: nowrap; }
+  .c-join-section { display: grid; gap: 10px; }
+  .c-join-section h3 { margin: 0; }
+  .c-join-people { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 14px 18px; }
+  .c-join-people li { display: grid; justify-items: center; gap: 2px; width: 64px; text-align: center; }
+  .c-join-people .a-avatar { width: 48px; height: 48px; margin-bottom: 4px; }
+  .c-join-people strong { font-size: 13.5px; font-weight: 600; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .c-join-people span { font-size: 11.5px; color: var(--join-ink-2); }
+  .c-join-people li.is-you .a-avatar { box-shadow: 0 0 0 2px var(--white), 0 0 0 4px var(--sage); }
   .c-join-body { margin: 0; color: var(--join-ink-2); font-size: 15px; line-height: 1.5; max-width: 58ch; }
   .c-join-body.is-small { font-size: 13.5px; }
   .c-join-small { font-size: 12.5px; color: var(--join-ink-2); }

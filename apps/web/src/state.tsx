@@ -182,6 +182,9 @@ export type InvitePreview = {
   communeName: string;
   role: "admin" | "member";
   expiresAt: string;
+  /** The inviter's first name and the members' first names (0047); absent before it. */
+  inviterName?: string | null;
+  members?: string[];
 };
 export type GoTarget =
   | ScreenId
