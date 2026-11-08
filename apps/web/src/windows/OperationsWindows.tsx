@@ -16,6 +16,7 @@ import {
 } from "../data/operations";
 import { formatDay } from "@commune/core";
 import { useApp } from "../state";
+import { CalendarDate } from "../ui/CalendarDate";
 import { Avatar, Pill } from "../ui/widgets";
 import { cx } from "../ui/cx";
 import { LIMITS } from "../data/limits";
@@ -115,12 +116,10 @@ export function OperationView() {
   return (
     <section className="a-window operation-detail">
       <div className="a-fund-hero operation-detail-hero">
+        <CalendarDate className="operation-detail-date" date={item.date} />
         <div>
-          <span className="a-hero-kicker">
-            {category} · {item.status === "done" ? "Completed" : "Scheduled"}
-          </span>
           <strong>{item.title}</strong>
-          <p>{when}</p>
+          <p>{hub.name} · {category}{item.status === "done" ? " · done" : ""}</p>
         </div>
         <div className="c-hero-side">
           <Pill

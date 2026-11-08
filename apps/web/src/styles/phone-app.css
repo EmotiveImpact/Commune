@@ -45,7 +45,7 @@
 /* ---------- Tab bar: five tabs, no pill; the others rest at 55% ---------- */
 
 @media (max-width: 560px) {
-  .a-bottom { padding: 8px 6px calc(10px + env(safe-area-inset-bottom)); background: #1a1e2b; }
+  .a-bottom { padding: 8px 6px calc(10px + env(safe-area-inset-bottom)); background: var(--navy); }
   .a-bottom button {
     gap: 4px;
     color: #f5f1ea;
@@ -60,7 +60,6 @@
   .a-bottom .a-tab-you .avatar { width: 28px; height: 28px; font-size: 11px; border: 0; }
   .a-bottom button.is-active .a-tab-you .avatar { box-shadow: 0 0 0 2px #f5f1ea; }
 }
-.a-body.is-dark .a-bottom { background: #0d1016; }
 
 /* ---------- The push menu ---------- */
 
@@ -73,12 +72,11 @@
   z-index: 41;
   display: flex;
   flex-direction: column;
-  background: #1a1e2b;
+  background: var(--navy);
   color: #f5f1ea;
   padding-top: env(safe-area-inset-top, 0px);
   animation: c-pmenu-in var(--motion-medium) var(--ease-standard);
 }
-.a-body.is-dark .c-pmenu { background: #0d1016; }
 @keyframes c-pmenu-in { from { transform: translateX(48px); opacity: 0; } to { transform: none; opacity: 1; } }
 
 .c-pmenu-head { display: flex; align-items: center; min-height: 56px; padding: 0 8px 0 24px; }
@@ -115,9 +113,9 @@
 .c-pmenu-row { min-height: 52px; padding: 0 8px; border-radius: 12px; }
 .c-pmenu-commune.is-current,
 .c-pmenu-commune:active,
-.c-pmenu-row:active { background: #262b3a; }
+.c-pmenu-row:active { background: rgba(255, 255, 255, 0.08); }
 @media (hover: hover) {
-  .c-pmenu-commune:hover, .c-pmenu-row:hover, .c-pmenu-x:hover { background: #262b3a; }
+  .c-pmenu-commune:hover, .c-pmenu-row:hover, .c-pmenu-x:hover { background: rgba(255, 255, 255, 0.08); }
 }
 
 .c-pmenu-photo {
@@ -127,7 +125,7 @@
   height: 44px;
   overflow: hidden;
   border-radius: 11px;
-  background: #262b3a;
+  background: rgba(255, 255, 255, 0.08);
 }
 .c-pmenu-photo .c-cover-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .c-pmenu-photo.is-new {
@@ -160,3 +158,89 @@
 .a-body.is-native .c-pmenu { left: max(76px, calc(50% - 195px + 76px)); right: max(0px, calc(50% - 195px)); }
 .a-body.is-native.more-open .a-main { transform: none; }
 .a-body.is-native.more-open .a-bottom { transform: translateX(-50%); }
+
+/* ---------- Bill and task windows, as the phone app's expense screen ---------- */
+
+/* The record's name and its commune lead, with the date as a calendar tile. */
+.a-fund-hero.c-expense-hero,
+.a-fund-hero.operation-detail-hero {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding-bottom: 4px;
+  margin-bottom: 14px;
+  border-bottom: 0;
+}
+:is(.c-expense-hero, .operation-detail-hero) > div:not(.c-hero-side) { flex: 1; min-width: 0; }
+:is(.c-expense-hero, .operation-detail-hero) > :is(.pill, .c-hero-side) { margin-left: auto; flex-shrink: 0; }
+:is(.c-expense-hero, .operation-detail-hero) strong {
+  margin: 2px 0 2px;
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.5px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+:is(.c-expense-hero, .operation-detail-hero) p { font-size: 14px; }
+:is(.c-expense-hero-date, .operation-detail-date) { flex-shrink: 0; }
+
+/* Your part, in one white card. */
+.c-expense-yours {
+  margin: 0 0 18px;
+  padding: 20px 22px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-surface);
+  background: #fff;
+}
+.c-expense-yours-label { display: block; font-size: 14px; color: var(--ink-soft); }
+.c-expense-yours-amount { display: block; margin: 4px 0 6px; font-size: 40px; font-weight: 450; letter-spacing: -1.5px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.c-expense-yours p { margin: 0; font-size: 14px; line-height: 1.5; color: var(--ink-soft); }
+.c-expense-yours .c-expense-yours-due { display: flex; align-items: center; gap: 7px; margin-top: 8px; color: var(--ink); }
+.c-expense-yours-due::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--ink-soft); opacity: 0.5; }
+.c-expense-yours-pay { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.c-expense-yours-pay .c-pay-primary { flex: 1 1 100%; }
+
+/* Each share as a row in one white card, under a quiet heading. */
+.c-expense-split-title { margin: 0 0 8px 4px; font-size: 14px; font-weight: 600; color: var(--ink-soft); letter-spacing: 0; }
+.a-window:has(.c-expense-hero) .a-split {
+  margin-bottom: 18px;
+  padding: 0 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-surface);
+  background: #fff;
+}
+.a-window:has(.c-expense-hero) .a-split-row { padding: 14px 0; }
+
+/* Task facts: one white card of label and value rows, not separate boxes. */
+.operation-detail .a-note-facts {
+  display: block;
+  margin: 0 0 16px;
+  padding: 0 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-surface);
+  background: #fff;
+}
+.operation-detail .a-note-fact {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  padding: 14px 0;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: none;
+}
+.operation-detail .a-note-fact:last-child { border-bottom: 0; }
+.operation-detail .a-note-fact span { font-size: 14px; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--ink-soft); }
+.operation-detail .a-note-fact strong { font-size: 15px; font-weight: 600; letter-spacing: 0; text-align: right; }
+
+/* The bar names the kind of record, centred, as the phone app's top bar does. */
+.a-window-frame:has(.c-expense-hero, .operation-detail) .a-window-bar h2 { flex: 1; text-align: center; font-size: 16px; font-weight: 600; letter-spacing: 0; }
+.a-window-frame:has(.c-expense-hero, .operation-detail) .a-window-bar::before { content: ""; width: 38px; flex-shrink: 0; }
+
+@media (max-width: 560px) {
+  /* Actions share the width in twos, as the phone app's buttons do. */
+  .a-window:is(:has(.c-expense-hero), .operation-detail) > .a-field-row > .a-btn { flex: 1 1 calc(50% - 8px); }
+}
+.a-body.is-dark :is(.c-expense-yours, .a-window:has(.c-expense-hero) .a-split, .operation-detail .a-note-facts) { background: var(--surface, #1e2330); border-color: rgba(242, 237, 228, 0.12); }
