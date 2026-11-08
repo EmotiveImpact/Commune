@@ -142,7 +142,7 @@ function moneySections(): ReactNode[] {
 }
 
 /** The photo, its place and people, and the week's pulse, with Change and Invite on glass. */
-const HERO_GROUND = "#262b3a";
+const HERO_GROUND = "#1f3350";
 
 function Hero({ scrollY }: { scrollY: SharedValue<number> }) {
   const router = useRouter();

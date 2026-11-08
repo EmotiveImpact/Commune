@@ -19,7 +19,7 @@ import type { Who } from "./engine";
 
 export const O = {
   stage: "#0e1622", stage2: "#14243b", stageInk: "#f5f1ea", stageInk2: "rgba(245,241,234,0.6)",
-  canvas: "#f5f1ea", recessed: "#eee8de", surface: "#ffffff", frame: "#1a1e2b",
+  canvas: "#f5f1ea", recessed: "#eee8de", surface: "#ffffff", frame: "#14243b",
   ink: "#1a1e2b", ink2: "#59675f", outline: "rgba(26,30,43,0.13)", outline2: "rgba(26,30,43,0.075)",
   action: "#2d6a4f", actionPress: "#1b4332", pale: "#dce8d3", settled: "#d9ebe5", onSettled: "#1b4332",
   attention: "#8a4b1f", attentionSoft: "#f7e8d6", monzo: "#14233c",

@@ -6,7 +6,7 @@
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
-    "backgroundColor": "#1a1e2b",
+    "backgroundColor": "#14243b",
     "newArchEnabled": true,
     "ios": {
       "bundleIdentifier": "io.ourcommune.app",
