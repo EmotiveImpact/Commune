@@ -1522,7 +1522,7 @@ DECLARE v_actor text:=commune_private.data_api_user_id();v_result jsonb;
 BEGIN
   IF NOT public.is_commune_member(p_commune_id) THEN RAISE EXCEPTION 'Not a commune member' USING ERRCODE='42501'; END IF;
   SELECT jsonb_build_object(
-    'commune',jsonb_build_object('id',co.id,'name',co.name,'kind',co.kind,'currency',co.currency,'address',co.address,'destination',co.destination,'stayName',co.stay_name,'stayAddress',co.stay_address,'role',m.role,
+    'commune',jsonb_build_object('id',co.id,'name',co.name,'kind',co.kind,'currency',co.currency,'address',co.address,'destination',co.destination,'stayName',co.stay_name,'stayAddress',co.stay_address,'chatLink',co.chat_link,'role',m.role,
       'memberCount',(SELECT count(*) FROM public.commune_members cm WHERE cm.commune_id=co.id AND cm.active),
       'currencyLockedBy',to_jsonb(commune_private.currency_locked_by(co.id)),
       'unreadNotices',commune_private.unread_notice_count(co.id,v_actor)),
@@ -2418,6 +2418,7 @@ CREATE FUNCTION public.my_communes() RETURNS jsonb
     AS $$
   SELECT coalesce(jsonb_agg(jsonb_build_object('id', c.id, 'name', c.name, 'kind', c.kind, 'currency', c.currency,
       'address', c.address, 'destination', c.destination, 'stayName', c.stay_name, 'stayAddress', c.stay_address,
+      'chatLink', c.chat_link,
       'role', m.role, 'memberCount', (SELECT count(*) FROM public.commune_members cm WHERE cm.commune_id = c.id AND cm.active),
       'changeMark', commune_private.change_mark(c.id),
       'unreadNotices', commune_private.unread_notice_count(c.id, m.user_id)) ORDER BY c.created_at DESC, c.id), '[]'::jsonb)
@@ -3828,6 +3829,35 @@ $$;
 
 
 --
+-- Name: set_commune_chat_link(uuid, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.set_commune_chat_link(p_commune_id uuid, p_link text) RETURNS text
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public', 'pg_temp'
+    AS $_$
+DECLARE
+  v_link text := btrim(coalesce(p_link, ''));
+  v_code text;
+BEGIN
+  IF NOT public.is_commune_admin(p_commune_id) THEN
+    RAISE EXCEPTION 'Only a commune admin can change the group chat link' USING ERRCODE = '42501';
+  END IF;
+  IF v_link <> '' THEN
+    v_code := substring(v_link FROM '^(?:https?://)?(?:www\.)?chat\.whatsapp\.com/(?:invite/)?([A-Za-z0-9]{10,40})/?(?:[?#].*)?$');
+    IF v_code IS NULL THEN
+      RAISE EXCEPTION 'Paste a WhatsApp group invite link. It starts with https://chat.whatsapp.com/' USING ERRCODE = '22023';
+    END IF;
+    v_link := 'https://chat.whatsapp.com/' || v_code;
+  END IF;
+  UPDATE public.communes SET chat_link = v_link
+    WHERE id = p_commune_id AND chat_link IS DISTINCT FROM v_link;
+  RETURN v_link;
+END;
+$_$;
+
+
+--
 -- Name: set_email_reminders(boolean); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -5003,8 +5033,10 @@ CREATE TABLE public.communes (
     destination text DEFAULT ''::text NOT NULL,
     stay_name text DEFAULT ''::text NOT NULL,
     stay_address text DEFAULT ''::text NOT NULL,
+    chat_link text DEFAULT ''::text NOT NULL,
     CONSTRAINT commune_location_matches_kind CHECK ((((kind = 'trip'::text) AND (address = ''::text)) OR ((kind = ANY (ARRAY['household'::text, 'workspace'::text])) AND (destination = ''::text) AND (stay_name = ''::text) AND (stay_address = ''::text)))),
     CONSTRAINT communes_address_check CHECK ((length(address) <= 160)),
+    CONSTRAINT communes_chat_link_check CHECK (((chat_link = ''::text) OR (chat_link ~ '^https://chat\.whatsapp\.com/[A-Za-z0-9]{10,40}$'::text))),
     CONSTRAINT communes_currency_check CHECK ((currency = ANY (ARRAY['GBP'::text, 'USD'::text, 'EUR'::text]))),
     CONSTRAINT communes_destination_check CHECK ((length(destination) <= 80)),
     CONSTRAINT communes_kind_check CHECK ((kind = ANY (ARRAY['household'::text, 'workspace'::text, 'trip'::text]))),
@@ -8440,6 +8472,14 @@ GRANT ALL ON FUNCTION public.send_reminder(p_kind text, p_source_id uuid) TO aut
 
 REVOKE ALL ON FUNCTION public.send_reminder_command(p_kind text, p_source_id uuid, p_request_id uuid) FROM PUBLIC;
 GRANT ALL ON FUNCTION public.send_reminder_command(p_kind text, p_source_id uuid, p_request_id uuid) TO authenticated;
+
+
+--
+-- Name: FUNCTION set_commune_chat_link(p_commune_id uuid, p_link text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.set_commune_chat_link(p_commune_id uuid, p_link text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.set_commune_chat_link(p_commune_id uuid, p_link text) TO authenticated;
 
 
 --

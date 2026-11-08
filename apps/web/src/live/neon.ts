@@ -170,7 +170,7 @@ function communal(row: Row): Commune {
     id: str(row.id), name: str(row.name), kind: row.kind as Commune["kind"],
     currency: row.currency as CurrencyCode, role: row.role as Commune["role"], memberCount: minor(row.memberCount),
     address: str(row.address), destination: str(row.destination),
-    stayName: str(row.stayName), stayAddress: str(row.stayAddress), changeMark: str(row.changeMark),
+    stayName: str(row.stayName), stayAddress: str(row.stayAddress), chatLink: str(row.chatLink), changeMark: str(row.changeMark),
     ...(row.unreadNotices == null ? {} : { unreadNotices: minor(row.unreadNotices) }),
   };
 }
@@ -470,6 +470,10 @@ async function route<T>(path: string, init: RequestInit): Promise<T> {
       p_address: body.address, p_destination: body.destination,
       p_stay_name: body.stayName, p_stay_address: body.stayAddress,
     });
+  } else if (method === "PUT" && pathId(path, /^\/communes\/([^/]+)\/chat-link$/)) {
+    response = { link: unwrap(await db().rpc("set_commune_chat_link", {
+      p_commune_id: pathId(path, /^\/communes\/([^/]+)\/chat-link$/), p_link: typeof body.link === "string" ? body.link : "",
+    })) };
   } else if (path === "/reminders/usage" && method === "GET") {
     response = await reminderUsage();
   } else if (path === "/notices/unread" && method === "GET") {

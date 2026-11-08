@@ -39,6 +39,9 @@
 .c-reminder-dialog h2 { font-size: 21px; font-weight: 550; line-height: 1.4; padding-right: 20px; }
 .c-reminder-message { padding: 18px 0 14px; font-size: 14px; line-height: 1.7; }
 .c-reminder-help { font-size: 12px; line-height: 1.6; color: var(--ink-soft); margin-bottom: 16px; }
+/* One quiet line under the buttons: send it yourself on WhatsApp instead. */
+.c-reminder-whatsapp { margin: 14px 0 0; color: var(--ink-soft); font-size: 13px; line-height: 1.5; }
+.c-reminder-whatsapp > span { display: block; margin-top: 2px; }
 .c-reminder-close { float: right; border: 0; border-radius: var(--radius-control); background: transparent; color: inherit; padding: 6px; cursor: pointer; }
 .c-reminder-close:disabled { opacity: .4; cursor: default; }
 .c-reminder-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; margin: 0 0 14px; padding: 4px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }

@@ -69,7 +69,7 @@ body,
   border-color: var(--border);
 }
 
-.a-body.is-dark :is(input, select, textarea, .a-btn.ghost, .a-chip) {
+.a-body.is-dark :is(input, select, textarea, .a-btn.ghost, .a-chip, .c-wa-icon) {
   background: #1d2330;
   color: var(--ink);
   border-color: var(--border-strong);

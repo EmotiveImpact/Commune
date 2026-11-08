@@ -9,6 +9,7 @@ import {
 } from "../data/household";
 import type { OperationItem } from "../data/operations";
 import { notePreview } from "../data/notePresentation";
+import { groupLink } from "../data/whatsapp";
 import { addDays, timestampDay, todayIso } from "../data/operations";
 import { formatDay, formatMoney, netBalances, overallNet } from "@commune/core";
 
@@ -33,6 +34,8 @@ export type Commune = {
   destination?: string;
   stayName?: string;
   stayAddress?: string;
+  /** The commune's WhatsApp group invite link, or "" (0045). */
+  chatLink?: string;
   /** Moves whenever anything in the commune changes; compared with a snapshot's own. */
   changeMark?: string;
   /** The reader's unread notices in this commune (0039), for the bell across communes. */
@@ -707,6 +710,7 @@ export function hubFromSnapshot(
     destination: commune.destination ?? "",
     stayName: commune.stayName ?? "",
     stayAddress: commune.stayAddress ?? "",
+    chatLink: groupLink(commune.chatLink),
     lede: `${type} · ${activeMembers.length} ${activeMembers.length === 1 ? "person" : "people"}`,
     people: activeMembers.map((member) => member.name.split(" ")[0]).join(", "),
     photo: photo ?? defaultPhoto,

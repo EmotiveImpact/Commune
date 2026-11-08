@@ -1,3 +1,6 @@
+import { appLink, nudgeMessage } from "../data/whatsapp";
+import { WhatsAppShare } from "../ui/WhatsAppShare";
+import { addressOf } from "../nav";
 import { memo, useState } from "react";
 import { useApp, type AppState, type CurrencyCode, type LiveExpenseRow } from "../state";
 import { Avatar, Pill } from "../ui/widgets";
@@ -265,6 +268,7 @@ export function SettleScreen() {
                 </div>
               ) : receiving ? (
                 <div className="a-row-actions">
+                  <WhatsAppShare label={`Nudge ${debtorName} on WhatsApp`} text={nudgeMessage({ name: personName(share.userId, "your housemate"), amount: formatMoney(outstanding, hub.currency), subject: expense.name, link: appLink(addressOf("settle", { commune: hub.id })) })} />
                     <button className="a-btn nudge" type="button" disabled={!eligibility.canSend} title={reminderReason || undefined} onClick={() => { setMessage(""); reminder.open({ kind: "nudge", sourceId: share.id, recipientId: share.userId, name: personName(share.userId, "your housemate"), subject: expense.name, amount: formatMoney(outstanding, hub.currency), dueOn: expense.dueOn }); }}>
                       Nudge{" "}<span className="c-visually-hidden">{debtorName} about {expense.name}</span>
                     </button>
@@ -316,7 +320,7 @@ export function SettleScreen() {
         <p className="c-settle-explainer">A receipt record in Commune, not bank verification. Open an expense to see its full history.</p>
       </section>}
       <div data-flip="" className="c-settle-footer"><p>Each share is tracked separately. Commune does not move money.</p><button className="a-btn ghost" type="button" onClick={() => go("breakdown")}>View breakdown</button></div>
-      <ReminderFlowDialog flow={reminder} usage={reminderUsage} />
+      <ReminderFlowDialog flow={reminder} usage={reminderUsage} link={appLink(addressOf("settle", { commune: hub.id }))} />
       {receipts.dialogs}
     </>
   );

@@ -15,6 +15,8 @@ import { TaskCheck } from "../../src/ui/parts";
 import { PayPrimary } from "../../src/ui/pay";
 import { useToast } from "../../src/ui/toast";
 import { KIND_NAME, radius, useTheme } from "../../src/ui/theme";
+import { groupLink } from "../../src/lib/whatsapp";
+import { WhatsAppMark, useOpenWhatsApp } from "../../src/ui/whatsapp";
 
 /**
  * The Hub, the house at a glance: this week's pulse on the photo, your part
@@ -43,6 +45,7 @@ export default function Hub() {
             <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: 6 }}>
               <Faces names={members.map((member) => member.name)} size={28} ring="rgba(255,255,255,0.9)" />
               <Text style={{ color: "#fff", fontSize: 13 }}>{members.length} {members.length === 1 ? "person" : "people"}</Text>
+              <GroupChat />
             </View>
             <View style={{ alignSelf: "flex-start", marginTop: 8, backgroundColor: "#fff", borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 5 }}>
               <Text style={{ color: "#1a1e2b", fontSize: 13, fontWeight: "500" }}>{weekSentence(thisWeek)}</Text>
@@ -56,6 +59,23 @@ export default function Hub() {
       </Pad>
     </Body>
   </View>;
+}
+
+/**
+ * The house's WhatsApp group, where the chatting happens. Commune has no chat
+ * of its own; an admin links the group in More. On the Hub it is a small round
+ * button beside the people, so it takes no room of its own.
+ */
+function GroupChat() {
+  const { current } = useApp();
+  const open = useOpenWhatsApp();
+  const link = current ? groupLink(current.commune.chatLink) : null;
+  if (!link) return null;
+  return <Pressable accessibilityRole="link" accessibilityLabel="Open the group chat on WhatsApp" hitSlop={8} onPress={() => open(link)}
+    style={({ pressed }) => ({ width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center", marginLeft: 4,
+      borderWidth: 1, borderColor: "rgba(255,255,255,0.45)", backgroundColor: "rgba(21,34,28,0.55)", opacity: pressed ? 0.8 : 1 })}>
+    <WhatsAppMark size={15} color="#fff" />
+  </Pressable>;
 }
 
 /** Where you stand here, and the one payment to record next. */

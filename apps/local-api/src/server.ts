@@ -616,6 +616,16 @@ route("DELETE", /^\/api\/pay-links\/(monzo|paypal|revolut|bank)$/, async (req, r
   send(res, { links: result.rows[0].links });
 });
 
+// The commune's WhatsApp group invite link, or "" to remove it. Admins only;
+// the database accepts nothing but a chat.whatsapp.com invite link.
+route("PUT", /^\/api\/communes\/([0-9a-f-]{36})\/chat-link$/, async (req, res, match) => {
+  const input = await body(req);
+  const result = await userAction(req, async (client) => client.query(
+    "SELECT public.set_commune_chat_link($1, $2) AS link",
+    [uuid(match[1]), optionalText(input.link, "link", 300)]));
+  send(res, { link: result.rows[0].link });
+});
+
 route("POST", /^\/api\/communes\/([0-9a-f-]{36})\/funds$/, async (req, res, match) => {
   const input = await body(req);
   const name = text(input.name, "name", 80);

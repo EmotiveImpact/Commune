@@ -6,6 +6,8 @@ import { newRequestId } from "../data/requestId";
 // Dialog styles stay with the other money surfaces in screens/Money.css.
 import { Button, useModalDialog } from "./components";
 import { showToast } from "./Toast";
+import { WhatsAppShare } from "./WhatsAppShare";
+import { appLink, nudgeMessage } from "../data/whatsapp";
 import "../screens/Money.css";
 
 export type ReminderRequest = {
@@ -26,9 +28,11 @@ type Phase = "ready" | "sending" | "error";
  * dialog goes, and the toast says what was recorded (no Undo: a reminder
  * someone may already have seen cannot be taken back).
  */
-export function ReminderConfirm({ request, usage, phase, error, onClose, onSend }: {
+export function ReminderConfirm({ request, usage, phase, error, onClose, onSend, link }: {
   request: ReminderRequest; usage: ReminderUsage | null; phase: Phase;
   error: string; onClose: () => void; onSend: () => void;
+  /** Where the message sends them in Commune; settlement unless the caller knows better. */
+  link?: string;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   useModalDialog(ref);
@@ -55,6 +59,11 @@ export function ReminderConfirm({ request, usage, phase, error, onClose, onSend 
       <Button busy={pending} disabled={blocked} onClick={onSend}>{pending ? "Reminding…" : phase === "error" ? "Try again" : "Send reminder"}</Button>
       <button className="a-btn ghost" type="button" disabled={pending} onClick={onClose}>Cancel</button>
     </div>
+    <p className="c-reminder-whatsapp">
+      <WhatsAppShare variant="link" label={`Message ${request.name} on WhatsApp instead`}
+        text={nudgeMessage({ name: request.name, amount: request.amount, subject: request.subject, link: link ?? appLink("/settle") })} />
+      <span>It doesn’t use your allowance.</span>
+    </p>
   </dialog>;
 }
 
@@ -95,8 +104,8 @@ export function useReminderFlow(send: (kind: ReminderKind, sourceId: string, req
 }
 
 /** Renders the dialog for a flow, wired to the shared allowance display. */
-export function ReminderFlowDialog({ flow, usage }: { flow: ReturnType<typeof useReminderFlow>; usage: ReminderUsage | null }) {
+export function ReminderFlowDialog({ flow, usage, link }: { flow: ReturnType<typeof useReminderFlow>; usage: ReminderUsage | null; link?: string }) {
   if (!flow.request) return null;
-  return <ReminderConfirm request={flow.request} usage={usage} phase={flow.phase}
+  return <ReminderConfirm request={flow.request} usage={usage} phase={flow.phase} link={link}
     error={flow.error} onClose={flow.close} onSend={() => void flow.confirm(usage)} />;
 }

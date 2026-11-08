@@ -1,3 +1,5 @@
+import { appLink } from "../data/whatsapp";
+import { addressOf } from "../nav";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { fundFigures } from "../data/funds";
 import { HandCoins, Plus } from "lucide-react";
@@ -891,7 +893,7 @@ export function FundsScreen() {
           )}
         </Dialog>
       )}
-      <ReminderFlowDialog flow={chase} usage={reminderUsage} />
+      <ReminderFlowDialog flow={chase} usage={reminderUsage} link={appLink(addressOf("funds", { commune: hub.id }))} />
     </>
   );
 }

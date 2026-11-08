@@ -79,7 +79,8 @@ BEGIN
     'public.commune_summary(uuid)',
     'public.commune_expense_page(uuid,date,integer)',
     'public.commune_expense_records(uuid,uuid[])',
-    'public.my_unread_notices()'
+    'public.my_unread_notices()',
+    'public.set_commune_chat_link(uuid,text)'
   ] LOOP
     IF has_function_privilege('anonymous', table_name, 'EXECUTE')
       OR has_function_privilege('public', table_name, 'EXECUTE')

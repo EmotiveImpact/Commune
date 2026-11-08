@@ -24,6 +24,9 @@ import { commandFailure, UNCERTAIN_RETRY_SAFE } from "../data/commands";
 import { newRequestId } from "../data/requestId";
 import { useFormError } from "../ui/components";
 import { DoneByChoice } from "../ui/DoneByChoice";
+import { WhatsAppShare } from "../ui/WhatsAppShare";
+import { appLink, taskMessage } from "../data/whatsapp";
+import { addressOf } from "../nav";
 
 const OPERATION_CATEGORIES: Array<[OperationCategory, string]> = [
   ["delivery", "Delivery"],
@@ -118,17 +121,32 @@ export function OperationView() {
           <strong>{item.title}</strong>
           <p>{hub.name} · {category}{item.status === "done" ? " · done" : ""}</p>
         </div>
-        <Pill
-          tone={
-            item.status === "done"
-              ? "settled"
-              : item.kind === "task"
-                ? "sage"
-                : "open"
-          }
-        >
-          {item.status === "done" ? "Done" : category}
-        </Pill>
+        <div className="c-hero-side">
+          <Pill
+            tone={
+              item.status === "done"
+                ? "settled"
+                : item.kind === "task"
+                  ? "sage"
+                  : "open"
+            }
+          >
+            {item.status === "done" ? "Done" : category}
+          </Pill>
+          {item.kind === "task" && item.status === "open" ? (
+            <WhatsAppShare
+              label={`Share ${item.title} to WhatsApp`}
+              text={taskMessage({
+                title: item.title,
+                communeName: hub.name,
+                when: item.date === todayIso() ? "today" : operationDateFormatter.format(dateFromIso(item.date)),
+                holderName: item.assignee,
+                yours: item.assigneeId === you.id,
+                link: appLink(addressOf("operations", { window: "operation", record: item.id, commune: hub.id })),
+              })}
+            />
+          ) : null}
+        </div>
       </div>
       <div className="a-note-facts">
         <div className="a-note-fact">

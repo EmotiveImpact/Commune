@@ -75,6 +75,8 @@ export type Hub = {
   destination?: string;
   stayName?: string;
   stayAddress?: string;
+  /** The commune's WhatsApp group invite link, or "". */
+  chatLink?: string;
   lede: string;
   people: string;
   photo: string;

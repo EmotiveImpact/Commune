@@ -31,6 +31,9 @@ import type { Notification, UnreadNotice } from "../live/model";
 import { lazyComponent } from "../shell/lazyComponent";
 import { PayeeLinks, PayLinksEditor, PayPrimary } from "../ui/PayLinks";
 import { CalendarDate } from "../ui/CalendarDate";
+import { WhatsAppShare } from "../ui/WhatsAppShare";
+import { appLink, billMessage } from "../data/whatsapp";
+import { addressOf } from "../nav";
 
 // Schedule items and announcements open less often: their windows load when
 // first opened (or once the browser is idle), behind the record skeleton.
@@ -512,6 +515,12 @@ function AddExpense() {
   );
 }
 
+/** Each share's amount when everyone's share is the same, for the message; otherwise none. */
+function evenShare(shares: Array<{ amountMinor: number }>, currency: Parameters<typeof formatMoney>[1]): string | undefined {
+  if (shares.length < 2 || shares.some((share) => share.amountMinor !== shares[0].amountMinor)) return undefined;
+  return formatMoney(shares[0].amountMinor, currency);
+}
+
 function Expense() {
   const {
     go, closeWindow, hub, selectedExpense, session,
@@ -547,7 +556,16 @@ function Expense() {
           <strong>{selectedExpense.name}</strong>
           <p>{hub.name} · {hub.type}{selectedExpense.category ? ` · ${selectedExpense.category}` : ""}</p>
         </div>
-        <Pill tone={voided ? undefined : selectedExpense.status}>{selectedExpense.statusLabel}</Pill>
+        <div className="c-hero-side">
+          <Pill tone={voided ? undefined : selectedExpense.status}>{selectedExpense.statusLabel}</Pill>
+          {!voided ? <WhatsAppShare label={`Share ${selectedExpense.name} to WhatsApp`} text={billMessage({
+            title: selectedExpense.name, amount: formatMoney(selectedExpense.amountMinor, hub.currency),
+            payerName: personName(selectedExpense.paidByUserId, selectedExpense.paidBy), communeName: hub.name,
+            due: selectedExpense.dueOn ? selectedExpense.due : undefined,
+            shareAmount: evenShare(selectedExpense.shares, hub.currency),
+            link: appLink(addressOf("expenses", { window: "expense", record: selectedExpense.id, commune: hub.id })),
+          })} /> : null}
+        </div>
       </div>
       {voided ? <p className="c-expense-voided" role="note">Voided by {fullName(selectedExpense.voidedBy ?? "")} on {formatTimestampDay(selectedExpense.voidedAt)}: {selectedExpense.voidReason}</p> : null}
       {/* Your part first, as the phone app's expense screen opens. */}
@@ -631,7 +649,7 @@ function Expense() {
           Close
         </button>
       </div>
-      <ReminderFlowDialog flow={reminder} usage={reminderUsage} />
+      <ReminderFlowDialog flow={reminder} usage={reminderUsage} link={appLink(addressOf("settle", { commune: hub.id }))} />
       {receipts.dialogs}
       {change.dialogs}
     </section>

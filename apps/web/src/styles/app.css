@@ -545,6 +545,17 @@
   border: 1px solid var(--border);
 }
 
+/* Links styled as buttons, such as Open group chat in settings. */
+a.a-btn { text-decoration: none; }
+
+/* Share to WhatsApp: a small round icon button that sits beside other actions. */
+.c-wa-icon { display: inline-grid; place-items: center; width: 38px; height: 38px; flex: none; border: 1px solid var(--border); border-radius: 50%; background: #fff; color: var(--ink); text-decoration: none; }
+.c-wa-icon:hover { border-color: var(--border-strong); color: var(--sage-strong); }
+.c-wa-icon:focus-visible, .c-wa-link:focus-visible { outline: 2px solid var(--sage-strong); outline-offset: 2px; }
+/* A one-line text link with the mark, for places that explain the choice. */
+.c-wa-link { display: inline-flex; align-items: center; gap: 6px; color: var(--sage-strong); font-weight: 500; text-decoration: none; }
+.c-wa-link:hover { text-decoration: underline; }
+
 .a-photo-bar {
   display: flex;
   flex-wrap: wrap;
@@ -3237,3 +3248,6 @@ button.a-item {
 .c-invite-history ul { margin: 8px 0 0; padding-left: 18px; }
 .c-invite-history li { margin: 2px 0; overflow-wrap: anywhere; }
 
+
+/* The top right of a bill or task: its status, with Share to WhatsApp under it, as in the phone app. */
+.c-hero-side { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; flex: none; }

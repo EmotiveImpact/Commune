@@ -35,6 +35,8 @@ export interface Backend {
   removePayLink(provider: PayProvider): Promise<PayLink[]>;
   /** Mark one of your links as your favourite, or none (null). */
   setPreferredPayLink(provider: PayProvider | null): Promise<PayLink[]>;
+  /** An admin links the commune's WhatsApp group, or removes it with "". Returns the link as stored. */
+  setChatLink(communeId: string, link: string): Promise<string>;
 }
 
 export class ApiError extends Error {
@@ -99,6 +101,9 @@ export function serverBackend(base: string): Backend {
     },
     async setPreferredPayLink(provider) {
       return parsePayLinks((await call<{ links: unknown }>("/pay-links-preferred", { method: "PUT", body: JSON.stringify({ provider }) })).links);
+    },
+    async setChatLink(communeId, link) {
+      return (await call<{ link: string }>(`/communes/${encodeURIComponent(communeId)}/chat-link`, { method: "PUT", body: JSON.stringify({ link }) })).link;
     },
   };
 }

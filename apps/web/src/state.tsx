@@ -417,6 +417,8 @@ export type AppState = {
     name: string; type: LiveHub["type"]; currency: CurrencyCode;
     address: string; destination: string; stayName: string; stayAddress: string;
   }) => Promise<void>;
+  /** Links the open commune's WhatsApp group, or removes it with "". Admins only. */
+  setCommuneChatLink: (link: string) => Promise<string>;
   recordExpense: (input: CreateExpenseInput) => Promise<string>;
   confirmExpenseShare: (shareId: string) => Promise<void>;
   /** Payer or admin corrects an expense. A stale expectedVersion is a conflict. */
@@ -1551,6 +1553,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await refreshRecords();
   }), [activeId, mutate, refreshRecords]);
 
+  const setCommuneChatLink = useCallback((link: string) => mutate(async () => {
+    if (!activeId) throw new Error("Choose a commune first");
+    const result = await api<{ link: string }>(`/communes/${encodeURIComponent(activeId)}/chat-link`, {
+      method: "PUT", body: JSON.stringify({ link }),
+    });
+    await refreshRecords();
+    return result.link;
+  }), [activeId, mutate, refreshRecords]);
+
   const recordExpense = useCallback((input: CreateExpenseInput) => mutate(async () => {
     const data = dataRef.current;
     if (!activeId) throw new Error("Create or join a commune first");
@@ -2050,7 +2061,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setNavMode, setTheme, setNoticesOn,
     clearSearchTarget, openFullSearch, recallSearch, rememberSearch, savePayMethod, setHubPhoto, setAvatar, addNote, updateNote, loadNoteRevision,
     addOperation, updateOperation, toggleOperation, skipOperation, handOverOperation, undoOperation,
-    removeOperation, createHub, updateCommune, recordExpense, confirmExpenseShare, correctExpense, voidExpense, recordShareReceipt, reverseShareReceipt,
+    removeOperation, createHub, updateCommune, setCommuneChatLink, recordExpense, confirmExpenseShare, correctExpense, voidExpense, recordShareReceipt, reverseShareReceipt,
     reportSharePayment, withdrawPaymentReport, resolvePaymentReport,
     announcements, postAnnouncement, acknowledgeAnnouncement, archiveAnnouncement,
     markExpensePaid, createInvite, sendInviteEmail, revokeInvite, previewInvite, inviteAddressHint, acceptInvite, createFund,

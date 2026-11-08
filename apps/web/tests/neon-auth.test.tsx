@@ -18,7 +18,7 @@ describe("hosted read authentication", () => {
   // The list, each role and member count and each change mark come from one
   // database function, read together.
   const listed = { id: "commune-1", name: "Home", kind: "household", currency: "GBP", address: "", destination: "",
-    stayName: "", stayAddress: "", role: "admin", memberCount: 2, changeMark: "2026-10-09:3:41" };
+    stayName: "", stayAddress: "", chatLink: "https://chat.whatsapp.com/AbCdEfGhIjKlMnOpQrStUv", role: "admin", memberCount: 2, changeMark: "2026-10-09:3:41" };
   function listResult(data: unknown, error: unknown = null) {
     mocks.getSession.mockResolvedValue({ data: { user: { id: "viewer", emailVerified: true } } });
     mocks.rpc.mockResolvedValue({ data, error });
@@ -40,7 +40,8 @@ describe("hosted read authentication", () => {
     listResult([listed]);
     const { listCommunes } = await import("../src/live/neon");
     expect(await listCommunes()).toEqual([{ id: "commune-1", name: "Home", kind: "household", currency: "GBP", role: "admin",
-      memberCount: 2, address: "", destination: "", stayName: "", stayAddress: "", changeMark: "2026-10-09:3:41" }]);
+      memberCount: 2, address: "", destination: "", stayName: "", stayAddress: "", chatLink: "https://chat.whatsapp.com/AbCdEfGhIjKlMnOpQrStUv",
+      changeMark: "2026-10-09:3:41" }]);
     expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith("my_communes");
     expect(mocks.from).not.toHaveBeenCalled();
   });

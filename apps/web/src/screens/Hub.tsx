@@ -16,6 +16,7 @@ import { formatTimestampDay } from "../data/reminders";
 import type { Hub, NoteCard } from "../data/household";
 import { formatMoney } from "@commune/core";
 import { cx } from "../ui/cx";
+import { WhatsAppMark } from "../ui/WhatsAppShare";
 
 const weekday = new Intl.DateTimeFormat("en-GB", { weekday: "short" });
 import "./Hub.css";
@@ -283,6 +284,20 @@ function Essential({ id, note }: { id: string; note: NoteCard }) {
   </article>;
 }
 
+/**
+ * The house's WhatsApp group, where the chatting happens. Commune has no chat
+ * of its own; an admin links the group in commune settings. On the Hub it is a
+ * small round button beside the people, so it takes no room of its own.
+ */
+function GroupChat() {
+  const { hub } = useApp();
+  if (!hub.chatLink) return null;
+  return <a className="c-hub-chat" href={hub.chatLink} target="_blank" rel="noopener noreferrer"
+    aria-label="Open the group chat on WhatsApp (opens WhatsApp)" title="Group chat on WhatsApp">
+    <WhatsAppMark size={16} />
+  </a>;
+}
+
 const PRIORITY = ["Emergency", "Wi-Fi", "Keys / door", "Bins", "Contacts", "House rules", "Other"];
 
 type HubTab = "overview" | "money" | "chores" | "notes";
@@ -427,10 +442,13 @@ export function HubScreen() {
       <div className="c-hub-identity-copy"><span className="c-hub-type">{hub.type}</span>
         <h2>{hub.name}</h2>
         <HubLocation hub={hub} />
-        <button type="button" className="c-hub-people-link" onClick={() => go("members")}>
-          <span className="avatar-stack" aria-hidden="true">{hub.members.slice(0, 5).map(member => <Avatar key={member.userId ?? member.name} tone={member.cls} initials={member.ini} />)}</span>
-          <span>{hub.members.length} {hub.members.length === 1 ? "person" : "people"}</span>{" "}<span className="c-visually-hidden">in this commune, view members</span>
-        </button>
+        <div className="c-hub-people-row">
+          <button type="button" className="c-hub-people-link" onClick={() => go("members")}>
+            <span className="avatar-stack" aria-hidden="true">{hub.members.slice(0, 5).map(member => <Avatar key={member.userId ?? member.name} tone={member.cls} initials={member.ini} />)}</span>
+            <span>{hub.members.length} {hub.members.length === 1 ? "person" : "people"}</span>{" "}<span className="c-visually-hidden">in this commune, view members</span>
+          </button>
+          <GroupChat />
+        </div>
         <p className="c-hub-pulse">{weekSentence(late, dueToday, bills)}</p>
       </div>
       {/* On a phone, Change opens the menu with your communes, as in the phone app. */}

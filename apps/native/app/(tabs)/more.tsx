@@ -1,7 +1,7 @@
 import type { ComponentType } from "react";
 import { View } from "react-native";
 import { useRouter, type Href } from "expo-router";
-import { ChevronRight, FileText, Files, Repeat2, ShoppingBag, SquareCheck, UsersRound } from "lucide-react-native";
+import { ChevronRight, FileText, Files, MessageCircle, Repeat2, ShoppingBag, SquareCheck, UsersRound } from "lucide-react-native";
 import { activeMembers } from "../../src/lib/derive";
 import { joinAnd } from "../../src/lib/format";
 import { useApp } from "../../src/state";
@@ -29,6 +29,7 @@ export default function More() {
       sub: mineToday ? `${mineToday.title} is yours today` : ops.length ? `${ops.length} on the list` : "Nothing on the list" },
     { icon: FileText, label: "Notes", href: "/notes", sub: notes.length ? joinAnd(notes.slice(0, 3).map((note) => note.title)) : "Nothing written down yet" },
     { icon: UsersRound, label: "Members", href: "/members", sub: `${people} ${people === 1 ? "person" : "people"}` },
+    { icon: MessageCircle, label: "Group chat", href: "/group-chat", sub: current.commune.chatLink ? "WhatsApp group linked" : current.commune.role === "admin" ? "Link your WhatsApp group" : "No group chat linked yet" },
     { icon: Repeat2, label: "Recurring", href: "/recurring", sub: bills.length ? joinAnd(bills.slice(0, 3).map((bill) => bill.title)) : "Nothing repeats here" },
     { icon: ShoppingBag, label: "Funds", href: "/funds", sub: funds.length ? `${funds.length} shared ${funds.length === 1 ? "pot" : "pots"}` : "No shared pots yet" },
     { icon: Files, label: "Templates", href: "/templates", sub: templates.length ? `${templates.length} saved ${templates.length === 1 ? "split" : "splits"}` : "None saved yet" },
