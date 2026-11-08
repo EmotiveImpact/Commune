@@ -5,13 +5,14 @@ import { useApp, type AppState, type CurrencyCode, type LiveExpenseRow } from ".
 import { Avatar, Pill } from "../ui/widgets";
 import { cx } from "../ui/cx";
 import { RecipientReminderCount, ReminderAllowanceNotice } from "../ui/ReminderUsage";
-import { Plus, ReceiptText, ChevronRight, Search } from "lucide-react";
+import { Plus, ReceiptText, ChevronDown, ChevronRight, Search } from "lucide-react";
+import { CoverImage, coverToneClass } from "../ui/CoverImage";
 import { LIMITS } from "../data/limits";
 import { ReminderFlowDialog, useReminderFlow } from "../ui/ReminderConfirm";
 import { formatReminderDay, reminderEligibility } from "../data/reminders";
 import { LatestReportAnswer, pendingReport, reportSummary, useReceiptActions } from "../ui/Receipts";
 import { CalendarDate } from "../ui/CalendarDate";
-import { initialsOf } from "../data/household";
+import { initialsOf, type Hub } from "../data/household";
 import { formatMoney } from "@commune/core";
 import "./Money.css";
 import { seenStory } from "../stories/choose";
@@ -24,8 +25,24 @@ function monthName(month: string): string {
     ...(date.getUTCFullYear() === new Date().getUTCFullYear() ? {} : { year: "numeric" }) }).format(date);
 }
 
+/** The commune a list belongs to, with Change, as the phone app heads Expenses. Phone only. */
+const CommuneBar = memo(function CommuneBar({ name, type, photo, people, onChange }: {
+  name: string; type: Hub["type"]; photo: string; people: number; onChange: (open: boolean) => void;
+}) {
+  return <button className="c-commune-bar" type="button" onClick={() => onChange(true)}>
+    <span className={cx("c-commune-bar-photo", coverToneClass({ type, photo }))} aria-hidden="true">{photo ? <CoverImage hub={{ type, photo }} placement="thumb" /> : null}</span>
+    <span className="c-commune-bar-copy"><strong>{name}</strong><small>{type} · {people} {people === 1 ? "person" : "people"}</small></span>
+    <span className="c-commune-bar-change">Change<span className="c-visually-hidden"> commune</span><ChevronDown size={16} aria-hidden="true" /></span>
+  </button>;
+});
+
+function HubBar() {
+  const { hub, setMoreOpen } = useApp();
+  return <CommuneBar name={hub.name} type={hub.type} photo={hub.photo} people={hub.members.length} onChange={setMoreOpen} />;
+}
+
 export function ExpensesScreen() {
-  const { go, expenses, voidedExpenses, session, hub, expenseHistory, loadEarlierExpenses } = useApp();
+  const { go, expenses, voidedExpenses, session, hub, expenseHistory, loadEarlierExpenses, setMoreOpen } = useApp();
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<"All" | "Open" | "Settled" | "Voided">("All");
   // Open expenses always show. Settled and voided ones show from the start of
@@ -71,6 +88,7 @@ export function ExpensesScreen() {
 
   return (
     <>
+      <CommuneBar name={hub.name} type={hub.type} photo={hub.photo} people={hub.members.length} onChange={setMoreOpen} />
       <div className="a-toolbar">
         <div className="a-filters">
           {(voidedExpenses.length || expenseHistory.olderVoidedCount ? ["All", "Open", "Settled", "Voided"] as const : ["All", "Open", "Settled"] as const).map((chip) => (
@@ -136,6 +154,7 @@ export function ExpensesEmptyScreen() {
   }
   return (
     <>
+      <HubBar />
       <div className="a-toolbar">
         <button className="a-btn" type="button" onClick={() => go("add-expense")}>
           <Plus size={16} aria-hidden="true" /> Add expense
@@ -149,6 +168,8 @@ export function ExpensesEmptyScreen() {
     </>
   );
 }
+
+const NUMBER_WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"];
 
 export function SettleScreen() {
   const { go, hub, expenses, session, reminderTargets, reminderUsage, sentReminders, sendReminder, personName, payLinksFor } = useApp();
@@ -178,8 +199,21 @@ export function SettleScreen() {
     .sort((a, b) => Date.parse(b.receipt.reversedAt ?? b.receipt.recordedAt) - Date.parse(a.receipt.reversedAt ?? a.receipt.recordedAt))
     .slice(0, 8);
 
+  // One sentence first, as the phone app opens Settle.
+  const owedTo = new Set(moves.filter(({ share }) => share.userId === me).map(({ expense }) => expense.paidByUserId));
+  const oneName = owedTo.size === 1 ? personName([...owedTo][0], "the bill payer", { left: true }) : "";
+  const headline = youOwe
+    ? `You owe ${formatMoney(youOwe, hub.currency)} to ${oneName || `${NUMBER_WORDS[owedTo.size] ?? owedTo.size} people`}.`
+    : youAreOwed ? `You’re owed ${formatMoney(youAreOwed, hub.currency)}.` : "You’re all square here.";
+  const subline = youOwe && youAreOwed ? `You’re owed ${formatMoney(youAreOwed, hub.currency)}.`
+    : !youOwe && !youAreOwed ? "Nothing to pay and nothing waiting to collect." : "";
+
   return (
     <>
+      <div className="c-settle-head" data-answer="fade">
+        <h2 className="c-settle-headline">{headline}</h2>
+        {subline ? <p className="c-settle-subline">{subline}</p> : null}
+      </div>
       {/* What was recorded is said in the toast; only what could not be done stays here. */}
       {message ? <p className="a-form-error" role="alert">{message}</p> : null}
       <div className="c-settle-columns">{[false, true].map(receivingGroup => <section data-flip-box="" className="a-panel c-settle-column" aria-label={receivingGroup ? "You’re owed" : "You owe"} key={String(receivingGroup)}>

@@ -79,7 +79,8 @@ function translateOf(element: Element): { x: number; y: number } {
  *
  * Parts marked data-leave say how they go: "scrim" fades; "surface" drops
  * back to the bottom edge when it is a sheet there, and otherwise falls 8px
- * as it fades; "drawer" slides back the way it came. Each starts from where
+ * as it fades; "drawer" slides back the way it came, to the left, and
+ * "drawer-end" to the right. Each starts from where
  * it is now, so closing during an entry reverses it.
  */
 export function leaveGhost(root: HTMLElement, options: { backdrop?: boolean } = {}): void {
@@ -159,6 +160,7 @@ export function leaveGhost(root: HTMLElement, options: { backdrop?: boolean } = 
       element.style.transition = `opacity ${duration}ms ${ease}, transform ${duration}ms ${ease}`;
       if (state.kind === "scrim") element.style.opacity = "0";
       else if (state.kind === "drawer") element.style.transform = "translateX(-100%)";
+      else if (state.kind === "drawer-end") element.style.transform = "translateX(100%)";
       else if (state.sheet) element.style.transform = "translateY(100%)";
       else { element.style.opacity = "0"; element.style.transform = "translateY(8px)"; }
     });

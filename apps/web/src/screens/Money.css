@@ -56,6 +56,9 @@
 }
 @media(max-width:560px) { .c-expense-entry { gap: 10px; padding: 18px; } .c-expense-entry > svg { display: none; } .c-expense-copy small { line-height: 1.6; } .c-fund-progress { align-items: flex-start; flex-direction: column; } .c-fund-progress > div { width: 100%; min-height: 6px; flex: none; } }
 .is-dark .c-money-icon { background: #2a3440; color: #b5c6bb; }
+.c-settle-head { display: grid; gap: 4px; margin: 0 0 18px; }
+.c-settle-headline { margin: 0; font-family: var(--font-display, inherit); font-size: 26px; font-weight: 450; letter-spacing: -0.6px; line-height: 1.2; }
+.c-settle-subline { margin: 0; color: var(--ink-soft); font-size: 15px; line-height: 1.45; }
 .c-settle-columns { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 22px; }
 .a-panel.c-settle-column { min-width: 0; background: var(--white); box-shadow: none; border-radius: var(--radius-surface); padding: 23px; align-self: stretch; }
 .a-panel.c-settle-column h2 { font-size: 18px; font-weight: 550; }
@@ -253,4 +256,20 @@
   .c-pay-tell { flex: 1 1 100%; }
 }
 .c-pay-favourite { color: var(--action); font-weight: 600; }
+
+/* Phone: the commune a list belongs to, with Change; and a lighter Settle. */
+.c-commune-bar { display: none; }
+@media (max-width: 560px) {
+  .c-commune-bar { display: flex; align-items: center; gap: 12px; width: 100%; margin: 0 0 14px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-surface); background: var(--white); color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+  .c-commune-bar-photo { position: relative; flex-shrink: 0; width: 40px; height: 40px; overflow: hidden; border-radius: 10px; background: var(--paper-2); }
+  .c-commune-bar-photo .c-cover-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .c-commune-bar-copy { display: grid; flex: 1; min-width: 0; }
+  .c-commune-bar-copy strong { font-size: 16px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .c-commune-bar-copy small { font-size: 13px; color: var(--ink-soft); }
+  .c-commune-bar-change { display: inline-flex; align-items: center; gap: 4px; font-size: 14px; font-weight: 500; }
+  .c-settle-headline { font-size: 22px; }
+  .c-settle-columns { gap: 16px; }
+  .a-panel.c-settle-column { padding: 18px; }
+  .c-settle-total { font-size: 26px; letter-spacing: -0.8px; margin: 4px 0 6px; }
+}
 }

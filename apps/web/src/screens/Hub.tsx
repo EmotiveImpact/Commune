@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Archive, CalendarDays, ChevronRight, Copy, Eye, Megaphone, Phone, ReceiptText, UsersRound, type LucideIcon } from "lucide-react";
+import { Archive, CalendarDays, ChevronDown, ChevronRight, Copy, Eye, Files, Megaphone, Phone, Plus, ReceiptText, Repeat2, ShoppingBag, UsersRound, type LucideIcon } from "lucide-react";
 import { useApp } from "../state";
 import { Avatar } from "../ui/widgets";
 import { Icon } from "../ui/Icon";
@@ -14,6 +14,8 @@ import { hideToast, showToast } from "../ui/Toast";
 import { DoneByChoice } from "../ui/DoneByChoice";
 import { formatTimestampDay } from "../data/reminders";
 import type { Hub, NoteCard } from "../data/household";
+import { formatMoney } from "@commune/core";
+import { cx } from "../ui/cx";
 import { WhatsAppMark } from "../ui/WhatsAppShare";
 
 const weekday = new Intl.DateTimeFormat("en-GB", { weekday: "short" });
@@ -298,8 +300,133 @@ function GroupChat() {
 
 const PRIORITY = ["Emergency", "Wi-Fi", "Keys / door", "Bins", "Contacts", "House rules", "Other"];
 
+type HubTab = "overview" | "money" | "chores" | "notes";
+const HUB_TABS: Array<{ id: HubTab; label: string }> = [
+  { id: "overview", label: "Overview" }, { id: "money", label: "Money" }, { id: "chores", label: "Chores" }, { id: "notes", label: "Notes" },
+];
+
+/** The Hub's four tabs under the photo, as in the phone app. */
+function HubTabs({ tab, onPick }: { tab: HubTab; onPick: (tab: HubTab) => void }) {
+  const refs = useRef<Array<HTMLButtonElement | null>>([]);
+  function key(event: React.KeyboardEvent, index: number) {
+    const step = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
+    if (!step) return;
+    event.preventDefault();
+    const next = (index + step + HUB_TABS.length) % HUB_TABS.length;
+    onPick(HUB_TABS[next].id);
+    refs.current[next]?.focus();
+  }
+  return <div className="c-hub-tabs" role="tablist" aria-label="Hub">
+    {HUB_TABS.map((item, index) => <button key={item.id} ref={(element) => { refs.current[index] = element; }} id={`hub-tab-${item.id}`}
+      className={cx("c-hub-tab", tab === item.id && "is-on")} type="button" role="tab" aria-selected={tab === item.id}
+      aria-controls="hub-tab-panel" tabIndex={tab === item.id ? 0 : -1} onKeyDown={(event) => key(event, index)} onClick={() => onPick(item.id)}>
+      {item.label}
+    </button>)}
+  </div>;
+}
+
+/** What you owe and are owed in this commune, bill by bill, then the money pages. */
+function MoneyTab() {
+  const { hub, expenses, session, go, personName, payLinksFor, recurringBills, splitTemplates, funds } = useApp();
+  const [message, setMessage] = useState("");
+  const receipts = useReceiptActions(setMessage);
+  const me = session?.userId;
+  const today = todayIso();
+  const owe = expenses.flatMap(expense => expense.shares
+    .filter(share => share.userId === me && expense.paidByUserId !== me && share.amountMinor > share.settledMinor)
+    .map(share => ({ expense, share, outstanding: share.amountMinor - share.settledMinor })));
+  const owed = expenses.flatMap(expense => expense.paidByUserId !== me ? [] : expense.shares
+    .filter(share => share.userId !== me && share.amountMinor > share.settledMinor)
+    .map(share => ({ expense, share, outstanding: share.amountMinor - share.settledMinor })));
+  const total = (rows: typeof owe) => formatMoney(rows.reduce((sum, row) => sum + row.outstanding, 0), hub.currency);
+  const bills = recurringBills.slice(0, 3).map(bill => bill.title);
+  const templates = splitTemplates.filter(item => !item.archivedAt).length;
+  const pots = funds.filter(fund => !fund.archivedAt).length;
+  const more: Array<{ icon: LucideIcon; label: string; sub: string; go: "recurring" | "templates" | "funds" }> = [
+    { icon: Repeat2, label: "Recurring", go: "recurring", sub: bills.length ? bills.join(", ") : "Nothing repeats here" },
+    { icon: Files, label: "Templates", go: "templates", sub: templates ? `${templates} saved ${templates === 1 ? "split" : "splits"}` : "None saved yet" },
+    { icon: ShoppingBag, label: "Funds", go: "funds", sub: pots ? `${pots} shared ${pots === 1 ? "pot" : "pots"}` : "No shared pots yet" },
+  ];
+  return <>
+    <section className="c-hub-panel c-hub-money" aria-label="You owe here">
+      <div className="c-hub-section-head"><h2 className="c-hub-section-title">You owe here</h2>{owe.length > 0 && <span className="c-hub-count">{owe.length} · {total(owe)}</span>}</div>
+      {owe.length ? owe.map(({ expense, share, outstanding }) => {
+        const payerName = personName(expense.paidByUserId, "the bill payer");
+        const target = { shareId: share.id, payerName, payerId: expense.paidByUserId, expenseName: expense.name, outstandingMinor: outstanding, currency: hub.currency, communeId: hub.id, expenseId: expense.id };
+        const late = Boolean(expense.dueOn && expense.dueOn < today);
+        return <div className="c-hub-money-row" key={share.id}>
+          {expense.dueOn ? <CalendarDate className="c-hub-money-date" date={expense.dueOn} today={today} /> : <span className="c-hub-money-date is-none" aria-hidden="true"><ReceiptText size={17} strokeWidth={1.5} /></span>}
+          <button className="c-hub-money-copy" type="button" onClick={() => go("expense", { expense: expense.id })}>
+            <strong>{expense.name}</strong>
+            <small>Your share {formatMoney(outstanding, hub.currency)}{late ? <span className="c-hub-late"> · late</span> : null}</small>
+          </button>
+          <button className="c-hub-pill is-small" type="button" disabled={receipts.busy} onClick={() => { setMessage(""); if (payLinksFor(expense.paidByUserId)?.length) receipts.pay(target); else receipts.report(target); }}>
+            {payLinksFor(expense.paidByUserId)?.length ? "Pay" : "I’ve paid"}<span className="c-visually-hidden"> {payerName} for {expense.name}</span>
+          </button>
+        </div>;
+      }) : <div className="c-hub-empty"><p>Nothing to pay here. Every bill you share in {hub.name} is recorded.</p></div>}
+    </section>
+    <section className="c-hub-panel c-hub-money" aria-label="Owed to you here">
+      <div className="c-hub-section-head"><h2 className="c-hub-section-title">Owed to you here</h2>{owed.length > 0 && <span className="c-hub-count">{total(owed)}</span>}</div>
+      {owed.length ? owed.map(({ expense, share, outstanding }) => <button className="c-hub-money-row is-owed" type="button" key={share.id} onClick={() => go("expense", { expense: expense.id })}>
+        <Avatar tone={hub.members.find(member => member.userId === share.userId)?.cls ?? "house"} initials={hub.members.find(member => member.userId === share.userId)?.ini ?? "?"} decorative />
+        <span className="c-hub-money-copy"><strong>{personName(share.userId, "A former member", { left: true })}</strong><small>{expense.name}</small></span>
+        <strong className="c-hub-money-amount">{formatMoney(outstanding, hub.currency)}</strong>
+      </button>) : <div className="c-hub-empty"><p>Nobody owes you here.</p></div>}
+    </section>
+    <div className="c-hub-part-actions">
+      <button className="c-hub-button" type="button" onClick={() => go("add-expense")}><Plus size={16} aria-hidden="true" />Add expense</button>
+      <button className="c-hub-link" type="button" onClick={() => go("expenses")}>All expenses</button>
+      <button className="c-hub-link" type="button" onClick={() => go("settle")}>Settlement</button>
+    </div>
+    <section className="c-hub-panel c-hub-more" aria-label="More money">
+      {more.map(row => <button key={row.label} className="c-hub-note-row c-hub-more-row" type="button" onClick={() => go(row.go)}>
+        <span className="c-hub-more-icon" aria-hidden="true"><row.icon size={17} strokeWidth={1.6} /></span>
+        <span><strong>{row.label}</strong><small>{row.sub}</small></span><ChevronRight size={16} aria-hidden="true" />
+      </button>)}
+    </section>
+    {message && <p role="alert" className="a-form-error">{message}</p>}
+    {receipts.dialogs}
+  </>;
+}
+
+function RecentExpenses() {
+  const { expenses, go } = useApp();
+  if (!expenses.length) return null;
+  return <section className="c-hub-panel c-hub-recent" aria-label="Recent expenses">
+    <div className="c-hub-section-head"><HubHeading title="Recently in your commune" icon={ReceiptText} /><button className="c-hub-link" type="button" onClick={() => go("expenses")}>All expenses</button></div>
+    {expenses.slice(0, 3).map(row => <button key={row.id} className="c-hub-expense-row" type="button" onClick={() => go("expense", { expense: row.id })}>
+      <span><strong>{row.name}</strong><small>{firstOf(row.paidBy)} paid</small></span>
+      <span className="c-hub-expense-end"><strong>{row.amount}</strong><small className={`c-hub-expense-status is-${row.status}`}>{row.statusLabel}</small></span>
+    </button>)}
+  </section>;
+}
+
+function NotesTab({ essentials }: { essentials: Array<[string, NoteCard]> }) {
+  const { go } = useApp();
+  return <>
+    <section className="c-hub-panel c-hub-essentials" aria-label="Shared essentials">
+      <div className="c-hub-section-head"><HubHeading title="Shared essentials" icon={Archive} />
+        <button className="c-hub-link" type="button" onClick={() => go("notes")}>All notes</button></div>
+      {essentials.length ? <div className="c-hub-essential-grid">{essentials.slice(0, 4).map(([id, note]) => <Essential key={id} id={id} note={note} />)}</div>
+        : <div className="c-hub-empty"><p>Keep Wi-Fi, contacts and other useful details here.</p><button type="button" className="c-hub-link" onClick={() => go("note-new")}>Add a shared detail</button></div>}
+    </section>
+    {essentials.length > 4 && <section className="c-hub-panel" aria-label="All notes">
+      <div className="c-hub-section-head"><h2 className="c-hub-section-title">All notes</h2><span className="c-hub-count">{essentials.length}</span></div>
+      {essentials.map(([id, note]) => <button key={id} className="c-hub-note-row" type="button" onClick={() => go("note", { note: id })}>
+        <span><strong>{note.title}</strong><small>{noteCategory(note)}</small></span><ChevronRight size={16} aria-hidden="true" />
+      </button>)}
+    </section>}
+    <button className="c-hub-pill c-hub-add-wide" type="button" onClick={() => go("note-new")}><Plus size={16} aria-hidden="true" />Add a note</button>
+  </>;
+}
+
 export function HubScreen() {
-  const { hub, go, notes, expenses, operations } = useApp();
+  const { hub, go, notes, expenses, operations, setMoreOpen } = useApp();
+  // Another commune opens on its Overview.
+  const [chosen, setChosen] = useState<{ hub: string; tab: HubTab }>({ hub: hub.id, tab: "overview" });
+  const tab = chosen.hub === hub.id ? chosen.tab : "overview";
+  const setTab = (next: HubTab) => setChosen({ hub: hub.id, tab: next });
   // Pinned notes lead, then the details people look up most.
   const rank = (note: NoteCard) => (isNotePinned(note) ? -1 : 0) * 100 + (PRIORITY.indexOf(noteCategory(note)) + 1 || PRIORITY.length + 1);
   const essentials = Object.entries(notes).sort((a, b) => rank(a[1]) - rank(b[1]));
@@ -324,35 +451,34 @@ export function HubScreen() {
         </div>
         <p className="c-hub-pulse">{weekSentence(late, dueToday, bills)}</p>
       </div>
+      {/* On a phone, Change opens the menu with your communes, as in the phone app. */}
+      <button className="c-hub-settings c-hub-change" type="button" onClick={() => setMoreOpen(true)}><ChevronDown size={16} strokeWidth={1.8} aria-hidden="true" />Change<span className="c-visually-hidden"> commune</span></button>
       <div className="c-hub-hero-actions">
-        {canInvite && <button className="c-hub-settings" type="button" onClick={() => go("announcement-new")}><Megaphone size={16} strokeWidth={1.5} />Announce</button>}
+        {canInvite && <button className="c-hub-settings" type="button" onClick={() => go("announcement-new")}><Megaphone size={16} strokeWidth={1.5} /><span>Announce</span></button>}
         {canInvite && <button className="c-hub-settings" type="button" onClick={() => go("member-invite")}><UsersRound size={16} strokeWidth={1.5} />Invite</button>}
-        <button className="c-hub-settings" type="button" aria-label="Commune settings" onClick={() => go("commune-settings")}><Icon name="settings" size={16} /></button>
+        <button className="c-hub-settings c-hub-gear" type="button" aria-label="Commune settings" onClick={() => go("commune-settings")}><Icon name="settings" size={16} /></button>
       </div>
     </section>
-    <div className="c-hub-top">
-      <YourPart key={`part-${hub.id}`} />
-      <Announcements key={hub.id} />
+    <HubTabs tab={tab} onPick={setTab} />
+    <div className="c-hub-tab-panel" id="hub-tab-panel" role="tabpanel" aria-labelledby={`hub-tab-${tab}`}>
+      {tab === "overview" && <>
+        <div className="c-hub-top">
+          <YourPart key={`part-${hub.id}`} />
+          <Announcements key={hub.id} />
+        </div>
+        <Week key={`week-${hub.id}`} />
+        <People />
+      </>}
+      {tab === "money" && <><MoneyTab key={`money-${hub.id}`} /><RecentExpenses /></>}
+      {tab === "chores" && <>
+        <Week key={`chores-${hub.id}`} />
+        <button className="c-hub-pill c-hub-add-wide" type="button" onClick={() => go("operation-new")}><Plus size={16} aria-hidden="true" />Add a chore or event</button>
+      </>}
+      {tab === "notes" && <NotesTab essentials={essentials} />}
     </div>
-    <Week key={`week-${hub.id}`} />
-    <div className="c-hub-lower">
-      <People />
-      <section className="c-hub-panel c-hub-essentials" aria-label="Shared essentials">
-        <div className="c-hub-section-head"><HubHeading title="Shared essentials" icon={Archive} />
-          <button className="c-hub-link" type="button" onClick={() => go("notes")}>All notes</button></div>
-        {essentials.length ? <div className="c-hub-essential-grid">{essentials.slice(0, 4).map(([id, note]) => <Essential key={id} id={id} note={note} />)}</div>
-          : <div className="c-hub-empty"><p>Keep Wi-Fi, contacts and other useful details here.</p><button type="button" className="c-hub-link" onClick={() => go("note-new")}>Add a shared detail</button></div>}
-      </section>
-    </div>
-    {expenses.length > 0 && <section className="c-hub-panel c-hub-recent" aria-label="Recent expenses">
-      <div className="c-hub-section-head"><HubHeading title="Recently in your commune" icon={ReceiptText} /><button className="c-hub-link" type="button" onClick={() => go("expenses")}>All expenses</button></div>
-        {expenses.slice(0, 3).map(row => <button key={row.id} className="c-hub-expense-row" type="button" onClick={() => go("expense", { expense: row.id })}>
-          <span><strong>{row.name}</strong><small>{firstOf(row.paidBy)} paid</small></span>
-          <span className="c-hub-expense-end"><strong>{row.amount}</strong><small className={`c-hub-expense-status is-${row.status}`}>{row.statusLabel}</small></span>
-        </button>)}
-    </section>}
   </div>;
 }
 
 // An empty ledger still has people, notes and responsibilities. Keep them usable.
-export function HubEmptyScreen() { return <HubScreen />; }
+// The same component, so a first expense keeps the tab someone is on.
+export const HubEmptyScreen = HubScreen;

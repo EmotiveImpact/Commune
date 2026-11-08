@@ -1,0 +1,162 @@
+/*
+ * The web app on a phone follows the phone app (apps/native): the same top
+ * bar, tab bar and push menu. Colours come from the phone app's theme
+ * (apps/native/src/ui/theme.ts) and the shared tokens. Larger screens keep
+ * the sidebar; only the parts below that are not phone-only reach them.
+ */
+
+/* ---------- Top bar: the wordmark, then search, notifications and the burger ---------- */
+
+.a-header .a-header-wordmark {
+  display: none;
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+@media (max-width: 560px) {
+  .a-header .a-header-wordmark {
+    display: block;
+    margin-right: auto;
+    padding: 0 0 0 14px;
+    font-size: 25px;
+    font-weight: 600;
+    letter-spacing: -1.4px;
+    line-height: 44px;
+    color: #f5f1ea;
+  }
+  /* The page names itself to screen readers and keeps focus; the bar shows the wordmark. */
+  .a-header .a-header-title {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  /* You are the fifth tab now, so the bar has no avatar. */
+  .a-header .a-icon-btn.a-you-btn { display: none; }
+  .a-header .a-header-actions { margin-left: 0; }
+  .a-header .a-icon-btn.a-more-btn { margin-right: 2px; }
+}
+
+/* ---------- Tab bar: five tabs, no pill; the others rest at 55% ---------- */
+
+@media (max-width: 560px) {
+  .a-bottom { padding: 8px 6px calc(10px + env(safe-area-inset-bottom)); background: #1a1e2b; }
+  .a-bottom button {
+    gap: 4px;
+    color: #f5f1ea;
+    opacity: 0.55;
+    transition: opacity var(--motion-short, 150ms) var(--ease-standard, ease);
+  }
+  .a-bottom button.is-active { opacity: 1; font-weight: 600; }
+  .a-bottom .a-tab-pill { width: auto; height: 30px; background: none; }
+  .a-bottom button.is-active .a-tab-pill { background: none; }
+  .a-bottom button.is-active svg { stroke-width: 2.1; }
+  .a-bottom .a-tab-pill svg { width: 22px; height: 22px; }
+  .a-bottom .a-tab-you .avatar { width: 28px; height: 28px; font-size: 11px; border: 0; }
+  .a-bottom button.is-active .a-tab-you .avatar { box-shadow: 0 0 0 2px #f5f1ea; }
+}
+.a-body.is-dark .a-bottom { background: #0d1016; }
+
+/* ---------- The push menu ---------- */
+
+.c-pmenu {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 76px;
+  right: 0;
+  z-index: 41;
+  display: flex;
+  flex-direction: column;
+  background: #1a1e2b;
+  color: #f5f1ea;
+  padding-top: env(safe-area-inset-top, 0px);
+  animation: c-pmenu-in var(--motion-medium) var(--ease-standard);
+}
+.a-body.is-dark .c-pmenu { background: #0d1016; }
+@keyframes c-pmenu-in { from { transform: translateX(48px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+.c-pmenu-head { display: flex; align-items: center; min-height: 56px; padding: 0 8px 0 24px; }
+.c-pmenu-head h2 { flex: 1; margin: 0; font-size: 12.5px; font-weight: 600; color: rgba(245, 241, 234, 0.68); letter-spacing: 0; }
+.c-pmenu-x {
+  display: grid; place-items: center; width: 46px; height: 46px;
+  border: 0; border-radius: 12px; background: none; color: #f5f1ea; cursor: pointer;
+}
+.c-pmenu-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  padding: 0 12px calc(16px + env(safe-area-inset-bottom, 0px));
+}
+
+.c-pmenu-commune,
+.c-pmenu-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.c-pmenu-commune { min-height: 60px; padding: 8px; }
+.c-pmenu-row { min-height: 52px; padding: 0 8px; border-radius: 12px; }
+.c-pmenu-commune.is-current,
+.c-pmenu-commune:active,
+.c-pmenu-row:active { background: #262b3a; }
+@media (hover: hover) {
+  .c-pmenu-commune:hover, .c-pmenu-row:hover, .c-pmenu-x:hover { background: #262b3a; }
+}
+
+.c-pmenu-photo {
+  position: relative;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  overflow: hidden;
+  border-radius: 11px;
+  background: #262b3a;
+}
+.c-pmenu-photo .c-cover-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.c-pmenu-photo.is-new {
+  display: grid; place-items: center;
+  background: none; border: 1px solid rgba(245, 241, 234, 0.3);
+}
+.c-pmenu-icon { display: grid; place-items: center; width: 36px; height: 36px; flex-shrink: 0; color: rgba(245, 241, 234, 0.68); }
+
+.c-pmenu-copy { display: grid; flex: 1; min-width: 0; }
+.c-pmenu-copy strong { font-size: 15px; line-height: 20px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.c-pmenu-commune .c-pmenu-copy strong { font-size: 14.5px; font-weight: 600; }
+.c-pmenu-copy small { font-size: 12.5px; line-height: 17px; color: rgba(245, 241, 234, 0.68); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.c-pmenu-rule { height: 1px; margin: 12px 6px; border: 0; background: rgba(245, 241, 234, 0.16); }
+.c-pmenu-label { display: block; min-height: 22px; margin: 0; padding: 0 12px 4px; line-height: 18px; font-size: 13px; font-weight: 600; color: rgba(245, 241, 234, 0.68); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* The burger pushes the whole page, bar and tabs too, to the left, flat, and
+   leaves 76px of it in view; tapping that strip closes the menu. */
+@media (max-width: 560px) {
+  .a-main, .a-bottom { transition: transform var(--motion-medium) var(--ease-standard); }
+  .a-body.more-open .a-main,
+  .a-body.more-open .a-bottom { transform: translateX(calc(76px - 100vw)); }
+  .a-body.more-open .a-sheet-scrim { background: rgba(0, 0, 0, 0.35); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .a-body.more-open .a-main,
+  .a-body.more-open .a-bottom { transform: none; }
+  .c-pmenu { animation-name: c-fade-in; }
+}
+.a-body.is-native .c-pmenu { left: max(76px, calc(50% - 195px + 76px)); right: max(0px, calc(50% - 195px)); }
+.a-body.is-native.more-open .a-main { transform: none; }
+.a-body.is-native.more-open .a-bottom { transform: translateX(-50%); }
