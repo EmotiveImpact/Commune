@@ -553,7 +553,16 @@ function Expense() {
             {personName(selectedExpense.paidByUserId, selectedExpense.paidBy, { left: true })} paid {formatMoney(selectedExpense.amountMinor, hub.currency)}. {voided ? "This expense is voided and no longer counts towards any balance." : remaining ? `${formatMoney(remaining, hub.currency)} of shares remain open.` : "All shares are settled."}
           </p>
         </div>
-        <Pill tone={voided ? undefined : selectedExpense.status}>{selectedExpense.statusLabel}</Pill>
+        <div className="c-hero-side">
+          <Pill tone={voided ? undefined : selectedExpense.status}>{selectedExpense.statusLabel}</Pill>
+          {!voided ? <WhatsAppShare label={`Share ${selectedExpense.name} to WhatsApp`} text={billMessage({
+            title: selectedExpense.name, amount: formatMoney(selectedExpense.amountMinor, hub.currency),
+            payerName: personName(selectedExpense.paidByUserId, selectedExpense.paidBy), communeName: hub.name,
+            due: selectedExpense.dueOn ? selectedExpense.due : undefined,
+            shareAmount: evenShare(selectedExpense.shares, hub.currency),
+            link: appLink(addressOf("expenses", { window: "expense", record: selectedExpense.id, commune: hub.id })),
+          })} /> : null}
+        </div>
       </div>
       {voided ? <p className="c-expense-voided" role="note">Voided by {fullName(selectedExpense.voidedBy ?? "")} on {formatTimestampDay(selectedExpense.voidedAt)}: {selectedExpense.voidReason}</p> : null}
       {isPayer && !voided ? <ReminderUsageMeter usage={reminderUsage} /> : null}
@@ -615,13 +624,6 @@ function Expense() {
         <button className="a-btn" type="button" onClick={() => go("settle")}>Open settlement</button>
         {canChange ? <button className="a-btn ghost" type="button" onClick={() => { setMessage(""); change.correct(selectedExpense.id); }}>Correct</button> : null}
         {canChange ? <button className="a-btn ghost" type="button" onClick={() => { setMessage(""); change.void(selectedExpense.id); }}>Void</button> : null}
-        {!voided ? <WhatsAppShare label={`Share ${selectedExpense.name} to WhatsApp`} text={billMessage({
-          title: selectedExpense.name, amount: formatMoney(selectedExpense.amountMinor, hub.currency),
-          payerName: personName(selectedExpense.paidByUserId, selectedExpense.paidBy), communeName: hub.name,
-          due: selectedExpense.dueOn ? selectedExpense.due : undefined,
-          shareAmount: evenShare(selectedExpense.shares, hub.currency),
-          link: appLink(addressOf("expenses", { window: "expense", record: selectedExpense.id, commune: hub.id })),
-        })} /> : null}
         <button className="a-btn ghost" type="button" onClick={closeWindow}>
           Close
         </button>

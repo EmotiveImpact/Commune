@@ -3248,3 +3248,6 @@ button.a-item {
 .c-invite-history ul { margin: 8px 0 0; padding-left: 18px; }
 .c-invite-history li { margin: 2px 0; overflow-wrap: anywhere; }
 
+
+/* The top right of a bill or task: its status, with Share to WhatsApp under it, as in the phone app. */
+.c-hero-side { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; flex: none; }

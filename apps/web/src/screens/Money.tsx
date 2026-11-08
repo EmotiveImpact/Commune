@@ -1,4 +1,5 @@
-import { appLink } from "../data/whatsapp";
+import { appLink, nudgeMessage } from "../data/whatsapp";
+import { WhatsAppShare } from "../ui/WhatsAppShare";
 import { addressOf } from "../nav";
 import { memo, useState } from "react";
 import { useApp, type AppState, type CurrencyCode, type LiveExpenseRow } from "../state";
@@ -267,6 +268,7 @@ export function SettleScreen() {
                 </div>
               ) : receiving ? (
                 <div className="a-row-actions">
+                  <WhatsAppShare label={`Nudge ${debtorName} on WhatsApp`} text={nudgeMessage({ name: personName(share.userId, "your housemate"), amount: formatMoney(outstanding, hub.currency), subject: expense.name, link: appLink(addressOf("settle", { commune: hub.id })) })} />
                     <button className="a-btn nudge" type="button" disabled={!eligibility.canSend} title={reminderReason || undefined} onClick={() => { setMessage(""); reminder.open({ kind: "nudge", sourceId: share.id, recipientId: share.userId, name: personName(share.userId, "your housemate"), subject: expense.name, amount: formatMoney(outstanding, hub.currency), dueOn: expense.dueOn }); }}>
                       Nudge{" "}<span className="c-visually-hidden">{debtorName} about {expense.name}</span>
                     </button>
