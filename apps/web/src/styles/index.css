@@ -21,5 +21,6 @@
 @import "./design-system.css" layer(overrides);
 @import "./motion.css" layer(overrides);
 @import "./harmony.css" layer(overrides);
+@import "./phone-app.css" layer(overrides);
 /* Font faces only, which layers do not affect. */
 @import "./fonts.css";

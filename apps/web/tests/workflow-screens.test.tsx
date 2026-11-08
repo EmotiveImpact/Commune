@@ -273,13 +273,18 @@ describe("complete shared workflows", () => {
       }];
     }
     mount("/hub");
-    await screen.findByRole("heading", { name: "Shared essentials" });
+    // The Overview, then the Notes and Money tabs, keep the same quiet heading icons.
+    await screen.findByRole("heading", { name: "People" });
     const headings = [
       screen.getByRole("heading", { name: "This week" }),
       screen.getByRole("heading", { name: "People" }),
-      screen.getByRole("heading", { name: "Shared essentials" }),
     ];
-    if (state === "populated") headings.push(screen.getByRole("heading", { name: "Recently in your commune" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Notes" }));
+    headings.push(await screen.findByRole("heading", { name: "Shared essentials" }));
+    if (state === "populated") {
+      fireEvent.click(screen.getByRole("tab", { name: "Money" }));
+      headings.push(await screen.findByRole("heading", { name: "Recently in your commune" }));
+    }
     for (const heading of headings) {
       const icon = heading.querySelector(".c-hub-heading-icon");
       expect(icon).not.toBeNull();
@@ -289,6 +294,7 @@ describe("complete shared workflows", () => {
       expect(icon?.getAttribute("aria-hidden")).toBe("true");
     }
     expect(within(screen.getByRole("region", { name: "Commune identity" })).getByRole("heading").querySelector("svg")).toBeNull();
+    fireEvent.click(screen.getByRole("tab", { name: "Notes" }));
     fireEvent.click(screen.getByRole("button", { name: "All notes", exact: true }));
     await screen.findByRole("heading", { name: "No notes yet." });
   });

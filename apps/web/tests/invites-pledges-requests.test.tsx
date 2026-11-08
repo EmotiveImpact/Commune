@@ -432,7 +432,7 @@ describe("pledge notices", () => {
         expenseId: null, title: "Boiler fund", detail: null, createdAt: "2026-10-02T09:00:00Z", readAt: "2026-10-03T09:00:00Z" },
     ];
     mount("/hub");
-    await screen.findByRole("heading", { name: "Shared essentials" });
+    await screen.findByRole("heading", { name: "People" });
     act(() => app.go("notices"));
     const [changed, cancelled] = within(await screen.findByRole("dialog", { name: "Notices" })).getAllByRole("button", { name: /Boiler fund/ });
     expect(changed.textContent).toContain("Changed");

@@ -55,11 +55,12 @@ describe("cascade layers", () => {
       '@import "./design-system.css" layer(overrides);',
       '@import "./motion.css" layer(overrides);',
       '@import "./harmony.css" layer(overrides);',
+      '@import "./phone-app.css" layer(overrides);',
       '@import "./fonts.css";',
     ]);
     expect(stylesheets(resolve(src, "styles")).sort()).toEqual([
       "styles/app.css", "styles/auth.css", "styles/calendar-date.css", "styles/design-system.css",
-      "styles/fonts.css", "styles/harmony.css", "styles/index.css", "styles/legal.css", "styles/motion.css", "styles/overrides.css", "styles/shared.css",
+      "styles/fonts.css", "styles/harmony.css", "styles/index.css", "styles/legal.css", "styles/motion.css", "styles/overrides.css", "styles/phone-app.css", "styles/shared.css",
     ]);
     expect(topLevel(read("styles/fonts.css")).every((block) => block === "@font-face")).toBe(true);
   });

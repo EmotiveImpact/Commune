@@ -10,6 +10,7 @@ import { cx } from "../ui/cx";
 import { LeaveWithParent } from "../ui/components";
 import { crossFadeContent } from "../ui/motion";
 import { showToast } from "../ui/Toast";
+import { PhoneMenu } from "./PhoneMenu";
 
 type NavItem = { id: ScreenId; label: string; icon: IconName };
 
@@ -309,12 +310,8 @@ export function Header({ screen }: { screen: ScreenId }) {
   }, [searchOpen, currentWindow]);
   return (
     <header className={cx("a-header", (screen === "home" || screen === "home-empty") && (places.length ? "is-home" : "a-header-home"), scrolled && "is-scrolled")}>
-      <button className="a-icon-btn a-more-btn" type="button" aria-label="Menu" aria-haspopup="dialog" aria-expanded={moreOpen}
-        onClick={() => setMoreOpen(true)}>
-        <Icon name="menu" size={16} />
-      </button>
-      {/* A phone's Home names the app beside the menu; other pages name themselves. */}
-      {screen === "home" || screen === "home-empty" ? <span className="a-wordmark a-header-wordmark" aria-hidden="true">commune.</span> : null}
+      {/* On a phone the bar always carries the wordmark, as the phone app does; the page names itself for screen readers. */}
+      <button className="a-wordmark a-header-wordmark" type="button" aria-label="Commune, Home" onClick={() => go("home")}>commune.</button>
       <div className="a-header-title">
         <h1>{pageTitle}</h1>
         {pageLede ? <p>{pageLede}</p> : null}
@@ -337,6 +334,11 @@ export function Header({ screen }: { screen: ScreenId }) {
         <button className="a-icon-btn a-you-btn" type="button" aria-label="You" onClick={() => go("settings")}>
           <Avatar tone="maya" initials={you.initials} decorative />
         </button>
+        {/* The burger sits at the top right, after search and notifications, as in the phone app. */}
+        <button className="a-icon-btn a-more-btn" type="button" aria-label="Menu" aria-haspopup="dialog" aria-expanded={moreOpen}
+          onClick={() => setMoreOpen(true)}>
+          <Icon name="menu" size={16} />
+        </button>
       </div>
       {searchOpen && <QuickSearch onClose={() => setSearchOpen(false)}
         initialScope={!session?.hasHubs || searchingAll || screen === "search" ? null : hubId} />}
@@ -344,25 +346,28 @@ export function Header({ screen }: { screen: ScreenId }) {
   );
 }
 
-// The same drawings as the sidebar, in a pill that marks the current tab.
+// The same drawings as the sidebar. The chosen tab has no pill: it is at full
+// strength and a little heavier, while the others rest at 55%, as in the phone app.
 function TabIcon({ name }: { name: IconName }) {
   const TabGlyph = NAV_ICONS[name];
-  return <span className="a-tab-pill" aria-hidden="true">{TabGlyph ? <TabGlyph size={20} strokeWidth={1.6} /> : <Icon name={name} />}</span>;
+  return <span className="a-tab-pill" aria-hidden="true">{TabGlyph ? <TabGlyph size={22} strokeWidth={1.7} /> : <Icon name={name} />}</span>;
 }
 
 export function PhoneTabs({ screen }: { screen: ScreenId }) {
-  const { go, moreOpen } = useApp();
-  const tabs: Array<{ id: ScreenId; label: string; icon: IconName }> = [
+  const { go, moreOpen, you } = useApp();
+  const tabs: Array<{ id: ScreenId; label: string; icon?: IconName }> = [
     { id: "home", label: "Home", icon: "home" },
     { id: "hub", label: "Hub", icon: "hub" },
     { id: "expenses", label: "Expenses", icon: "expenses" },
     { id: "settle", label: "Settle", icon: "settle" },
+    { id: "settings", label: "Profile" },
   ];
   const current = (id: ScreenId) =>
     (id === "home" && (screen === "home" || screen === "home-empty" || screen === "home-inbox")) ||
     (id === "hub" && (screen === "hub" || screen === "hub-empty" || screen === "commune-settings")) ||
     (id === "expenses" && (screen === "expenses" || screen === "expenses-empty")) ||
-    (id === "settle" && (screen === "settle" || screen === "settle-even"));
+    (id === "settle" && (screen === "settle" || screen === "settle-even")) ||
+    (id === "settings" && screen === "settings");
   return (
     <nav className="a-bottom" aria-label="Phone" inert={moreOpen}>
       {tabs.map((tab) => (
@@ -373,7 +378,7 @@ export function PhoneTabs({ screen }: { screen: ScreenId }) {
           aria-current={current(tab.id) ? "page" : undefined}
           onClick={() => go(tab.id)}
         >
-          <TabIcon name={tab.icon} />
+          {tab.icon ? <TabIcon name={tab.icon} /> : <span className="a-tab-pill a-tab-you" aria-hidden="true"><Avatar tone="maya" initials={you.initials} decorative /></span>}
           {tab.label}
         </button>
       ))}
@@ -381,9 +386,9 @@ export function PhoneTabs({ screen }: { screen: ScreenId }) {
   );
 }
 
-/** The phone menu: the desktop sidebar, opened as a drawer from the left. */
+/** The phone menu: the phone app's push menu, in from the right. */
 export function MoreSheet() {
-  const { moreOpen, setMoreOpen, screen } = useApp();
+  const { moreOpen, setMoreOpen } = useApp();
   const wasOpen = useRef(false);
   useEffect(() => {
     if (!moreOpen) {
@@ -409,7 +414,7 @@ export function MoreSheet() {
     <div style={{ display: "contents" }}>
       <LeaveWithParent />
       <div className="a-sheet-scrim" data-leave="scrim" onClick={() => setMoreOpen(false)} />
-      <Sidebar screen={screen} drawer />
+      <PhoneMenu />
     </div>
   );
 }

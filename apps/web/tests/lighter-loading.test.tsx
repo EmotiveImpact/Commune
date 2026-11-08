@@ -141,6 +141,8 @@ describe("checking for changes", () => {
     await started();
     listed = [{ ...home, changeMark: "2026-10-09:4:31" }];
     records[home.id] = record(listed[0], [expense("expense-new", "Window cleaner", 0)]);
+    // Recent expenses are on the Hub's Money tab.
+    fireEvent.click(screen.getByRole("tab", { name: "Money" }));
     await minutesPass();
     expect(await screen.findByText("Window cleaner")).toBeTruthy();
     expect([reads(home.id), calls("/reminders/usage"), calls(`/communes/${home.id}/invites`), calls("/auth/me")])
@@ -236,6 +238,7 @@ describe("checking for changes", () => {
     await minutesPass();
     listed = [{ ...home, changeMark: "2026-10-09:4:31" }];
     records[home.id] = record(listed[0], [expense("expense-new", "Window cleaner", 0)]);
+    fireEvent.click(screen.getByRole("tab", { name: "Money" }));
     await act(async () => app.refresh());
     expect(await screen.findByText("Window cleaner")).toBeTruthy();
     // The older answer would have taken the commune away.
@@ -428,6 +431,7 @@ describe("older expenses", () => {
 
     it("lists its latest expenses on the hub and in its activity", async () => {
       mount("/hub");
+      fireEvent.click(await screen.findByRole("tab", { name: "Money" }));
       const recent = await screen.findByRole("region", { name: "Recent expenses" });
       expect(within(recent).getAllByRole("button").filter((button) => button.textContent !== "All expenses")
         .map((button) => button.querySelector("strong")?.textContent)).toEqual(["Farewell dinner", "Airport taxi", "Museum tickets"]);
