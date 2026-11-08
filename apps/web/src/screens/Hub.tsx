@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Archive, CalendarDays, ChevronRight, Copy, Eye, Megaphone, MessageCircle, Phone, ReceiptText, UsersRound, type LucideIcon } from "lucide-react";
+import { Archive, CalendarDays, ChevronRight, Copy, Eye, Megaphone, Phone, ReceiptText, UsersRound, type LucideIcon } from "lucide-react";
 import { useApp } from "../state";
 import { Avatar } from "../ui/widgets";
 import { Icon } from "../ui/Icon";
@@ -14,6 +14,7 @@ import { hideToast, showToast } from "../ui/Toast";
 import { DoneByChoice } from "../ui/DoneByChoice";
 import { formatTimestampDay } from "../data/reminders";
 import type { Hub, NoteCard } from "../data/household";
+import { WhatsAppMark } from "../ui/WhatsAppShare";
 
 const weekday = new Intl.DateTimeFormat("en-GB", { weekday: "short" });
 import "./Hub.css";
@@ -283,19 +284,16 @@ function Essential({ id, note }: { id: string; note: NoteCard }) {
 
 /**
  * The house's WhatsApp group, where the chatting happens. Commune has no chat
- * of its own; an admin links the group in commune settings.
+ * of its own; an admin links the group in commune settings. On the Hub it is a
+ * small round button beside the people, so it takes no room of its own.
  */
 function GroupChat() {
-  const { hub, go } = useApp();
-  if (hub.chatLink) {
-    return <a className="c-hub-chat" href={hub.chatLink} target="_blank" rel="noopener noreferrer">
-      <MessageCircle size={16} strokeWidth={1.75} aria-hidden="true" />Open group chat<span className="c-visually-hidden"> on WhatsApp (opens WhatsApp)</span>
-    </a>;
-  }
-  if (hub.role !== "admin") return null;
-  return <button className="c-hub-chat is-empty" type="button" onClick={() => go("commune-settings")}>
-    <MessageCircle size={16} strokeWidth={1.75} aria-hidden="true" />Link your WhatsApp group
-  </button>;
+  const { hub } = useApp();
+  if (!hub.chatLink) return null;
+  return <a className="c-hub-chat" href={hub.chatLink} target="_blank" rel="noopener noreferrer"
+    aria-label="Open the group chat on WhatsApp (opens WhatsApp)" title="Group chat on WhatsApp">
+    <WhatsAppMark size={16} />
+  </a>;
 }
 
 const PRIORITY = ["Emergency", "Wi-Fi", "Keys / door", "Bins", "Contacts", "House rules", "Other"];
@@ -317,12 +315,14 @@ export function HubScreen() {
       <div className="c-hub-identity-copy"><span className="c-hub-type">{hub.type}</span>
         <h2>{hub.name}</h2>
         <HubLocation hub={hub} />
-        <button type="button" className="c-hub-people-link" onClick={() => go("members")}>
-          <span className="avatar-stack" aria-hidden="true">{hub.members.slice(0, 5).map(member => <Avatar key={member.userId ?? member.name} tone={member.cls} initials={member.ini} />)}</span>
-          <span>{hub.members.length} {hub.members.length === 1 ? "person" : "people"}</span>{" "}<span className="c-visually-hidden">in this commune, view members</span>
-        </button>
+        <div className="c-hub-people-row">
+          <button type="button" className="c-hub-people-link" onClick={() => go("members")}>
+            <span className="avatar-stack" aria-hidden="true">{hub.members.slice(0, 5).map(member => <Avatar key={member.userId ?? member.name} tone={member.cls} initials={member.ini} />)}</span>
+            <span>{hub.members.length} {hub.members.length === 1 ? "person" : "people"}</span>{" "}<span className="c-visually-hidden">in this commune, view members</span>
+          </button>
+          <GroupChat />
+        </div>
         <p className="c-hub-pulse">{weekSentence(late, dueToday, bills)}</p>
-        <GroupChat />
       </div>
       <div className="c-hub-hero-actions">
         {canInvite && <button className="c-hub-settings" type="button" onClick={() => go("announcement-new")}><Megaphone size={16} strokeWidth={1.5} />Announce</button>}

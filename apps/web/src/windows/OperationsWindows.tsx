@@ -356,8 +356,7 @@ export function OperationView() {
           </button>
           {item.kind === "task" && item.status === "open" ? (
             <WhatsAppShare
-              label="Share"
-              hidden={`${item.title} to WhatsApp`}
+              label={`Share ${item.title} to WhatsApp`}
               text={taskMessage({
                 title: item.title,
                 communeName: hub.name,

@@ -33,7 +33,7 @@ describe("shared reminder preview", () => {
 
   it("offers a WhatsApp message instead, outside the allowance, with a link back", () => {
     render(<ReminderConfirm {...base} usage={{ ...usage, totalUsed: 60 }} link="https://app.ourcommune.io/settle?commune=c1" onSend={vi.fn()} onClose={vi.fn()} />);
-    const link = screen.getByRole("link", { name: /Nudge on WhatsApp/ });
+    const link = screen.getByRole("link", { name: /Message .* on WhatsApp instead/ });
     const text = new URL(link.getAttribute("href") ?? "").searchParams.get("text");
     expect(link.getAttribute("href")).toMatch(/^https:\/\/wa\.me\/\?text=/);
     expect(text).toBe("👋 Hi Alex, a gentle reminder about £12.00 for House supplies.\nIt’s all in Commune: https://app.ourcommune.io/settle?commune=c1");

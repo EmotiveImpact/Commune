@@ -21,14 +21,14 @@ export default function Tasks() {
         const status = statusFor(item.date, today, "task");
         return <Row key={item.id} first={index === 0} left={<Cal iso={item.date} today={today} small />} title={item.title}
           meta={<><T kind="label" muted>{who}{item.repeat !== "none" ? ` · every ${item.repeat === "weekly" ? "week" : "month"}` : ""}</T>{mine && item.date <= today ? <State text={status.text} tone={status.tone} /> : null}</>}
-          right={<View style={{ alignItems: "flex-end", gap: 2 }}>
-            {mine && item.date <= today ? <Button size="sm" variant="secondary" label="Mark done" busy={task.busy === `task:${item.id}`}
-              onPress={() => void task.run({ kind: "task", key: `task:${item.id}`, communeId: current!.commune.id, operationId: item.id, date: item.date, title: item.title, dueOn: item.date, band: "Today", status })} /> : null}
-            {item.kind === "task" ? <WhatsAppButton variant="quiet" label="Share" accessibilityLabel={`Share ${item.title} to WhatsApp, opens WhatsApp`} text={taskMessage({
+          right={<View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            {item.kind === "task" ? <WhatsAppButton size={34} accessibilityLabel={`Share ${item.title} to WhatsApp`} text={taskMessage({
               title: item.title, communeName: current!.commune.name, when: item.date === today ? "today" : longDate(item.date),
               holderName: item.assigneeId ? memberName(current!, item.assigneeId) : undefined, yours: mine,
               link: appLink(`/operations/${item.id}`, { commune: current!.commune.id }),
             })} /> : null}
+            {mine && item.date <= today ? <Button size="sm" variant="secondary" label="Mark done" busy={task.busy === `task:${item.id}`}
+              onPress={() => void task.run({ kind: "task", key: `task:${item.id}`, communeId: current!.commune.id, operationId: item.id, date: item.date, title: item.title, dueOn: item.date, band: "Today", status })} /> : null}
           </View>} />;
       })}</Panel> : <Panel pad><T kind="body" muted>Nothing on the list for {current?.commune.name}.</T></Panel>}
       <View><T kind="note" muted>Adding tasks, handovers and skips are on the web app for now.</T></View>

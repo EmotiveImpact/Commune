@@ -128,12 +128,13 @@
 
 
 
-/* The house's WhatsApp group: a sage pill under the week, or a quiet one for an admin to link it. */
-.c-hub-chat { display: inline-flex; align-items: center; gap: 7px; width: fit-content; min-height: 40px; margin-top: 10px; padding: 8px 16px; border: 0; border-radius: var(--radius-pill); background: var(--hub-action); color: var(--hub-action-text); text-shadow: none; font-size: 13px !important; font-weight: 500 !important; text-decoration: none; }
-.c-hub-chat:hover { background: var(--hub-action-hover); }
-.c-hub-chat.is-empty { border: 1px solid #ffffff66; background: rgba(21, 34, 28, 0.55); color: #fff; }
-.c-hub-chat.is-empty:hover { background: rgba(21, 34, 28, 0.75); }
-.c-hub-identity:not(.has-photo) .c-hub-chat.is-empty { border-color: var(--border-strong); background: var(--hub-panel); color: var(--hub-ink); }
+/* The house's WhatsApp group: a small round button at the end of the people row. */
+.c-hub-people-row { display: flex; align-items: center; gap: 14px; margin-top: 17px; }
+.c-hub-people-row .c-hub-people-link { margin-top: 0; }
+.c-hub-chat { display: inline-grid; place-items: center; width: 32px; height: 32px; flex: none; border: 1px solid #ffffff55; border-radius: 50%; background: rgba(21, 34, 28, 0.55); color: #fff; text-decoration: none; }
+.c-hub-chat:hover { background: rgba(21, 34, 28, 0.75); }
+.c-hub-identity:not(.has-photo) .c-hub-chat { border-color: var(--border); background: var(--hub-panel); color: var(--hub-ink); }
+.c-hub-identity:not(.has-photo) .c-hub-chat:hover { border-color: var(--border-strong); }
 
 /* The week on the photo, in one sentence. */
 .c-hub-pulse { width: fit-content; max-width: 100%; margin: 16px 0 0 !important; padding: 7px 14px; border-radius: var(--radius-pill); background: var(--hub-panel); color: var(--hub-ink); text-shadow: none; font-size: 13px; font-weight: 500; }

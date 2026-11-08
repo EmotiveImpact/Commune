@@ -112,16 +112,15 @@ export default function Settle() {
                 meta={<T kind="label" muted>{row.items.map((item) => item.waiting.title).join(", ")}</T>}
                 right={<View style={{ alignItems: "flex-end", gap: 6 }}>
                   <T kind="amount">{money(row.amountMinor, currency)}</T>
-                  {pending.length ? null
-                    : nudgeable.length ? <Button size="sm" variant="secondary" label={`Nudge ${firstName(row.name)}`} busy={busy === `n:${row.name}`}
+                  {pending.length ? null : <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                    <WhatsAppButton size={34} accessibilityLabel={`Nudge ${row.name} on WhatsApp`}
+                      text={nudgeMessage({ name: row.name, amount: money(row.amountMinor, currency), subject: joinAnd(row.items.map((item) => item.waiting.title)),
+                        link: appLink("/settle", { commune: row.items[0].waiting.communeId }) })} />
+                    {nudgeable.length ? <Button size="sm" variant="secondary" label={`Nudge ${firstName(row.name)}`} busy={busy === `n:${row.name}`}
                       onPress={() => void sendNudge(nudgeable[0].waiting.communeId, nudgeable.map((item) => item.debtor.shareId), row.name)} />
                     : <T kind="note" muted>{nudged ? "Nudged today" : "Not due yet"}</T>}
+                  </View>}
                 </View>} />
-              {pending.length ? null : <View style={{ paddingLeft: 60, paddingRight: 16, paddingBottom: 10, marginTop: -6 }}>
-                <WhatsAppButton variant="quiet" label={`Nudge ${firstName(row.name)} on WhatsApp`} accessibilityLabel={`Nudge ${row.name} on WhatsApp, opens WhatsApp`}
-                  text={nudgeMessage({ name: row.name, amount: money(row.amountMinor, currency), subject: joinAnd(row.items.map((item) => item.waiting.title)),
-                    link: appLink("/settle", { commune: row.items[0].waiting.communeId }) })} />
-              </View>}
               {pending.map(({ waiting: entry, debtor }) => <View key={debtor.pending!.id} style={{ marginHorizontal: 16, marginBottom: 14, padding: 14, borderRadius: 12, backgroundColor: c.attentionSoft, gap: 10 }}>
                 <T kind="body">{firstName(row.name)} says they’ve paid you {money(debtor.pending!.amountMinor, currency)} for {entry.title}, sent {shortDate(debtor.pending!.sentOn)}{debtor.pending!.reference ? `, reference “${debtor.pending!.reference}”` : ""}.</T>
                 <View style={{ flexDirection: "row", gap: 10, flexWrap: "wrap" }}>

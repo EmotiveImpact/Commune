@@ -615,7 +615,7 @@ function Expense() {
         <button className="a-btn" type="button" onClick={() => go("settle")}>Open settlement</button>
         {canChange ? <button className="a-btn ghost" type="button" onClick={() => { setMessage(""); change.correct(selectedExpense.id); }}>Correct</button> : null}
         {canChange ? <button className="a-btn ghost" type="button" onClick={() => { setMessage(""); change.void(selectedExpense.id); }}>Void</button> : null}
-        {!voided ? <WhatsAppShare hidden={selectedExpense.name} text={billMessage({
+        {!voided ? <WhatsAppShare label={`Share ${selectedExpense.name} to WhatsApp`} text={billMessage({
           title: selectedExpense.name, amount: formatMoney(selectedExpense.amountMinor, hub.currency),
           payerName: personName(selectedExpense.paidByUserId, selectedExpense.paidBy), communeName: hub.name,
           due: selectedExpense.dueOn ? selectedExpense.due : undefined,

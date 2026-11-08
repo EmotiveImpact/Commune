@@ -59,11 +59,11 @@ export function ReminderConfirm({ request, usage, phase, error, onClose, onSend,
       <Button busy={pending} disabled={blocked} onClick={onSend}>{pending ? "Reminding…" : phase === "error" ? "Try again" : "Send reminder"}</Button>
       <button className="a-btn ghost" type="button" disabled={pending} onClick={onClose}>Cancel</button>
     </div>
-    <div className="c-reminder-whatsapp">
-      <p className="c-reminder-help">Or send {request.name} a message yourself. It doesn’t use your allowance.</p>
-      <WhatsAppShare label={`${word} on WhatsApp`} hidden={request.name}
+    <p className="c-reminder-whatsapp">
+      <WhatsAppShare variant="link" label={`Message ${request.name} on WhatsApp instead`}
         text={nudgeMessage({ name: request.name, amount: request.amount, subject: request.subject, link: link ?? appLink("/settle") })} />
-    </div>
+      <span>It doesn’t use your allowance.</span>
+    </p>
   </dialog>;
 }
 
