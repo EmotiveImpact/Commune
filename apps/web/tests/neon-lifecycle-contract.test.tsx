@@ -113,6 +113,16 @@ describe("hosted money lifecycle and task commands", () => {
       p_expected_amount_minor: 10000, p_expected_due_on: "2026-11-01" });
   });
 
+  it("makes a personal invitation from a name and how it will be sent, with no email (0046)", async () => {
+    mocks.rpc.mockResolvedValue({ data: "f".repeat(64), error: null });
+    vi.stubGlobal("window", { location: { origin: "https://app.ourcommune.io" } });
+    const result = await send("/communes/home-1/invites", { name: "Maya Okafor", sentVia: "whatsapp" });
+    expect(mocks.rpc).toHaveBeenLastCalledWith("create_personal_invite", { p_commune_id: "home-1", p_name: "Maya Okafor", p_sent_via: "whatsapp" });
+    expect(result.token).toBe("f".repeat(64));
+    expect(result.url).toBe(`https://app.ourcommune.io/invite?token=${"f".repeat(64)}`);
+    vi.unstubAllGlobals();
+  });
+
   it("lists invitations with who sent and who accepted each one", async () => {
     mocks.rpc.mockResolvedValue({ data: [
       { id: "invite-1", email: "new@example.test", role: "admin", created_at: "2026-10-01T10:00:00Z", expires_at: "2026-10-08T10:00:00Z",
@@ -127,11 +137,11 @@ describe("hosted money lifecycle and task commands", () => {
     expect(mocks.rpc).toHaveBeenCalledWith("list_commune_invites", { p_commune_id: "home-1" });
     expect(result.invites).toEqual([
       { id: "invite-1", email: "new@example.test", role: "admin", createdAt: "2026-10-01T10:00:00Z", expiresAt: "2026-10-08T10:00:00Z",
-        acceptedAt: null, revokedAt: null, invitedBy: "admin-1", invitedByName: "Priya Shah", acceptedBy: null },
+        acceptedAt: null, revokedAt: null, invitedBy: "admin-1", invitedByName: "Priya Shah", acceptedBy: null, inviteeName: null, sentVia: null },
       { id: "invite-2", email: "old@example.test", role: "member", createdAt: "2026-09-01T10:00:00Z", expiresAt: "2026-09-08T10:00:00Z",
-        acceptedAt: null, revokedAt: "2026-09-03T10:00:00Z", invitedBy: "gone-1", invitedByName: null, acceptedBy: null },
+        acceptedAt: null, revokedAt: "2026-09-03T10:00:00Z", invitedBy: "gone-1", invitedByName: null, acceptedBy: null, inviteeName: null, sentVia: null },
       { id: "invite-3", email: null, role: "member", createdAt: "2026-08-01T10:00:00Z", expiresAt: "2026-08-08T10:00:00Z",
-        acceptedAt: "2026-08-02T10:00:00Z", revokedAt: null, invitedBy: "admin-1", invitedByName: "Priya Shah", acceptedBy: "gone-2" },
+        acceptedAt: "2026-08-02T10:00:00Z", revokedAt: null, invitedBy: "admin-1", invitedByName: "Priya Shah", acceptedBy: "gone-2", inviteeName: null, sentVia: null },
     ]);
   });
 

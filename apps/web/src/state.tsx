@@ -100,9 +100,14 @@ export type PendingInvite = {
   invitedBy: string | null; invitedByName: string | null;
   /** Who accepted it, so a former member can be named from the snapshot. */
   acceptedBy: string | null;
+  /** A personal invitation (no email): the name the admin gave and how they sent it. */
+  inviteeName: string | null; sentVia: "whatsapp" | "text" | "link" | null;
 };
 type InviteRecord = { id: string; email: string | null; role: "member" | "admin"; createdAt: string; expiresAt: string; acceptedAt: string | null; revokedAt: string | null;
-  invitedBy?: string | null; invitedByName?: string | null; acceptedBy?: string | null };
+  invitedBy?: string | null; invitedByName?: string | null; acceptedBy?: string | null; inviteeName?: string | null; sentVia?: string | null };
+function inviteChannel(value: string | null | undefined): PendingInvite["sentVia"] {
+  return value === "whatsapp" || value === "text" || value === "link" ? value : null;
+}
 export function inviteStatus(invite: Pick<InviteRecord, "acceptedAt" | "revokedAt" | "expiresAt">, now = Date.now()): PendingInvite["status"] {
   if (invite.acceptedAt) return "accepted";
   if (invite.revokedAt) return "revoked";
@@ -446,6 +451,8 @@ export type AppState = {
   resolvePaymentReport: (reportId: string, input: { decision: "confirm"; requestId: string } | { decision: "decline"; note: string }, communeId?: string) => Promise<PaymentReportResult>;
   markExpensePaid: (expenseId: string) => Promise<void>;
   createInvite: (email: string, role: "admin" | "member") => Promise<{ token: string; url: string }>;
+  /** A link for one named person, to send on WhatsApp or by text. It works once, for seven days. */
+  createPersonalInvite: (name: string, sentVia: "whatsapp" | "text" | "link") => Promise<{ token: string; url: string }>;
   sendInviteEmail: (token: string) => Promise<void>;
   revokeInvite: (id: string) => Promise<void>;
   previewInvite: (token: string) => Promise<InvitePreview | null>;
@@ -1042,6 +1049,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
               acceptedAt: invite.acceptedAt, revokedAt: invite.revokedAt,
               invitedBy: invite.invitedBy ?? null, invitedByName: invite.invitedByName ?? null,
               acceptedBy: invite.acceptedBy ?? null,
+              inviteeName: invite.inviteeName ?? null,
+              sentVia: inviteChannel(invite.sentVia),
             }))] as const;
         })).then((inviteEntries) => {
           if (sequence !== refreshSequence.current || !dataRef.current) return;
@@ -1723,6 +1732,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await refresh();
     return { token: result.token, url };
   }), [activeId, mutate, refresh]);
+  const createPersonalInvite = useCallback((name: string, sentVia: "whatsapp" | "text" | "link") => mutate(async () => {
+    if (!activeId) throw new Error("Choose a commune first");
+    const result = await post<{ token: string; url?: string }>(`/communes/${encodeURIComponent(activeId)}/invites`, { name, sentVia });
+    const url = result.url ?? new URL(`/invite?token=${encodeURIComponent(result.token)}`, window.location.origin).href;
+    await refresh();
+    return { token: result.token, url };
+  }), [activeId, mutate, refresh]);
   const revokeInvite = useCallback((id: string) => mutate(async () => {
     await post(`/invites/${encodeURIComponent(id)}/revoke`, {});
     await refresh();
@@ -2083,7 +2099,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     removeOperation, createHub, updateCommune, recordExpense, confirmExpenseShare, correctExpense, voidExpense, recordShareReceipt, reverseShareReceipt,
     reportSharePayment, withdrawPaymentReport, resolvePaymentReport,
     announcements, postAnnouncement, acknowledgeAnnouncement, archiveAnnouncement,
-    markExpensePaid, createInvite, sendInviteEmail, revokeInvite, previewInvite, inviteAddressHint, acceptInvite, previewJoinCode, requestToJoin, createFund,
+    markExpensePaid, createInvite, createPersonalInvite, sendInviteEmail, revokeInvite, previewInvite, inviteAddressHint, acceptInvite, previewJoinCode, requestToJoin, createFund,
     pledgeFund, recordFundContribution, sendReminder, markNotificationRead,
     updateFund, archiveFund, updatePledge, voidContribution, saveRecurringBill, pauseRecurringBill, archiveRecurringBill, recordRecurringBill, recordRecurringPeriod, skipRecurringPeriod, saveSplitTemplate, manageMember,
     pageTitle, pageLede,

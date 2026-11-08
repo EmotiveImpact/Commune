@@ -212,6 +212,8 @@ describe("commune loading", () => {
     mount("/members");
     fireEvent.click(await screen.findByRole("button", { name: "Invite", exact: true }));
     const dialog = await screen.findByRole("dialog", { name: "Invite" });
+    // For an admin, the personal link comes first and email is one tap away.
+    fireEvent.click(within(dialog).getByRole("button", { name: "Invite by email instead" }));
     fireEvent.change(within(dialog).getByLabelText("Email", { exact: true }), { target: { value: "friend@example.com" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Send invitation" }));
     await waitFor(() => expect(post).toHaveBeenCalledWith("/invitation-email", { token: inviteToken }));
@@ -232,6 +234,8 @@ describe("commune loading", () => {
     mount("/members");
     fireEvent.click(await screen.findByRole("button", { name: "Invite", exact: true }));
     const dialog = await screen.findByRole("dialog", { name: "Invite" });
+    // For an admin, the personal link comes first and email is one tap away.
+    fireEvent.click(within(dialog).getByRole("button", { name: "Invite by email instead" }));
     fireEvent.change(within(dialog).getByLabelText("Email", { exact: true }), { target: { value: "friend@example.com" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Send invitation" }));
     await within(dialog).findByText("Email provider unavailable");
@@ -251,6 +255,8 @@ describe("commune loading", () => {
     mount("/members");
     fireEvent.click(await screen.findByRole("button", { name: "Invite", exact: true }));
     const dialog = await screen.findByRole("dialog", { name: "Invite" });
+    // For an admin, the personal link comes first and email is one tap away.
+    fireEvent.click(within(dialog).getByRole("button", { name: "Invite by email instead" }));
     fireEvent.change(within(dialog).getByLabelText("Email", { exact: true }), { target: { value: "friend@example.com" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Send invitation" }));
     expect((await within(dialog).findByRole("alert")).textContent).toBe(refusal);
@@ -264,6 +270,8 @@ describe("commune loading", () => {
     mount("/members");
     fireEvent.click(await screen.findByRole("button", { name: "Invite", exact: true }));
     const dialog = await screen.findByRole("dialog", { name: "Invite" });
+    // For an admin, the personal link comes first and email is one tap away.
+    fireEvent.click(within(dialog).getByRole("button", { name: "Invite by email instead" }));
     fireEvent.change(within(dialog).getByLabelText("Email", { exact: true }), { target: { value: "friend@example.com" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Create link only" }));
     await within(dialog).findByLabelText("Invitation link");
@@ -271,6 +279,31 @@ describe("commune loading", () => {
     expect(within(dialog).queryByText(/Invitation email sent to/)).toBeNull();
     expect(within(dialog).getByRole("button", { name: "Send invitation" })).toBeTruthy();
   });
+  it("makes one personal link for a named person and reuses it for every button", async () => {
+    const inviteToken = "e".repeat(64);
+    vi.mocked(post).mockResolvedValue({ token: inviteToken, url: `http://localhost:3000/invite?token=${inviteToken}` });
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+    mount("/members");
+    fireEvent.click(await screen.findByRole("button", { name: "Invite", exact: true }));
+    const dialog = await screen.findByRole("dialog", { name: "Invite" });
+    // No name, no link.
+    fireEvent.click(within(dialog).getByRole("button", { name: "Copy link for them" }));
+    expect((await within(dialog).findByRole("alert")).textContent).toBe("Type their name first.");
+    expect(post).not.toHaveBeenCalled();
+    fireEvent.change(within(dialog).getByLabelText("Their name"), { target: { value: "Maya Okafor" } });
+    expect((within(dialog).getByLabelText("Message") as HTMLTextAreaElement).value)
+      .toBe(`Hey Maya, join ${commune.name} on Commune so we can keep bills and chores fair.`);
+    fireEvent.click(within(dialog).getByRole("button", { name: "Copy link for Maya" }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(`http://localhost:3000/invite?token=${inviteToken}`));
+    expect(post).toHaveBeenCalledWith(`/communes/${encodeURIComponent(commune.id)}/invites`, { name: "Maya Okafor", sentVia: "link" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Copy link for Maya" }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(2));
+    expect(vi.mocked(post).mock.calls.filter(([path]) => path.endsWith("/invites"))).toHaveLength(1);
+    // The email form stays out of the way until asked for.
+    expect(within(dialog).queryByLabelText("Email", { exact: true })).toBeNull();
+  });
+
   const wifiNote = { id: "note-1", title: "Wi-Fi & internet", pill: "Wi-Fi", kicker: "Pinned · everyone", lede: "private-secret", body: "Connect upstairs. Password: private-secret", facts: [["Network", "Test network"], ["Password", "private-secret"], ["This Hub", "Pinned"]] as Array<[string, string]> };
 
   it("keeps passwords on hub essentials hidden until someone asks to see them", async () => {

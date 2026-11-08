@@ -3,6 +3,7 @@ import { parsePayLinks } from "./payLinks";
 import type { Commune, CurrencyCode, Operation, Snapshot, User } from "./types";
 import { requestId } from "./format";
 import type { JoinCode, JoinCodeKind, JoinCodePreview, JoinMode, JoinResult, JoinState } from "./joinCodes";
+import type { InviteChannel } from "./contactInvite";
 
 /**
  * Everything the phone app asks of Commune. The database stays the authority:
@@ -45,6 +46,14 @@ export interface Backend {
   invite(communeId: string, email: string, role?: "member" | "admin"): Promise<{ url: string }>;
   /** Emails that invitation to its address from Commune, with a Join button and a QR code to scan from a computer. */
   emailInvitation(token: string): Promise<void>;
+  /**
+   * A personal invitation: a link for one person you name (picked from your
+   * contacts or typed), to send on WhatsApp or by text. It works once, for
+   * seven days. Their phone number never leaves the phone.
+   */
+  invitePerson(communeId: string, name: string, sentVia: InviteChannel): Promise<{ url: string }>;
+  /** Admins only: invitations nobody has used yet, newest first. */
+  waitingInvites(communeId: string): Promise<WaitingInvite[]>;
   /** Adds a note: a title, an optional short line, and labelled details such as a Wi-Fi password. */
   addNote(communeId: string, input: NoteInput): Promise<void>;
   /** Adds a chore, on one person, taken in turns, or open to anyone, once or repeating. */
@@ -122,6 +131,9 @@ export type RecurringInput = {
   id: string; expectedVersion: number; title: string; amountMinor: number; paidByUserId: string;
   allocations: Array<{ userId: string; amountMinor: number }>; frequency: "weekly" | "monthly"; nextDueOn: string;
 };
+
+/** An invitation still waiting: for a named person, or for an email address. */
+export type WaitingInvite = { id: string; name: string; email: boolean; sentVia: InviteChannel | null; createdAt: string };
 
 export type InvitePreview = {
   communeName: string;
@@ -220,6 +232,22 @@ export function serverBackend(base: string): Backend {
       return { url: result.url };
     },
     async emailInvitation(token) { await post("/invitation-email", { token }); },
+    async invitePerson(communeId, name, sentVia) {
+      const result = await post<{ url: string }>(`/communes/${communeId}/invites`, { name, sentVia });
+      return { url: result.url };
+    },
+    async waitingInvites(communeId) {
+      const result = await call<{ invites: Array<{ id: string; email: string | null; inviteeName?: string | null; sentVia?: string | null;
+        createdAt: string; expiresAt: string; acceptedAt: string | null; revokedAt: string | null }> }>(`/communes/${communeId}/invites`);
+      const now = Date.now();
+      return result.invites
+        .filter((invite) => !invite.acceptedAt && !invite.revokedAt && Date.parse(invite.expiresAt) > now && (invite.inviteeName || invite.email))
+        .map((invite) => ({
+          id: invite.id, name: invite.inviteeName ?? invite.email ?? "", email: !invite.inviteeName,
+          sentVia: invite.sentVia === "whatsapp" || invite.sentVia === "text" || invite.sentVia === "link" ? invite.sentVia : null,
+          createdAt: invite.createdAt,
+        }));
+    },
     async myPayLinks() { return parsePayLinks((await call<{ links: unknown }>("/pay-links")).links); },
     async savePayLink(provider, input) {
       return parsePayLinks((await call<{ links: unknown }>(`/pay-links/${provider}`, { method: "PUT", body: JSON.stringify(input) })).links);

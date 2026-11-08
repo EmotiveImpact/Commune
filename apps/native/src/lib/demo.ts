@@ -1,5 +1,5 @@
 import { addDays, requestId as newId, todayIso } from "./format";
-import type { Backend } from "./backend";
+import type { Backend, WaitingInvite } from "./backend";
 import type { JoinCode, JoinMode, JoinRequest, JoinState } from "./joinCodes";
 import { ApiError } from "./backend";
 import { parsePayLinks, type PayLink, type PayLinkInput, type PayProvider } from "./payLinks";
@@ -154,6 +154,8 @@ export const DEMO_ELM_STICKER = "e1a2000000000000000000000000e1a2";
 export function demoBackend(now: () => string = todayIso): Backend {
   let signedIn = true;
   let data = demoData(now());
+  // Personal invitations made in this session, by commune; nothing leaves the phone.
+  const demoInvites = new Map<string, WaitingInvite[]>();
   let fresh = false;
   // A new person's empty account carries the name they typed.
   let name: string | null = null;
@@ -362,6 +364,17 @@ export function demoBackend(now: () => string = todayIso): Backend {
       const token = Array.from(email.trim().toLowerCase()).reduce((hash, ch) => (hash * 31 + ch.charCodeAt(0)) >>> 0, 7).toString(16).padStart(8, "0");
       return { url: `https://app.ourcommune.io/invite?token=demo${token}` };
     },
+    async invitePerson(communeId, name, sentVia) {
+      if (!data.some((snapshot) => snapshot.commune.id === communeId)) throw new Error("That commune isn’t here any more.");
+      const tidy = name.trim().replace(/\s+/g, " ");
+      if (!tidy || tidy.length > 80) throw new ApiError("Give their name, up to 80 characters", 400);
+      const token = `demo${newId().replace(/[^0-9a-z]/gi, "").slice(0, 12)}`;
+      const list = demoInvites.get(communeId) ?? [];
+      list.unshift({ id: token, name: tidy, email: false, sentVia, createdAt: new Date().toISOString() });
+      demoInvites.set(communeId, list);
+      return { url: `https://app.ourcommune.io/invite?token=${token}` };
+    },
+    async waitingInvites(communeId) { return [...(demoInvites.get(communeId) ?? [])]; },
     async emailInvitation(token) {
       // The demo sends nothing; it only checks the invitation came from here.
       if (!token.startsWith("demo")) throw new Error("That invitation isn’t here any more.");

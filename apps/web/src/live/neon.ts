@@ -618,10 +618,16 @@ async function route<T>(path: string, init: RequestInit): Promise<T> {
   } else if (method === "POST" && path === "/invitation-email") {
     response = await dispatchInvitationEmail(body.token);
   } else if (method === "POST" && pathId(path, /^\/communes\/([^/]+)\/invites$/)) {
-    const token = unwrap(await db().rpc("create_commune_invite", {
-      p_commune_id: pathId(path, /^\/communes\/([^/]+)\/invites$/),
-      p_email: body.email, p_role: body.role ?? "member",
-    }));
+    // A personal invitation carries a name and how it was sent, never an email (0046).
+    const token = body.email === undefined && body.name !== undefined
+      ? unwrap(await db().rpc("create_personal_invite", {
+        p_commune_id: pathId(path, /^\/communes\/([^/]+)\/invites$/),
+        p_name: body.name, p_sent_via: body.sentVia ?? "link",
+      }))
+      : unwrap(await db().rpc("create_commune_invite", {
+        p_commune_id: pathId(path, /^\/communes\/([^/]+)\/invites$/),
+        p_email: body.email, p_role: body.role ?? "member",
+      }));
     response = { token, url: new URL(`/invite?token=${encodeURIComponent(str(token))}`, window.location.origin).href };
   } else if (method === "GET" && pathId(path, /^\/communes\/([^/]+)\/invites$/)) {
     const invites = rows(unwrap(await db().rpc("list_commune_invites", {
@@ -635,6 +641,8 @@ async function route<T>(path: string, init: RequestInit): Promise<T> {
       invitedBy: invite.invited_by == null ? null : str(invite.invited_by),
       invitedByName: invite.invited_by_name == null ? null : str(invite.invited_by_name),
       acceptedBy: invite.accepted_by == null ? null : str(invite.accepted_by),
+      inviteeName: invite.invitee_name == null ? null : str(invite.invitee_name),
+      sentVia: invite.sent_via == null ? null : str(invite.sent_via),
     })) };
   } else if (method === "POST" && pathId(path, /^\/invites\/([^/]+)\/revoke$/)) {
     response = await rpcVoid("revoke_commune_invite", {

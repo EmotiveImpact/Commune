@@ -93,6 +93,9 @@ try {
   const token = await create("recipient@example.test");
   await assert.rejects(send(actor, token, null), refusal(503));
   await assert.rejects(send(outsider, token), refusal(404));
+  // A personal invitation (0046) has no address, so it is never emailed.
+  const personal = (await asActor(c => c.query("SELECT public.create_personal_invite($1,'Maya Okafor','whatsapp') AS token", [commune]))).rows[0].token;
+  await assert.rejects(send(actor, personal), refusal(404, UNAVAILABLE));
   assert.equal(calls.length, 0);
   assert.deepEqual(await send(actor, token), { status: "sent" });
   assert.equal(calls.length, 1);

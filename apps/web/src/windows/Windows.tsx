@@ -26,6 +26,7 @@ import "./NoteEditor.css";
 import { allocateExpense, formatMoney, netBalances, type SplitMethod } from "@commune/core";
 import "./ExpenseEditor.css";
 import { SplitEditor } from "../ui/SplitEditor";
+import { PersonalInvite } from "./PersonalInvite";
 import { moneyInputError, parseMoneyInput } from "../data/moneyInput";
 import type { Notification, UnreadNotice } from "../live/model";
 import { lazyComponent } from "../shell/lazyComponent";
@@ -736,6 +737,7 @@ function MemberInvite() {
   const [sendingEmail, setSendingEmail] = useState(false);
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [emailOpen, setEmailOpen] = useState(hub.role !== "admin");
   const { error, setError, invalid, message } = useFormError();
 
   async function create(emailDelivery: boolean) {
@@ -777,7 +779,10 @@ function MemberInvite() {
 
   return (
     <form className="a-window" onSubmit={(event) => { event.preventDefault(); void create(true); }}>
-      <p className="a-window-note">Invite someone to {hub.name}. Send an email invitation or create a link to share yourself.</p>
+      <p className="a-window-note">Invite someone to {hub.name}.</p>
+      {hub.role === "admin" ? <PersonalInvite /> : null}
+      {emailOpen ? <>
+      <h3 className="c-pinvite-title">{hub.role === "admin" ? "Or invite by email" : "Invite by email"}</h3>
       <div className="a-field">
         <label htmlFor="inv-email">Email</label>
         <input id="inv-email" type="email" required placeholder="name@example.com" maxLength={LIMITS.email} value={email} disabled={Boolean(url) || saving} onChange={(event) => setEmail(event.target.value)} {...invalid("inv-email")} />
@@ -811,6 +816,10 @@ function MemberInvite() {
           Close
         </button>
       </div>
+      </> : (
+        // For an admin the link comes first; email is one tap away, with its own buttons.
+        <button className="c-pinvite-link c-pinvite-more" type="button" onClick={() => setEmailOpen(true)}>Invite by email instead</button>
+      )}
       {hub.role !== "admin" ? <p className="a-window-note">Only a commune admin can invite people.</p> : null}
     </form>
   );

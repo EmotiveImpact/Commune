@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Plus } from "lucide-react";
 import { useApp, type PendingInvite } from "../state";
 import { formatTimestampDay } from "../data/reminders";
+import { initialsOf } from "../data/household";
 import { useSearchRecord } from "../ui/useSearchRecord";
 import { Avatar, Pill } from "../ui/widgets";
 import { Button, Dialog, EmptyState, Feedback, Panel } from "../ui/components";
@@ -94,14 +95,23 @@ export function MembersScreen() {
   const [reissue, setReissue] = useState<OpenInvite | null>(null);
   const openInvites = invites.filter((invite): invite is OpenInvite =>
     (invite.status === "pending" || invite.status === "expired") && invite.email !== null);
+  // Personal invitations (0046): a link for one named person, sent on WhatsApp or by text.
+  const openPersonal = invites.filter((invite) =>
+    (invite.status === "pending" || invite.status === "expired") && invite.email === null && invite.inviteeName !== null);
   const pastInvites = invites.filter((invite) => invite.status === "accepted" || invite.status === "revoked").slice(0, 12);
   // Someone who accepted and has since left keeps their name, not their address.
-  const invitee = (invite: PendingInvite) => invite.email ?? personName(invite.acceptedBy, "Former member");
+  const invitee = (invite: PendingInvite) => invite.email ?? invite.inviteeName ?? personName(invite.acceptedBy, "Former member");
   // Who sent an invitation. It stays open only while they are an admin.
   const sender = (invite: PendingInvite) => invite.invitedBy === session?.userId ? "you"
     : invite.invitedByName ?? (invite.invitedBy ? personName(invite.invitedBy, "a former member") : "");
+  // "You sent it on WhatsApp", "Ama sent it by text".
+  const sentBy = (invite: PendingInvite) => {
+    const how = invite.sentVia === "whatsapp" ? "on WhatsApp" : invite.sentVia === "text" ? "by text" : "as a link";
+    const who = sender(invite);
+    return who ? `${who === "you" ? "You" : who} sent it ${how}` : `Sent ${how}`;
+  };
   const pendingSentBy = (userId: string) =>
-    openInvites.filter((invite) => invite.status === "pending" && invite.invitedBy === userId).length;
+    [...openInvites, ...openPersonal].filter((invite) => invite.status === "pending" && invite.invitedBy === userId).length;
   const [action, setAction] = useState<{
     userId: string;
     name: string;
@@ -279,6 +289,37 @@ export function MembersScreen() {
               ) : null}
             </div>
           ))}
+        {isAdmin &&
+          openPersonal.map((invite) => {
+            const name = invite.inviteeName ?? "";
+            return (
+              <div key={invite.id} className="a-member-row c-member-row">
+                <Avatar tone="house" initials={initialsOf(name)} />
+                <div className="who">
+                  <strong>{name}</strong>
+                  <span>
+                    {sentBy(invite)}{" "}
+                    {invite.status === "expired"
+                      ? `· expired ${formatTimestampDay(invite.expiresAt)}`
+                      : `on ${formatTimestampDay(invite.createdAt)} · works once, until ${formatTimestampDay(invite.expiresAt)}`}
+                  </span>
+                </div>
+                <Pill tone={invite.status === "expired" ? undefined : "open"}>
+                  {invite.status === "expired" ? "Expired" : "Waiting"}
+                </Pill>
+                {invite.status === "pending" ? (
+                  <Button
+                    variant="secondary"
+                    disabled={pending}
+                    aria-label={`Revoke invitation for ${name}`}
+                    onClick={() => void run(() => revokeInvite(invite.id), `${name}’s link no longer works.`)}
+                  >
+                    Revoke
+                  </Button>
+                ) : null}
+              </div>
+            );
+          })}
       </Panel>
       <p className="c-form-help">
         Leaving does not erase financial records. Outstanding shares and pledges

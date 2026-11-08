@@ -220,7 +220,7 @@ export const PAGE_LEDES: Record<string, string> = {
   "commune-settings": "Details and people for this commune.",
   notices: "Updates sent to you in Commune.",
   "add-expense": "Choose the members and check the split.",
-  "member-invite": "Send an email invitation or share a secure link.",
+  "member-invite": "Send one person a link on WhatsApp or by text, or email an invitation.",
   pay: "Choose how to settle outside Commune.",
   "pay-method": "Monzo, PayPal, Revolut or bank details people in your communes see when they owe you.",
   profile: "Your account and payment methods.",

@@ -31,6 +31,12 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "Commune opens your contacts only when you choose someone to invite. It uses the one person you pick to write the message, and uploads nothing."
+        }
+      ],
       "./plugins/no-push.js"
     ],
     "experiments": {

@@ -36,6 +36,22 @@ unaffected by the join setting. A code that no longer works raises SQLSTATE
 the clients that offer it; the previous clients do not call it. Test:
 `tests/join_codes.sql`.
 
+Personal invitations, **0046** (local only), let an admin invite one named
+person (picked from their phone's contacts or typed) with a link sent on
+WhatsApp or by text. `commune_invites.email` may now be empty, with
+`invitee_name` and `sent_via` (`whatsapp`, `text` or `link`) in its place;
+the table refuses an invitation with both or neither. New
+`create_personal_invite`; `preview_commune_invite` and
+`accept_commune_invite` restated so a personal invitation works for any
+signed-in account, once; `list_commune_invites` dropped and recreated with
+`invitee_name` and `sent_via` (grant restated). People who join this way are
+ordinary members; an admin can have at most 20 waiting in a commune. The
+invitation email sender skips invitations with no address. Numbered 0046
+because 0045 (group chat link) is on another branch; apply it after 0044
+(and 0045 if released), then deploy the clients that offer it. The previous
+web client leaves personal invitations out of its list. Test:
+`tests/personal_invites.sql`.
+
 Migrations **0015 to 0041 are local only**. They have not been applied to any
 Neon branch. Release order when they are: apply 0013 to 0041 in numeric order
 to the preview branch, refresh that branch's Data API schema cache, then

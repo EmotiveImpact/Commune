@@ -1,17 +1,25 @@
-import { useRef, useState, type ReactNode } from "react";
-import { Image, Platform, ScrollView, Share, View, type TextInput as RNTextInput } from "react-native";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { Image, Linking, Platform, ScrollView, Share, View, type TextInput as RNTextInput } from "react-native";
+import * as Contacts from "expo-contacts";
 import { Text, TextInput } from "../src/ui/text";
 import { useRouter } from "expo-router";
 import Animated, { FadeIn } from "react-native-reanimated";
 import * as Clipboard from "expo-clipboard";
-import { ChevronLeft, ChevronRight, Link2, Mail, QrCode, Share2, StickyNote } from "lucide-react-native";
+import { ChevronLeft, ChevronRight, Link2, Mail, MessageSquare, QrCode, Share2, StickyNote, UserRound } from "lucide-react-native";
+import type { WaitingInvite } from "../src/lib/backend";
+import {
+  defaultCallingCode, inviteFirstName, inviteMessage, sentViaWords, textLink, whatsAppLink, whatsAppNumber, withInviteLink,
+  type InviteChannel,
+} from "../src/lib/contactInvite";
+import { feedTime, todayIso } from "../src/lib/format";
 import { inviteToken, shareLink } from "../src/lib/inviteLink";
 import {
   INSTANT_WARNING, JOIN_MODES, expiryWords, isLive, joinCodeUrl,
   type JoinCode, type JoinCodeKind, type JoinMode,
 } from "../src/lib/joinCodes";
 import { failure, useApp } from "../src/state";
-import { Avatar, Button, ErrorText, FITTED, Panel, Row, T, TextLink } from "../src/ui/kit";
+import { Avatar, Badge, Button, ErrorText, FITTED, Panel, Row, T, TextLink } from "../src/ui/kit";
+import { WhatsAppMark } from "../src/ui/whatsappMark";
 import { haptic, PressScale, useCalm } from "../src/ui/motion";
 import { photoOf } from "../src/ui/chrome";
 import { QrCode as QrImage } from "../src/ui/qr";
@@ -31,7 +39,15 @@ export default function Invite() {
 }
 
 type Made = { email: string; url: string };
-type Step = "start" | "now" | "sticker";
+
+/** "today", or "on Mon" / "on 3 Nov", after "Sent on WhatsApp". */
+function whenSent(iso: string): string {
+  const when = feedTime(iso, todayIso());
+  return when === "Today" ? "today" : `on ${when}`;
+}
+type Step = "start" | "now" | "sticker" | "person";
+/** The one person picked from contacts (or typed). Their numbers stay on the phone. */
+type Person = { name: string; phones: string[]; picked: boolean };
 
 /**
  * Three ways in. An email invitation is for one person and lasts seven days.
@@ -51,10 +67,11 @@ function InviteBody({ close }: { close: () => void }) {
   const [error, setError] = useState("");
   const [codeError, setCodeError] = useState("");
   const [made, setMade] = useState<Made | null>(null);
-  const [sent, setSent] = useState<string[]>([]);
   const [emailed, setEmailed] = useState<string | null>(null);
   const [step, setStep] = useState<Step>("start");
   const [shown, setShown] = useState<JoinCode | null>(null);
+  const [person, setPerson] = useState<Person | null>(null);
+  const [waiting, setWaiting] = useState<WaitingInvite[]>([]);
   const name = current?.commune.name ?? "your commune";
   const communeId = current?.commune.id ?? "";
   const admin = current?.commune.role === "admin";
@@ -64,6 +81,51 @@ function InviteBody({ close }: { close: () => void }) {
   const valid = EMAIL.test(email.trim());
   const message = (url: string) => `Join ${name} on Commune, where we keep track of shared bills and chores: ${url}`;
   const scanLine = join.joinMode === "instant" ? "Scan to join" : "Scan to ask to join";
+
+  /** Invitations nobody has used yet, so nobody sends Maya a second one. */
+  const loadWaiting = useCallback(async () => {
+    if (!communeId || !admin) return;
+    try { setWaiting(await backend.waitingInvites(communeId)); } catch { /* the list is a convenience; the sheet still works */ }
+  }, [admin, backend, communeId]);
+  useEffect(() => { void loadWaiting(); }, [loadWaiting]);
+
+  /**
+   * Opens the phone's own contact list for one person. On an iPhone this
+   * needs no permission; Android asks once. If there is no picker or they
+   * say no, they type the name instead. Nothing is uploaded.
+   */
+  async function pickContact() {
+    if (busy) return;
+    setCodeError("");
+    const typed = () => { setPerson({ name: "", phones: [], picked: false }); setStep("person"); };
+    try {
+      if (Platform.OS === "web") {
+        const picker = (globalThis.navigator as { contacts?: { select: (props: string[], options: object) => Promise<Array<{ name?: string[]; tel?: string[] }>> } } | undefined)?.contacts;
+        if (!picker) { typed(); return; }
+        const [chosen] = await picker.select(["name", "tel"], { multiple: false });
+        if (!chosen) return;
+        setPerson({ name: (chosen.name?.[0] ?? "").trim(), phones: chosen.tel ?? [], picked: true });
+        setStep("person");
+        return;
+      }
+      if (Platform.OS === "android") {
+        const { granted } = await Contacts.requestPermissionsAsync();
+        if (!granted) { typed(); toast("No problem. Type their name instead."); return; }
+      }
+      const contact = await Contacts.presentContactPickerAsync();
+      if (!contact) return;
+      const name = (contact.name || [contact.firstName, contact.lastName].filter(Boolean).join(" ")).trim();
+      // Mobiles first: that is where WhatsApp and texts go.
+      const numbers = (contact.phoneNumbers ?? [])
+        .slice().sort((a, b) => Number(/mobile|cell|iphone/i.test(b.label ?? "")) - Number(/mobile|cell|iphone/i.test(a.label ?? "")))
+        .map((entry) => entry.number ?? "").filter(Boolean);
+      haptic.light();
+      setPerson({ name, phones: numbers, picked: true });
+      setStep("person");
+    } catch {
+      typed();
+    }
+  }
 
   /** The link for the email typed in, made once and kept while the email stays the same. */
   async function link(): Promise<string | null> {
@@ -80,7 +142,6 @@ function InviteBody({ close }: { close: () => void }) {
       const { url } = await backend.invite(current.commune.id, address);
       const next = { email: address, url: shareLink(url) };
       setMade(next);
-      setSent((list) => (list.includes(address) ? list : [...list, address]));
       haptic.success();
       return next.url;
     } catch (cause) {
@@ -99,6 +160,7 @@ function InviteBody({ close }: { close: () => void }) {
     try {
       await backend.emailInvitation(token);
       setEmailed(email.trim());
+      void loadWaiting();
       haptic.success();
       toast(`Emailed ${email.trim()}, with a link and a QR code.`);
     } catch (cause) {
@@ -220,6 +282,23 @@ function InviteBody({ close }: { close: () => void }) {
     </PressScale>
   </View>;
 
+  if (step === "person" && person) {
+    return <Animated.View entering={fade} style={FITTED}>
+      <PersonStep person={person} communeName={name} kind={current?.commune.kind ?? "household"} currency={current?.commune.currency ?? null}
+        back={back}
+        send={async (personName, channel) => {
+          if (!communeId) throw new Error("Choose a commune first.");
+          const { url } = await backend.invitePerson(communeId, personName, channel);
+          return shareLink(url);
+        }}
+        done={(personName, channel) => {
+          void loadWaiting();
+          setStep("start"); setPerson(null);
+          toast(channel === "link" ? `Link for ${inviteFirstName(personName)} copied.` : `${inviteFirstName(personName)}’s invite is ready in ${channel === "whatsapp" ? "WhatsApp" : "Messages"}.`);
+        }} />
+    </Animated.View>;
+  }
+
   if (step === "now" && shown) {
     const url = joinCodeUrl(shown.token);
     return <Animated.View entering={fade} style={[FITTED, { padding: 20, paddingTop: 8, gap: 16, alignItems: "center" }]}>
@@ -284,7 +363,9 @@ function InviteBody({ close }: { close: () => void }) {
       {admin ? <View style={{ gap: 8 }}>
         <T kind="label" style={{ fontWeight: "600", paddingHorizontal: 4 }}>No email needed</T>
         <Panel>
-          <Row first onPress={busy ? undefined : () => void openCode("now")} left={icon(<QrCode size={17} color={c.ink} />)} title="Show a QR now"
+          <Row first onPress={busy ? undefined : () => void pickContact()} left={icon(<UserRound size={17} color={c.ink} />)} title="From your contacts"
+            meta={<T kind="label" muted>Pick one person. Send it on WhatsApp or by text.</T>} right={chevron} />
+          <Row onPress={busy ? undefined : () => void openCode("now")} left={icon(<QrCode size={17} color={c.ink} />)} title="Show a QR now"
             meta={<T kind="label" muted>For someone next to you. Stops working after an hour.</T>} right={chevron} />
           <Row onPress={busy ? undefined : () => void shareJoin()} left={icon(<Share2 size={17} color={c.ink} />)} title="Share a join link"
             meta={<T kind="label" muted>{join.joinMode === "instant" ? "Messages, WhatsApp. They join when they tap it." : "Messages, WhatsApp. They ask, you approve."}</T>} right={chevron} />
@@ -332,16 +413,25 @@ function InviteBody({ close }: { close: () => void }) {
             </View>
           </PressScale>;
         })}</Panel>
-        <T kind="label" muted style={{ paddingHorizontal: 4 }}>This is for QR codes only. Email invitations work the same whichever you choose. People who join by code are members, never admins.</T>
+        <T kind="label" muted style={{ paddingHorizontal: 4 }}>This is for QR codes only. Email and contact invitations work the same whichever you choose. People who join by code are members, never admins.</T>
       </View> : <T kind="label" muted style={{ paddingHorizontal: 4 }}>Only an admin can make a QR code for {name}.</T>}
+
+      {waiting.length ? <View style={{ gap: 8 }}>
+        <T kind="label" style={{ fontWeight: "600", paddingHorizontal: 4 }}>Invited</T>
+        <Panel>
+          {waiting.map((invite, index) => <Row key={invite.id} first={index === 0}
+            left={invite.email ? <View style={{ width: 32, height: 32, borderRadius: 16, borderWidth: 1, borderStyle: "dashed", borderColor: c.outline, alignItems: "center", justifyContent: "center" }}><Mail size={14} color={c.ink2} /></View> : <Avatar name={invite.name} size={32} />}
+            title={invite.name}
+            meta={<T kind="label" muted>{invite.email ? "Emailed" : sentViaWords(invite.sentVia)} {whenSent(invite.createdAt)}</T>}
+            right={<Badge text="Waiting" tone="attention" />} />)}
+        </Panel>
+      </View> : null}
 
       <View style={{ gap: 8 }}>
         <T kind="label" style={{ fontWeight: "600", paddingHorizontal: 4 }}>Already in</T>
         <Panel>
           {members.map((member, index) => <Row key={member.userId} first={index === 0} left={<Avatar name={member.name} size={32} />}
             title={member.userId === user?.id ? "You" : member.name} meta={<T kind="label" muted>{member.role === "admin" ? "Admin" : "Member"}</T>} />)}
-          {sent.map((address) => <Row key={address} left={<View style={{ width: 32, height: 32, borderRadius: 16, borderWidth: 1, borderStyle: "dashed", borderColor: c.outline, alignItems: "center", justifyContent: "center" }}><Mail size={14} color={c.ink2} /></View>}
-            title={address} meta={<T kind="label" muted>Invited just now</T>} />)}
         </Panel>
       </View>
       <Button block variant="quiet" label="Done" onPress={close} />
@@ -362,4 +452,103 @@ function StickerCard({ name, line, url }: { name: string; line: string; url: str
     <View style={{ alignSelf: "stretch", height: 1, backgroundColor: "#ece9e2" }} />
     <Text accessibilityLabel="Commune" style={{ color: "#111", fontSize: 22, fontFamily: "CommuneWordmark25", letterSpacing: -1.2 }}>commune.</Text>
   </View>;
+}
+
+/**
+ * The one person picked from contacts, as in the mock: who they are, the
+ * message in a bubble they can change, and two small buttons side by side.
+ * The link is made on the first send and reused for the other buttons, so
+ * one person gets one link. Their number is used here to open the right chat
+ * and is never sent to Commune.
+ */
+function PersonStep({ person, communeName, kind, currency, back, send, done }: {
+  person: Person; communeName: string; kind: "household" | "workspace" | "trip"; currency: string | null; back: ReactNode;
+  send: (name: string, channel: InviteChannel) => Promise<string>;
+  done: (name: string, channel: InviteChannel) => void;
+}) {
+  const { c } = useTheme();
+  const [name, setName] = useState(person.name);
+  const [phoneAt, setPhoneAt] = useState(0);
+  const [message, setMessage] = useState(() => inviteMessage({ name: person.name, communeName, kind }));
+  const [edited, setEdited] = useState(false);
+  const [url, setUrl] = useState<string | null>(null);
+  const [busy, setBusy] = useState<InviteChannel | null>(null);
+  const [error, setError] = useState("");
+  const nameInput = useRef<RNTextInput>(null);
+  const phone = person.phones[phoneAt] ?? null;
+  const number = whatsAppNumber(phone, defaultCallingCode(currency));
+  const first = inviteFirstName(name);
+  const ready = name.trim().length > 0;
+  const canText = Platform.OS !== "web";
+
+  function rename(next: string) {
+    setName(next); setError("");
+    // Until they change the message themselves, it greets whoever is named.
+    if (!edited) setMessage(inviteMessage({ name: next, communeName, kind }));
+  }
+  async function go(channel: InviteChannel) {
+    if (busy) return;
+    if (!ready) { setError("Type their name first."); nameInput.current?.focus(); return; }
+    setBusy(channel); setError("");
+    try {
+      const link = url ?? await send(name.trim(), channel);
+      setUrl(link);
+      const text = withInviteLink(message, link);
+      if (channel === "link") await Clipboard.setStringAsync(link);
+      else if (channel === "whatsapp") await Linking.openURL(whatsAppLink(number, text));
+      else await Linking.openURL(textLink(phone, text, Platform.OS === "ios"));
+      haptic.success();
+      done(name.trim(), channel);
+    } catch (cause) {
+      setError(failure(cause, url ? "Couldn’t open that app. Try the other button or copy the link." : "Couldn’t make the invite. Try again."));
+    } finally { setBusy(null); }
+  }
+
+  return <ScrollView keyboardShouldPersistTaps="handled" style={FITTED} contentContainerStyle={{ padding: 20, paddingTop: 8, gap: 14 }}>
+    {back}
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+      <Avatar name={name.trim() || "?"} size={46} />
+      <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+        {person.picked && person.name ? <T kind="title" accessibilityRole="header" lines={1}>{name}</T>
+          : <TextInput ref={nameInput} autoFocus accessibilityLabel="Their name" value={name} onChangeText={rename}
+            placeholder="Their name" placeholderTextColor={c.ink2} maxLength={80} autoCapitalize="words" autoComplete="name" textContentType="name"
+            returnKeyType="done" selectionColor={c.action}
+            style={[{ height: 44, borderRadius: radius.control, borderWidth: 1, borderColor: error && !ready ? c.late : c.outline, backgroundColor: c.surface, paddingHorizontal: 12, fontSize: 16.5, color: c.ink },
+              Platform.OS === "web" ? ({ outlineStyle: "none" } as object) : null]} />}
+        {phone ? <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+          <T kind="label" muted>{phone}</T>
+          {person.phones.length > 1 ? <TextLink label="Other number" onPress={() => setPhoneAt((at) => (at + 1) % person.phones.length)} /> : null}
+        </View> : person.picked ? <T kind="label" muted>No number saved. WhatsApp will ask who to send it to.</T> : null}
+      </View>
+    </View>
+
+    <View style={{ gap: 6 }}>
+      <View style={{ backgroundColor: c.surface, borderWidth: 1, borderColor: c.outline2, borderRadius: 16, borderBottomLeftRadius: 6, paddingHorizontal: 13, paddingTop: 10, paddingBottom: 11, gap: 6 }}>
+        <TextInput multiline accessibilityLabel="Message" value={message} maxLength={400}
+          onChangeText={(text) => { setMessage(text); setEdited(true); }} selectionColor={c.action}
+          style={[{ fontSize: 15, lineHeight: 21, color: c.ink, padding: 0, minHeight: 42, textAlignVertical: "top" },
+            Platform.OS === "web" ? ({ outlineStyle: "none" } as object) : null]} />
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <Link2 size={13} color={c.action} />
+          <T kind="label" style={{ color: c.action, fontWeight: "500" }}>{url ? url.replace(/^https:\/\//, "") : `${first ? `${first}’s` : "Their"} invite link goes here`}</T>
+        </View>
+      </View>
+      <T kind="label" muted style={{ paddingHorizontal: 4 }}>Tap the message to change it.</T>
+    </View>
+
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+      <Button size="sm" label="WhatsApp" busy={busy === "whatsapp"} disabled={busy !== null && busy !== "whatsapp"}
+        accessibilityLabel={`Send ${first || "their"} invite on WhatsApp`}
+        icon={<WhatsAppMark size={15} color={c.onAction} />} onPress={() => void go("whatsapp")} />
+      {canText ? <Button size="sm" variant="secondary" label="Text" busy={busy === "text"} disabled={busy !== null && busy !== "text"}
+        accessibilityLabel={`Send ${first || "their"} invite by text`}
+        icon={<MessageSquare size={15} color={c.ink} />} onPress={() => void go("text")} /> : null}
+      <View style={{ flex: 1 }} />
+      <TextLink label="Copy link" onPress={() => void go("link")} />
+    </View>
+    <ErrorText>{error}</ErrorText>
+    <T kind="label" muted style={{ paddingHorizontal: 4 }}>
+      The link works once, for {first || "them"} only, for 7 days. Commune doesn’t keep their number.
+    </T>
+  </ScrollView>;
 }
