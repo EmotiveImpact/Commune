@@ -11,7 +11,8 @@
     }
   ],
   "redirects": [
-    { "source": "/arcade/bill-dodgers", "destination": "/arcade/bill-dodgers/", "permanent": false }
+    { "source": "/arcade/bill-dodgers", "destination": "/arcade/bill-dodgers/", "permanent": false },
+    { "source": "/arcade/bill-dodgers/([1-6]-[1-7S])", "destination": "/arcade/bill-dodgers/$1/", "permanent": false }
   ],
   "rewrites": [
     { "source": "/arcade/bill-dodgers/(.*)", "destination": "https://bill-dodgers.vercel.app/$1" }
