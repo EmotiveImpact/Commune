@@ -9,5 +9,11 @@
       "source": "/assets/(.*)",
       "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
     }
+  ],
+  "redirects": [
+    { "source": "/arcade/bill-dodgers", "destination": "/arcade/bill-dodgers/", "permanent": false }
+  ],
+  "rewrites": [
+    { "source": "/arcade/bill-dodgers/:path*", "destination": "https://bill-dodgers.vercel.app/:path*" }
   ]
 }
