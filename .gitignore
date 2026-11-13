@@ -71,3 +71,4 @@ supabase/.temp/
 .vercel
 /.comparisons/
 /.pnpm-store/
+web/dist-green/
