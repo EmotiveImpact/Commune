@@ -9,3 +9,8 @@ da953a1499af8b6c0d3bd8df2f6d2ea8ec4040e3:docs/COMMUNE-BUILD-BIBLE.md:gcp-api-key
 # The web push (VAPID) private key of the earlier Supabase app, committed to an
 # example environment file in March 2026. The current app sends no web push.
 fb1d3c8dd0cea11791c140db10159592bbddcb66:apps/web/.env.example:generic-api-key:7
+# Not a secret: the phone app's on-device settings name, flagged before it was renamed.
+40857f39a9dcf52843664567ec00353a80928c9b:apps/native/src/prefs.tsx:generic-api-key:9
+# A made-up 32-character join code in a phone app test (not a secret), in the
+# commit that added it; the file now builds it with repeat().
+d0457042feb2569154a09eb0a7fd56dfc04a562a:apps/native/tests/join-codes.test.ts:generic-api-key:6

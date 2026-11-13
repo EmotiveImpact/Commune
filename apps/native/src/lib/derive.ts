@@ -63,6 +63,44 @@ export function outstanding(share: Share): number {
   return Math.max(0, share.amountMinor - share.settledMinor);
 }
 
+/**
+ * What the viewer still has to pay in a commune, leaving out shares already
+ * reported (waiting for the payer to confirm) and, optionally, one share
+ * being paid now. Zero means they're all square on their side.
+ */
+export function leftToPay(snapshot: Snapshot, viewerId: string, except?: string): number {
+  return live(snapshot).reduce((sum, expense) => expense.paidByUserId === viewerId ? sum : sum + expense.shares
+    .filter((share) => share.userId === viewerId && share.id !== except && !pendingReport(share))
+    .reduce((inner, share) => inner + outstanding(share), 0), 0);
+}
+
+/** What the viewer still owes one person in a commune, leaving out one share and anything already reported. */
+export function leftTo(snapshot: Snapshot, viewerId: string, creditorId: string, except?: string): number {
+  return live(snapshot).reduce((sum, expense) => expense.paidByUserId !== creditorId ? sum : sum + expense.shares
+    .filter((share) => share.userId === viewerId && share.id !== except && !pendingReport(share))
+    .reduce((inner, share) => inner + outstanding(share), 0), 0);
+}
+
+/**
+ * The words that close a payment sheet. "All square." only when nothing is left in the commune;
+ * square with this one person when others are still owed; otherwise what is left with them.
+ */
+export function paidOutcome(snapshot: Snapshot, viewerId: string, shareId: string, creditorId: string, name: string, sentMinor: number, leftOnShare: number) {
+  const currency = snapshot.commune.currency;
+  const withThem = leftTo(snapshot, viewerId, creditorId, shareId) + leftOnShare;
+  const overall = leftToPay(snapshot, viewerId, shareId) + leftOnShare;
+  if (overall <= 0) return { title: "All square.", body: `${name} gets a note to confirm it. Nothing is left for you to pay in ${snapshot.commune.name}. Commune records it, it never moves your money.` };
+  if (withThem <= 0) return { title: `All square with ${name}.`, body: `${name} gets a note to confirm it. You still have ${money(overall, currency)} to settle with others in ${snapshot.commune.name}.` };
+  return { title: "Recorded.", body: `${name} gets a note to confirm your ${money(sentMinor, currency)}. You still owe ${name} ${money(withThem, currency)} in ${snapshot.commune.name}.` };
+}
+
+/** What one person still owes the viewer in a commune, leaving out one share. */
+export function leftFrom(snapshot: Snapshot, viewerId: string, debtorId: string, except?: string): number {
+  return live(snapshot).reduce((sum, expense) => expense.paidByUserId !== viewerId ? sum : sum + expense.shares
+    .filter((share) => share.userId === debtorId && share.id !== except)
+    .reduce((inner, share) => inner + outstanding(share), 0), 0);
+}
+
 export function pendingReport(share: Share): PaymentReport | null {
   return share.paymentReports?.find((report) => report.status === "pending") ?? null;
 }
@@ -486,7 +524,7 @@ export function people(snapshot: Snapshot, viewerId: string, today: string): Per
   ];
 }
 
-const SECRET = /password|passcode|door code|access code|pin code|\bcode\b/i;
+export const SECRET = /password|passcode|door code|access code|pin code|\bcode\b/i;
 const PHONE = /^\+?[\d ()-]{7,}$/;
 const PRIORITY = ["Emergency", "Wi-Fi", "Keys / door", "Bins", "Contacts", "House rules", "Other"];
 export type Essential = {

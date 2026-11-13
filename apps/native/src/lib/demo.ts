@@ -1,5 +1,6 @@
 import { addDays, requestId as newId, todayIso } from "./format";
 import type { Backend } from "./backend";
+import type { JoinCode, JoinMode, JoinRequest, JoinState } from "./joinCodes";
 import { ApiError } from "./backend";
 import { parsePayLinks, type PayLink, type PayLinkInput, type PayProvider } from "./payLinks";
 import type { Commune, Expense, Operation, PaymentReport, ReminderTarget, Share, Snapshot, User } from "./types";
@@ -60,6 +61,9 @@ function demoData(today: string): Snapshot[] {
   const pick = (people: Person[]) => Object.fromEntries(people.map((p) => [id(p), links[id(p)]]));
 
   const everyone: Person[] = ["maya", "jordan", "alex", "sam"];
+  const equal = (amountMinor: number, people: Person[]) => people.map((p, index) => ({
+    userId: id(p), amountMinor: Math.floor(amountMinor / people.length) + (index < amountMinor % people.length ? 1 : 0),
+  }));
   const parkExpenses = [
     expense("Broadband", "Bills", "alex", 4800, -1, -10, everyone, { jordan: "all", sam: "all" }),
     expense("British Gas", "Bills", "jordan", 16800, 4, -2, everyone, { alex: "all" }),
@@ -83,7 +87,19 @@ function demoData(today: string): Snapshot[] {
       commune: commune("demo-park", "14 Park Street", "household", "GBP", everyone, { address: "Walthamstow, London" }),
       members: members(everyone, "maya"),
       expenses: parkExpenses,
-      funds: [], notifications: [], reminderTargets: nudges(parkExpenses),
+      funds: [{
+        id: "fund-kitty", name: "Holiday kitty", targetMinor: 40000,
+        commitments: everyone.map((p, index) => {
+          const paid = p === "maya" ? [2000, 2000] : [2000, 2000, 2000];
+          return { id: `commit-${p}`, userId: id(p), amountMinor: 10000, dueOn: addDays(today, 40), contributedMinor: paid.reduce((a, b) => a + b, 0),
+            contributions: paid.map((amountMinor, k) => ({ id: `contrib-${p}-${k}`, amountMinor, contributedAt: at(-30 * (k + 1) + index), voidedAt: null })) };
+        }),
+      }],
+      notifications: [
+        { id: "note-n-alex", kind: "nudge", sourceId: "share-1-maya", amountMinor: 1200, communeId: "demo-park", senderUserId: id("alex"), expenseId: "exp-1", title: "Broadband", createdAt: at(0, "08:40:00"), readAt: null },
+        { id: "note-n-gas", kind: "expense-corrected", sourceId: "exp-2", amountMinor: null, communeId: "demo-park", senderUserId: id("jordan"), expenseId: "exp-2", title: "British Gas", createdAt: at(-1, "18:05:00"), readAt: at(-1, "19:00:00") },
+        { id: "note-n-kitty", kind: "chase", sourceId: "commit-maya", amountMinor: 6000, communeId: "demo-park", senderUserId: id("sam"), expenseId: null, title: "Holiday kitty", createdAt: at(-4, "12:30:00"), readAt: at(-4, "13:00:00") },
+      ], reminderTargets: nudges(parkExpenses),
       notes: [
         { id: "note-bins", title: "Bin days", pill: "Bins", lede: "Black bin Thursday, recycling every other Monday.", facts: [["Black", "Thursday"], ["Recycling", "Every other Monday"]] },
         { id: "note-wifi", title: "Wi-Fi", pill: "Wi-Fi", lede: "ParkStreet-5G. The password is on the router.", facts: [["Network", "ParkStreet-5G"], ["Password", "plantpot-42"]] },
@@ -96,9 +112,9 @@ function demoData(today: string): Snapshot[] {
         op("op-gutters", "Clear the gutters", 5, null, [], "none"),
       ],
       recurringBills: [
-        { id: "rb-netflix", title: "Netflix", amountMinor: 1799, paidByUserId: id("maya"), allocations: [], frequency: "monthly", nextDueOn: addDays(today, 3), paused: false },
-        { id: "rb-council", title: "Council tax", amountMinor: 15600, paidByUserId: id("maya"), allocations: [], frequency: "monthly", nextDueOn: addDays(today, 9), paused: false },
-        { id: "rb-broadband", title: "Broadband", amountMinor: 4800, paidByUserId: id("alex"), allocations: [], frequency: "monthly", nextDueOn: addDays(today, 30), paused: false },
+        { id: "rb-netflix", title: "Netflix", amountMinor: 1799, paidByUserId: id("maya"), allocations: equal(1799, everyone), frequency: "monthly", nextDueOn: addDays(today, 3), paused: false, version: 1 },
+        { id: "rb-council", title: "Council tax", amountMinor: 15600, paidByUserId: id("maya"), allocations: equal(15600, everyone), frequency: "monthly", nextDueOn: addDays(today, 9), paused: false, version: 1 },
+        { id: "rb-broadband", title: "Broadband", amountMinor: 4800, paidByUserId: id("alex"), allocations: equal(4800, everyone), frequency: "monthly", nextDueOn: addDays(today, 30), paused: false, version: 1 },
       ],
       splitTemplates: [
         { id: "tpl-1", name: "Everyone equally", method: "Equal", participants: everyone.map((p) => ({ userId: id(p), value: "1" })), archivedAt: null },
@@ -111,7 +127,9 @@ function demoData(today: string): Snapshot[] {
       commune: commune("demo-studio", "Studio East", "workspace", "GBP", ["maya", "sam"], { address: "Unit 4, Hackney Wick" }),
       members: members(["maya", "sam"], "maya"),
       expenses: studioExpenses,
-      funds: [], notifications: [], reminderTargets: nudges(studioExpenses),
+      funds: [], notifications: [
+        { id: "note-n-ink", kind: "nudge", sourceId: "share-8-maya", amountMinor: 1600, communeId: "demo-studio", senderUserId: id("sam"), expenseId: "exp-8", title: "Printer ink", createdAt: at(-2, "15:20:00"), readAt: at(-2, "16:00:00") },
+      ], reminderTargets: nudges(studioExpenses),
       notes: [{ id: "note-alarm", title: "Alarm code and opening hours", lede: "Code is on the card in the drawer. Open 8 till 8." }],
       operations: [], recurringBills: [], splitTemplates: [], payLinks: pick(["maya", "sam"]), activityEvents: [],
     },
@@ -130,9 +148,15 @@ function demoData(today: string): Snapshot[] {
 
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 
+/** 22 Elm Road's sticker in the demo: scanning it asks Sam to let Maya in. */
+export const DEMO_ELM_STICKER = "e1a2000000000000000000000000e1a2";
+
 export function demoBackend(now: () => string = todayIso): Backend {
   let signedIn = true;
   let data = demoData(now());
+  let fresh = false;
+  // A new person's empty account carries the name they typed.
+  let name: string | null = null;
   // What a completion changed, so Undo can put it back.
   const undone = new Map<string, { snapshot: Snapshot; before: Operation; events: NonNullable<Snapshot["activityEvents"]> }>();
   const find = (shareId: string) => {
@@ -149,16 +173,40 @@ export function demoBackend(now: () => string = todayIso): Backend {
     }
     throw new ApiError("That payment report is no longer here", 404);
   };
+  // Join codes: Park Street has Priya waiting; the sticker below is 22 Elm
+  // Road's, for trying the scan on the phone (Help > Preview joining by QR).
+  const joinModes = new Map<string, JoinMode>();
+  let joinCodes: Array<JoinCode & { communeId: string }> = [];
+  let joinRequests: Array<JoinRequest & { communeId: string }> = [
+    { id: "jr-priya", communeId: "demo-park", userId: "demo-priya", name: "Priya Shah", email: "priya@example.com",
+      createdAt: new Date(Date.now() - 40 * 60000).toISOString(), codeKind: "sticker" },
+  ];
+  let elmWaiting = false;
+  const joinStateOf = (communeId: string): JoinState => {
+    const snapshot = data.find((candidate) => candidate.commune.id === communeId);
+    if (!snapshot) throw new ApiError("Not a commune member", 403);
+    const mode = joinModes.get(communeId) ?? "approve";
+    if (snapshot.commune.role !== "admin") return { joinMode: mode, codes: [], requests: [] };
+    const live = joinCodes.filter((code) => code.communeId === communeId && (!code.expiresAt || new Date(code.expiresAt) > new Date()));
+    return {
+      joinMode: mode,
+      codes: live.map(({ communeId: _, ...code }) => code),
+      requests: joinRequests.filter((item) => item.communeId === communeId).map(({ communeId: _, ...item }) => item),
+    };
+  };
+  const hex = () => Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join("");
   const myLinks = () => parsePayLinks(data[0].payLinks?.[MAYA.id]);
   const setMyLinks = (links: PayLink[]) => {
     for (const snapshot of data) snapshot.payLinks = { ...snapshot.payLinks, [MAYA.id]: links };
     return links;
   };
+  const viewer = (): User => (name ? { ...MAYA, name } : MAYA);
   return {
     mode: "demo",
-    async me() { return signedIn ? MAYA : null; },
-    async signIn() { signedIn = true; data = demoData(now()); return MAYA; },
+    async me() { return signedIn ? viewer() : null; },
+    async signIn() { signedIn = true; if (!fresh) name = null; data = fresh ? [] : demoData(now()); fresh = false; return viewer(); },
     async signOut() { signedIn = false; },
+    startFresh(as) { fresh = true; name = as?.trim() || null; },
     async communes() { return data.map((snapshot) => clone(snapshot.commune)); },
     async snapshot(commune) {
       const found = data.find((snapshot) => snapshot.commune.id === commune.id);
@@ -232,6 +280,92 @@ export function demoBackend(now: () => string = todayIso): Backend {
         })),
       });
     },
+    async addNote(communeId, input) {
+      const snapshot = data.find((candidate) => candidate.commune.id === communeId);
+      if (!snapshot) throw new ApiError("Not a commune member", 403);
+      snapshot.notes = [...(snapshot.notes ?? []), { id: `note-${newId()}`, title: input.title, pill: input.pill ?? undefined, lede: input.lede ?? undefined, body: input.body ?? undefined, facts: input.facts }];
+    },
+    async addTask(communeId, input) {
+      const snapshot = data.find((candidate) => candidate.commune.id === communeId);
+      if (!snapshot) throw new ApiError("Not a commune member", 403);
+      const assigneeId = input.assigneeId ?? input.rotationIds?.[0] ?? null;
+      snapshot.operations = [...(snapshot.operations ?? []), { id: `op-${newId()}`, kind: "task", title: input.title, date: input.date, allDay: true,
+        assigneeId, rotationIds: input.rotationIds, repeat: input.repeat, status: "open", notes: input.notes ?? undefined }];
+    },
+    async contribute(commitmentId, amountMinor) {
+      for (const snapshot of data) for (const fund of snapshot.funds) {
+        const commitment = fund.commitments.find((item) => item.id === commitmentId);
+        if (!commitment) continue;
+        if (commitment.userId !== MAYA.id) throw new ApiError("You can only record your own contributions", 403);
+        if (amountMinor <= 0 || commitment.contributedMinor + amountMinor > commitment.amountMinor) throw new ApiError("That is more than is left on your pledge", 400);
+        const contributionId = `contrib-${newId()}`;
+        commitment.contributions = [{ id: contributionId, amountMinor, contributedAt: new Date().toISOString(), voidedAt: null }, ...(commitment.contributions ?? [])];
+        commitment.contributedMinor += amountMinor;
+        return contributionId;
+      }
+      throw new ApiError("Pledge not found", 404);
+    },
+    async voidContribution(contributionId) {
+      for (const snapshot of data) for (const fund of snapshot.funds) for (const commitment of fund.commitments) {
+        const item = commitment.contributions?.find((candidate) => candidate.id === contributionId);
+        if (!item || item.voidedAt) continue;
+        item.voidedAt = new Date().toISOString();
+        commitment.contributedMinor -= item.amountMinor;
+        return;
+      }
+      throw new ApiError("Contribution not found", 404);
+    },
+    async setRecurringPaused(billId, paused) {
+      const bill = data.flatMap((snapshot) => snapshot.recurringBills ?? []).find((item) => item.id === billId);
+      if (!bill) throw new ApiError("Bill not found", 404);
+      if (bill.paused !== paused) { bill.paused = paused; bill.version = (bill.version ?? 1) + 1; }
+    },
+    async saveRecurring(communeId, input) {
+      const snapshot = data.find((candidate) => candidate.commune.id === communeId);
+      const bill = snapshot?.recurringBills?.find((item) => item.id === input.id);
+      if (!bill) throw new ApiError("Bill not found", 404);
+      if ((bill.version ?? 1) !== input.expectedVersion) throw new ApiError("Someone changed this bill while you were editing. Open it again.", 409);
+      if (input.allocations.reduce((sum, item) => sum + item.amountMinor, 0) !== input.amountMinor) throw new ApiError("The shares must add up to the amount", 400);
+      Object.assign(bill, { title: input.title, amountMinor: input.amountMinor, paidByUserId: input.paidByUserId, allocations: input.allocations,
+        frequency: input.frequency, nextDueOn: input.nextDueOn, version: (bill.version ?? 1) + 1 });
+    },
+    async announce(communeId, input) {
+      const snapshot = data.find((candidate) => candidate.commune.id === communeId);
+      if (!snapshot) throw new ApiError("Not a commune member", 403);
+      snapshot.announcements = [{ id: `ann-${newId()}`, title: input.title, body: input.body, authorId: MAYA.id, createdAt: new Date().toISOString(),
+        needsAcknowledgement: input.needsAcknowledgement, acknowledgements: [] }, ...(snapshot.announcements ?? [])];
+    },
+    async claimTask(operationId, input) {
+      for (const snapshot of data) {
+        const item = snapshot.operations?.find((candidate) => candidate.id === operationId);
+        if (!item) continue;
+        if (item.status !== "open") throw new ApiError("This task is already done", 409);
+        if (input.expectedDate !== item.date || item.assigneeId) throw new ApiError("This task has already moved on. Refresh to see who has it now.", 409);
+        item.assigneeId = input.toMemberId;
+        return;
+      }
+      throw new ApiError("This task has been removed", 404);
+    },
+    async createCommune(input) {
+      const id = `demo-${newId()}`;
+      data.push({
+        commune: { id, name: input.name, kind: input.kind, currency: input.currency, role: "admin", memberCount: 1,
+          address: input.address ?? undefined, destination: input.destination ?? undefined },
+        members: [{ ...PEOPLE.maya, name: viewer().name, role: "admin", active: true }],
+        expenses: [], funds: [], notifications: [], reminderTargets: [], notes: [], operations: [],
+        recurringBills: [], splitTemplates: [], payLinks: {}, activityEvents: [],
+      });
+      return id;
+    },
+    async invite(communeId, email) {
+      if (!data.some((snapshot) => snapshot.commune.id === communeId)) throw new Error("That commune isn’t here any more.");
+      const token = Array.from(email.trim().toLowerCase()).reduce((hash, ch) => (hash * 31 + ch.charCodeAt(0)) >>> 0, 7).toString(16).padStart(8, "0");
+      return { url: `https://app.ourcommune.io/invite?token=demo${token}` };
+    },
+    async emailInvitation(token) {
+      // The demo sends nothing; it only checks the invitation came from here.
+      if (!token.startsWith("demo")) throw new Error("That invitation isn’t here any more.");
+    },
     async nudge(shareId) {
       for (const snapshot of data) {
         const target = snapshot.reminderTargets.find((item) => item.sourceId === shareId);
@@ -264,6 +398,177 @@ export function demoBackend(now: () => string = todayIso): Backend {
     async setPreferredPayLink(provider) {
       if (provider && !myLinks().some((item) => item.provider === provider)) throw new ApiError("Add that way to be paid before making it your favourite", 400);
       return setMyLinks(parsePayLinks(myLinks().map((item) => ({ ...item, preferred: item.provider === provider }))));
+    },
+    // "demo" is the invitation the Help screen's "Preview joining" opens: Sam
+    // asks Maya to join 22 Elm Road. Joining adds a commune with one bill and
+    // one chore that are hers from today, and nothing from before.
+    async previewInvite(token) {
+      if (token !== "demo") return null;
+      if (data.some((snapshot) => snapshot.commune.id === "demo-elm")) return null;
+      return { communeName: "22 Elm Road", kind: "household", inviterName: "Sam Okafor", people: ["Sam Okafor", "Jordan Hale", "Alex Rivera"] };
+    },
+    async acceptInvite(token) {
+      if (token !== "demo") throw new ApiError("This invitation has expired or been used", 410);
+      if (data.some((snapshot) => snapshot.commune.id === "demo-elm")) return "demo-elm";
+      const today = now();
+      const people = [MAYA.id, "demo-sam", "demo-jordan", "demo-alex"];
+      const share = (n: number, userId: string, amountMinor: number, paid: boolean): Share =>
+        ({ id: `share-elm-${n}-${userId}`, userId, amountMinor, settledMinor: paid ? amountMinor : 0, paymentReports: [] });
+      data.push({
+        commune: { id: "demo-elm", name: "22 Elm Road", kind: "household", currency: "GBP", role: "member", memberCount: 4 },
+        members: [
+          { ...PEOPLE.sam, role: "admin", active: true }, { ...PEOPLE.jordan, role: "member", active: true },
+          { ...PEOPLE.alex, role: "member", active: true }, { ...PEOPLE.maya, role: "member", active: true },
+        ],
+        expenses: [{
+          id: "exp-elm-1", title: "Broadband", category: "Bills", amountMinor: 4000, paidByUserId: "demo-sam",
+          dueOn: addDays(today, 3), createdAt: `${today}T08:00:00Z`, version: 1, voidedAt: null,
+          shares: people.map((userId) => share(1, userId, 1000, userId === "demo-sam")),
+        }],
+        funds: [], notifications: [], reminderTargets: [],
+        notes: [{ id: "note-elm-wifi", title: "Wi-Fi and bins", lede: "Network ElmRoad5G. Bins go out on Thursday night." }],
+        operations: [{ id: "op-elm-bins", kind: "task", title: "Put the bins out", date: addDays(today, 2), allDay: true,
+          assigneeId: MAYA.id, rotationIds: [MAYA.id, "demo-jordan", "demo-alex", "demo-sam"], repeat: "weekly", status: "open" }],
+        recurringBills: [], splitTemplates: [], payLinks: {}, activityEvents: [],
+      });
+      return "demo-elm";
+    },
+    async joinState(communeId) { return joinStateOf(communeId); },
+    async setJoinMode(communeId, mode) {
+      if (joinStateOf(communeId) && data.find((item) => item.commune.id === communeId)?.commune.role !== "admin") {
+        throw new ApiError("Only an admin can change how people join", 403);
+      }
+      joinModes.set(communeId, mode);
+      if (mode === "off") joinCodes = joinCodes.filter((code) => code.communeId !== communeId);
+      return joinStateOf(communeId);
+    },
+    async createJoinCode(communeId, kind) {
+      const state = joinStateOf(communeId);
+      if (state.joinMode === "off") throw new ApiError("Joining by code is turned off for this commune", 409);
+      if (kind === "sticker") joinCodes = joinCodes.filter((code) => !(code.communeId === communeId && code.kind === "sticker"));
+      const code = { id: `jc-${newId()}`, communeId, kind, token: hex(), createdAt: new Date().toISOString(),
+        expiresAt: kind === "now" ? new Date(Date.now() + 3600_000).toISOString() : null };
+      joinCodes.push(code);
+      const { communeId: _, ...shown } = code;
+      return shown;
+    },
+    async revokeJoinCode(codeId) { joinCodes = joinCodes.filter((code) => code.id !== codeId); },
+    async previewJoinCode(token) {
+      if (token === DEMO_ELM_STICKER) {
+        if (data.some((snapshot) => snapshot.commune.id === "demo-elm")) {
+          return { communeName: "22 Elm Road", communeKind: "household", memberCount: 4, joinMode: "approve", alreadyMember: true, waiting: false };
+        }
+        return { communeName: "22 Elm Road", communeKind: "household", memberCount: 3, joinMode: "approve", alreadyMember: false, waiting: elmWaiting };
+      }
+      const code = joinCodes.find((item) => item.token === token && (!item.expiresAt || new Date(item.expiresAt) > new Date()));
+      const snapshot = code && data.find((item) => item.commune.id === code.communeId);
+      if (!code || !snapshot || (joinModes.get(code.communeId) ?? "approve") === "off") return null;
+      return { communeName: snapshot.commune.name, communeKind: snapshot.commune.kind, memberCount: snapshot.members.length,
+        joinMode: joinModes.get(code.communeId) ?? "approve", alreadyMember: true, waiting: false };
+    },
+    async requestToJoin(token) {
+      if (token === DEMO_ELM_STICKER) {
+        if (data.some((snapshot) => snapshot.commune.id === "demo-elm")) return { status: "already_member", communeId: "demo-elm" };
+        elmWaiting = true;
+        return { status: "pending", requestId: "jr-maya-elm" };
+      }
+      const code = joinCodes.find((item) => item.token === token);
+      if (!code) throw new ApiError("This code no longer works. Ask for a new one.", 410);
+      return { status: "already_member", communeId: code.communeId };
+    },
+    async decideJoinRequest(requestId, decision) {
+      const request = joinRequests.find((item) => item.id === requestId);
+      if (!request) throw new ApiError("This request was already answered", 409);
+      joinRequests = joinRequests.filter((item) => item.id !== requestId);
+      if (decision === "approve") {
+        const snapshot = data.find((item) => item.commune.id === request.communeId)!;
+        snapshot.members = [...snapshot.members, { userId: request.userId, name: request.name, email: request.email ?? undefined, role: "member", active: true }];
+        snapshot.commune.memberCount = snapshot.members.length;
+      }
+      return joinStateOf(request.communeId);
+    },
+    async readReceipt() {
+      // The demo pretends to read the receipt, so the filled-in sheet can be seen.
+      return { amountMinor: 2340, title: "Big Tesco shop", date: now() };
+    },
+
+    // ---- Editing ----
+    async updateCommune(communeId, input) {
+      const snapshot = data.find((candidate) => candidate.commune.id === communeId);
+      if (!snapshot) throw new ApiError("Not a commune member", 403);
+      if (snapshot.commune.role !== "admin") throw new ApiError("Only an admin can change the commune", 403);
+      if (input.currency !== snapshot.commune.currency && snapshot.expenses.length) throw new ApiError("The currency can’t change once there are bills", 409);
+      Object.assign(snapshot.commune, { name: input.name, kind: input.kind, currency: input.currency, address: input.address ?? undefined,
+        destination: input.destination ?? undefined, stayName: input.stayName, stayAddress: input.stayAddress });
+    },
+    async leaveCommune(communeId) {
+      const index = data.findIndex((candidate) => candidate.commune.id === communeId);
+      if (index < 0) throw new ApiError("Not a commune member", 403);
+      if (data.length === 1) throw new ApiError("You can’t leave your only commune in the demo", 409);
+      data.splice(index, 1);
+    },
+    async correctExpense(expenseId, input) {
+      const found = data.flatMap((snapshot) => snapshot.expenses).find((item) => item.id === expenseId);
+      if (!found || found.voidedAt) throw new ApiError("That bill is no longer here", 404);
+      if ((found.version ?? 1) !== input.expectedVersion) throw new ApiError("Someone changed this bill while you were editing. Open it again.", 409);
+      if (input.shares.reduce((sum, item) => sum + item.amountMinor, 0) !== input.amountMinor) throw new ApiError("The shares must add up to the amount", 400);
+      if (!input.reason.trim()) throw new ApiError("Say why it changed", 400);
+      const settled = new Map(found.shares.map((share) => [share.userId, share]));
+      found.shares = input.shares.map((share) => {
+        const before = settled.get(share.userId);
+        return before ? { ...before, amountMinor: share.amountMinor, settledMinor: share.userId === input.paidByUserId ? share.amountMinor : Math.min(before.settledMinor, share.amountMinor) }
+          : { id: `share-${newId()}`, userId: share.userId, amountMinor: share.amountMinor, settledMinor: share.userId === input.paidByUserId ? share.amountMinor : 0, paymentReports: [] };
+      });
+      Object.assign(found, { title: input.title, amountMinor: input.amountMinor, category: input.category, dueOn: input.dueOn,
+        paidByUserId: input.paidByUserId, version: (found.version ?? 1) + 1 });
+    },
+    async voidExpense(expenseId, input) {
+      for (const snapshot of data) {
+        const found = snapshot.expenses.find((item) => item.id === expenseId && !item.voidedAt);
+        if (!found) continue;
+        if ((found.version ?? 1) !== input.expectedVersion) throw new ApiError("Someone changed this bill while you were editing. Open it again.", 409);
+        Object.assign(found, { voidedAt: new Date().toISOString(), version: (found.version ?? 1) + 1 });
+        return;
+      }
+      throw new ApiError("That bill is no longer here", 404);
+    },
+    async updateTask(operation, input) {
+      const found = data.flatMap((snapshot) => snapshot.operations ?? []).find((item) => item.id === operation.id);
+      if (!found) throw new ApiError("This task has been removed", 404);
+      if ((found.version ?? 1) !== input.expectedVersion) throw new ApiError("Someone changed this while you were editing. Open it again.", 409);
+      Object.assign(found, { title: input.title, date: input.date, assigneeId: input.assigneeId ?? input.rotationIds?.[0] ?? null,
+        rotationIds: input.rotationIds, repeat: input.repeat, notes: input.notes ?? undefined, version: (found.version ?? 1) + 1 });
+    },
+    async removeTask(operationId) {
+      for (const snapshot of data) {
+        if (!snapshot.operations?.some((item) => item.id === operationId)) continue;
+        snapshot.operations = snapshot.operations.filter((item) => item.id !== operationId);
+        return;
+      }
+      throw new ApiError("This task has been removed", 404);
+    },
+    async updateNote(noteId, input) {
+      const found = data.flatMap((snapshot) => snapshot.notes ?? []).find((item) => item.id === noteId);
+      if (!found) throw new ApiError("This note has been removed", 404);
+      if ((found.version ?? 1) !== input.expectedVersion) throw new ApiError("Someone changed this note while you were editing. Open it again.", 409);
+      Object.assign(found, { title: input.title, pill: input.pill ?? undefined, lede: input.lede ?? undefined, body: input.body ?? undefined,
+        facts: input.facts, version: (found.version ?? 1) + 1 });
+    },
+    async removeNote(noteId) {
+      for (const snapshot of data) {
+        if (!snapshot.notes?.some((item) => item.id === noteId)) continue;
+        snapshot.notes = snapshot.notes.filter((item) => item.id !== noteId);
+        return;
+      }
+      throw new ApiError("This note has been removed", 404);
+    },
+    async archiveAnnouncement(announcementId) {
+      for (const snapshot of data) {
+        if (!snapshot.announcements?.some((item) => item.id === announcementId)) continue;
+        snapshot.announcements = snapshot.announcements.filter((item) => item.id !== announcementId);
+        return;
+      }
+      throw new ApiError("That announcement is no longer here", 404);
     },
   };
 }

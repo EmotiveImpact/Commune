@@ -935,6 +935,75 @@ route("POST", /^\/api\/invites\/([0-9a-f-]{36})\/revoke$/, async (req, res, matc
   send(res, { ok: true });
 });
 
+// Join codes (0044): a QR code that needs no email. How a scan joins is the
+// commune's join setting: approve (default), instant or off.
+const joinMode = (value: unknown) => {
+  if (value !== "approve" && value !== "instant" && value !== "off") throw new ApiError(400, "Choose approve, instant or off");
+  return value;
+};
+route("GET", /^\/api\/communes\/([0-9a-f-]{36})\/join$/, async (req, res, match) => {
+  const result = await userAction(req, async (client) => client.query(
+    "SELECT public.commune_join_state($1) AS state", [uuid(match[1])]));
+  send(res, result.rows[0].state);
+});
+
+route("POST", /^\/api\/communes\/([0-9a-f-]{36})\/join-mode$/, async (req, res, match) => {
+  const input = await body(req);
+  const result = await userAction(req, async (client) => client.query(
+    "SELECT public.set_commune_join_mode($1, $2, $3) AS state", [uuid(match[1]), joinMode(input.mode), requestIdOf(input)]));
+  send(res, result.rows[0].state);
+});
+
+route("POST", /^\/api\/communes\/([0-9a-f-]{36})\/join-codes$/, async (req, res, match) => {
+  const input = await body(req);
+  if (input.kind !== "sticker" && input.kind !== "now") throw new ApiError(400, "Choose a sticker or a code to show now");
+  const result = await userAction(req, async (client) => client.query(
+    "SELECT public.create_join_code($1, $2, $3) AS code", [uuid(match[1]), input.kind, requestIdOf(input)]));
+  const code = result.rows[0].code;
+  send(res, { ...code, url: `${appOrigin}/j/${code.token}` }, 201);
+});
+
+route("POST", /^\/api\/join-codes\/([0-9a-f-]{36})\/revoke$/, async (req, res, match) => {
+  await body(req);
+  await userAction(req, async (client) => client.query("SELECT public.revoke_join_code($1)", [uuid(match[1])]));
+  send(res, { ok: true });
+});
+
+route("GET", /^\/api\/join\/([0-9a-f]{32})$/, async (req, res, match) => {
+  const result = await userAction(req, async (client) => client.query(
+    "SELECT * FROM public.preview_join_code($1)", [match[1]]));
+  const row = result.rows[0];
+  send(res, { preview: row ? {
+    communeName: row.commune_name, communeKind: row.commune_kind, memberCount: row.member_count,
+    joinMode: row.join_mode, alreadyMember: row.already_member, waiting: row.waiting,
+  } : null });
+});
+
+route("POST", /^\/api\/join\/([0-9a-f]{32})$/, async (req, res, match) => {
+  const input = await body(req);
+  const result = await userAction(req, async (client) => client.query(
+    "SELECT public.request_to_join($1, $2) AS result", [match[1], requestIdOf(input)]));
+  send(res, result.rows[0].result);
+});
+
+route("POST", /^\/api\/join-requests\/([0-9a-f-]{36})\/(approve|decline)$/, async (req, res, match) => {
+  await body(req);
+  const result = await userAction(req, async (client) => client.query(
+    "SELECT public.decide_join_request($1, $2) AS state", [uuid(match[1]), match[2]]));
+  send(res, result.rows[0].state);
+});
+
+route("GET", /^\/api\/join-requests$/, async (req, res) => {
+  const result = await userAction(req, async (client) => client.query("SELECT public.my_join_requests() AS requests"));
+  send(res, { requests: result.rows[0].requests });
+});
+
+route("POST", /^\/api\/join-requests\/([0-9a-f-]{36})\/cancel$/, async (req, res, match) => {
+  await body(req);
+  await userAction(req, async (client) => client.query("SELECT public.cancel_join_request($1)", [uuid(match[1])]));
+  send(res, { ok: true });
+});
+
 route("GET", /^\/api\/preferences$/, async (req, res) => {
   const result = await userAction(req, async (client) => client.query(`
     SELECT email_reminders FROM public.notification_preferences
@@ -983,6 +1052,7 @@ function normalizedError(error: unknown): ApiError {
   if (postgres.code === "23505" || postgres.code === "P0001") {
     return new ApiError(409, postgres.message ?? "Conflict");
   }
+  if (postgres.code === "P0002") return new ApiError(410, postgres.message ?? "Gone");
   if (postgres.code === "23503") return new ApiError(400, "Referenced item not found");
   console.error("API error", error);
   return new ApiError(500, "Internal server error");

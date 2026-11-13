@@ -1,5 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Linking } from "react-native";
+import { Linking, Platform } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import NetInfo from "@react-native-community/netinfo";
 import { type Backend, serverBackend } from "./lib/backend";
 import { demoBackend } from "./lib/demo";
 import {
@@ -7,7 +9,10 @@ import {
   type FeedItem, type Need, type Recorded, type Settle, type Totals, type Waiting,
 } from "./lib/derive";
 import { requestId, todayIso } from "./lib/format";
+import { usePrefs } from "./prefs";
+import { OUTBOX_STORE, enqueue, flush, isNetworkError, parseOutbox, type Queued } from "./lib/outbox";
 import type { PayLink, PayLinkInput, PayProvider } from "./lib/payLinks";
+import { EMPTY_JOIN, type JoinCode, type JoinCodeKind, type JoinMode, type JoinState } from "./lib/joinCodes";
 import type { Commune, Snapshot, User } from "./lib/types";
 
 /**
@@ -43,13 +48,22 @@ type App = {
   refresh(): Promise<void>;
   signIn(email: string, password: string): Promise<void>;
   signOut(): Promise<void>;
-  reportPayment(communeId: string, shareId: string, amountMinor: number, sentOn: string, reference: string | null): Promise<void>;
+  /** "queued" when there is no signal: it is saved on the phone and sends when back online. */
+  reportPayment(communeId: string, shareId: string, amountMinor: number, sentOn: string, reference: string | null, label?: string): Promise<"sent" | "queued">;
   resolveReport(communeId: string, reportId: string, decision: "confirm" | "decline", note?: string): Promise<void>;
   withdrawReport(communeId: string, reportId: string): Promise<void>;
   /** Returns the completion's id, for Undo. */
   completeTask(communeId: string, operationId: string, expectedDate: string, doneBy?: "me" | "assignee"): Promise<string | null>;
   undoCompletion(communeId: string, occurrenceId: string): Promise<void>;
-  addExpense(communeId: string, input: Parameters<Backend["addExpense"]>[1]): Promise<void>;
+  /** "I'll do it" on a chore nobody has yet. */
+  claimTask(communeId: string, operationId: string, expectedDate: string): Promise<void>;
+  addExpense(communeId: string, input: Parameters<Backend["addExpense"]>[1]): Promise<"sent" | "queued">;
+  /** False with no signal. */
+  online: boolean;
+  /** Records made offline, waiting to send. */
+  outbox: Queued[];
+  /** True while the outbox is sending. */
+  sending: boolean;
   nudge(communeId: string, shareId: string): Promise<void>;
   /** Marks what you've now seen as read, so the bell stops showing new. */
   markAllRead(): Promise<void>;
@@ -66,6 +80,15 @@ type App = {
   /** The share whose payee's app was opened last, until it is asked about. */
   payingAway: { shareId: string; provider: string } | null;
   clearPayingAway(): void;
+  /** Join codes and who is waiting, for each commune you're an admin of. */
+  joins: Record<string, JoinState>;
+  joinOf(communeId: string): JoinState;
+  /** Everyone waiting for an admin, across your communes. */
+  joinWaiting: Array<{ communeId: string; communeName: string; request: JoinState["requests"][number] }>;
+  setJoinMode(communeId: string, mode: JoinMode): Promise<void>;
+  makeJoinCode(communeId: string, kind: JoinCodeKind): Promise<JoinCode>;
+  revokeJoinCode(communeId: string, codeId: string): Promise<void>;
+  decideJoinRequest(communeId: string, requestId: string, decision: "approve" | "decline"): Promise<void>;
 };
 
 const Context = createContext<App | null>(null);
@@ -75,18 +98,33 @@ export function AppProvider({ children, backend: given }: { children: ReactNode;
   const [status, setStatus] = useState<Status>("starting");
   const [error, setError] = useState("");
   const [user, setUser] = useState<User | null>(null);
+  const { displayName } = usePrefs();
   const [communes, setCommunes] = useState<Commune[]>([]);
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [currentId, setCurrentId] = useState<string | null>(null);
   const [payingAway, setPayingAway] = useState<{ shareId: string; provider: string } | null>(null);
   const [myPayLinks, setMyPayLinks] = useState<PayLink[] | null>(null);
+  const [joins, setJoins] = useState<Record<string, JoinState>>({});
   const [today, setToday] = useState(todayIso());
   const userRef = useRef<User | null>(null);
+  const [online, setOnline] = useState(true);
+  const [outbox, setOutbox] = useState<Queued[]>([]);
+  const [sending, setSending] = useState(false);
+  const outboxRef = useRef<Queued[]>([]);
+  const keepOutbox = useCallback((next: Queued[]) => {
+    outboxRef.current = next;
+    setOutbox(next);
+    AsyncStorage.setItem(OUTBOX_STORE, JSON.stringify(next)).catch(() => undefined);
+  }, []);
 
   const loadAll = useCallback(async (viewer: User) => {
     setStatus((value) => (value === "ready" ? value : "loading"));
     const list = await backend.communes();
     const loaded = await Promise.all(list.map((commune) => backend.snapshot(commune)));
+    // Join codes matter only to admins; a server without them leaves this empty.
+    const joinList = await Promise.all(list.filter((commune) => commune.role === "admin")
+      .map(async (commune) => [commune.id, await backend.joinState(commune.id).catch(() => EMPTY_JOIN)] as const));
+    setJoins(Object.fromEntries(joinList));
     setCommunes(list);
     setSnapshots(loaded);
     setToday(todayIso());
@@ -110,6 +148,41 @@ export function AppProvider({ children, backend: given }: { children: ReactNode;
 
   useEffect(() => { void refresh(); }, [refresh]);
 
+  // Records saved with no signal survive the app closing.
+  useEffect(() => {
+    AsyncStorage.getItem(OUTBOX_STORE).then((raw) => {
+      const saved = parseOutbox(raw);
+      if (saved.length) { outboxRef.current = saved; setOutbox(saved); }
+    }).catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    const stop = NetInfo.addEventListener((state) => {
+      setOnline(state.isConnected !== false && state.isInternetReachable !== false);
+    });
+    // In a browser NetInfo only hears connection-type changes, so also listen for going on and off line.
+    if (Platform.OS !== "web" || typeof window === "undefined") return stop;
+    const change = () => setOnline(navigator.onLine);
+    window.addEventListener("online", change);
+    window.addEventListener("offline", change);
+    return () => { stop(); window.removeEventListener("online", change); window.removeEventListener("offline", change); };
+  }, []);
+
+  // Back online: send what waited, oldest first, each once.
+  const flushing = useRef(false);
+  useEffect(() => {
+    if (!online || !outbox.length || !user || flushing.current) return;
+    flushing.current = true;
+    setSending(true);
+    void flush(outboxRef.current, (item) => item.kind === "report"
+      ? backend.reportPayment(item.shareId, item.input)
+      : backend.addExpense(item.communeId, item.input)).then(async (result) => {
+      const done = new Set([...result.sent, ...result.failed.map((entry) => entry.item)].map((item) => item.id));
+      keepOutbox(outboxRef.current.filter((item) => !done.has(item.id)));
+      if (result.sent.length || result.failed.length) await refresh();
+    }).finally(() => { flushing.current = false; setSending(false); });
+  }, [online, outbox, user, backend, keepOutbox, refresh]);
+
   // A command changes one commune; reload just that one.
   const reload = useCallback(async (communeId: string) => {
     const commune = communes.find((item) => item.id === communeId);
@@ -117,6 +190,8 @@ export function AppProvider({ children, backend: given }: { children: ReactNode;
     const fresh = await backend.snapshot(commune);
     setSnapshots((list) => list.map((item) => (item.commune.id === communeId ? fresh : item)));
   }, [backend, communes]);
+
+  const keepJoin = useCallback((communeId: string, state: JoinState) => setJoins((all) => ({ ...all, [communeId]: state })), []);
 
   // Kept stable so screens can load it from an effect without looping.
   const loadMyPayLinks = useCallback(async () => { setMyPayLinks(await backend.myPayLinks()); }, [backend]);
@@ -126,7 +201,9 @@ export function AppProvider({ children, backend: given }: { children: ReactNode;
     const owing = needs(snapshots, viewerId, today);
     const owed = waiting(snapshots, viewerId, today);
     return {
-      backend, status, error, user, today, communes, snapshots,
+      backend, status, error, today, communes, snapshots,
+      // A name chosen in Edit profile shows on this phone in place of the account's.
+      user: user && displayName ? { ...user, name: displayName } : user,
       current: snapshots.find((item) => item.commune.id === currentId) ?? snapshots[0],
       setCurrent: setCurrentId,
       snapshotOf: (communeId) => snapshots.find((item) => item.commune.id === communeId),
@@ -146,12 +223,16 @@ export function AppProvider({ children, backend: given }: { children: ReactNode;
       },
       async signOut() {
         await backend.signOut();
-        setUser(null); setCommunes([]); setSnapshots([]); setMyPayLinks(null); setCurrentId(null);
+        setUser(null); setCommunes([]); setSnapshots([]); setMyPayLinks(null); setCurrentId(null); setJoins({});
         setStatus("signed-out");
       },
-      async reportPayment(communeId, shareId, amountMinor, sentOn, reference) {
-        await backend.reportPayment(shareId, { amountMinor, sentOn, reference, requestId: requestId() });
+      async reportPayment(communeId, shareId, amountMinor, sentOn, reference, label = "") {
+        const input = { amountMinor, sentOn, reference, requestId: requestId() };
+        const save = () => { keepOutbox(enqueue(outboxRef.current, { id: input.requestId, kind: "report", communeId, shareId, input, label })); return "queued" as const; };
+        if (!online) return save();
+        try { await backend.reportPayment(shareId, input); } catch (cause) { if (isNetworkError(cause)) return save(); throw cause; }
         await reload(communeId);
+        return "sent";
       },
       async resolveReport(communeId, reportId, decision, note) {
         await backend.resolveReport(reportId, decision, requestId(), note);
@@ -166,14 +247,25 @@ export function AppProvider({ children, backend: given }: { children: ReactNode;
         await reload(communeId);
         return occurrenceId;
       },
+      async claimTask(communeId, operationId, expectedDate) {
+        await backend.claimTask(operationId, { toMemberId: user!.id, expectedDate, today: todayIso(), requestId: requestId() });
+        await reload(communeId);
+      },
       async undoCompletion(communeId, occurrenceId) {
         await backend.undoCompletion(occurrenceId);
         await reload(communeId);
       },
-      async addExpense(communeId, input) {
-        await backend.addExpense(communeId, input);
+      async addExpense(communeId, given) {
+        const input = { ...given, requestId: given.requestId ?? requestId() };
+        const save = () => { keepOutbox(enqueue(outboxRef.current, { id: input.requestId, kind: "expense", communeId, input, label: input.title })); return "queued" as const; };
+        if (!online) return save();
+        try { await backend.addExpense(communeId, input); } catch (cause) { if (isNetworkError(cause)) return save(); throw cause; }
         await reload(communeId);
+        return "sent";
       },
+      online,
+      outbox,
+      sending,
       async nudge(communeId, shareId) {
         await backend.nudge(shareId, requestId());
         await reload(communeId);
@@ -204,8 +296,27 @@ export function AppProvider({ children, backend: given }: { children: ReactNode;
       },
       payingAway,
       clearPayingAway() { setPayingAway(null); },
+      joins,
+      joinOf: (communeId) => joins[communeId] ?? EMPTY_JOIN,
+      joinWaiting: snapshots.flatMap((item) => (joins[item.commune.id]?.requests ?? [])
+        .map((request) => ({ communeId: item.commune.id, communeName: item.commune.name, request }))),
+      async setJoinMode(communeId, mode) { keepJoin(communeId, await backend.setJoinMode(communeId, mode)); },
+      async makeJoinCode(communeId, kind) {
+        const code = await backend.createJoinCode(communeId, kind, requestId());
+        keepJoin(communeId, await backend.joinState(communeId));
+        return code;
+      },
+      async revokeJoinCode(communeId, codeId) {
+        await backend.revokeJoinCode(codeId);
+        keepJoin(communeId, await backend.joinState(communeId));
+      },
+      async decideJoinRequest(communeId, id, decision) {
+        keepJoin(communeId, await backend.decideJoinRequest(id, decision));
+        // An approved person is now a member.
+        if (decision === "approve") await reload(communeId);
+      },
     };
-  }, [backend, status, error, user, today, communes, snapshots, currentId, myPayLinks, payingAway, refresh, loadAll, reload, loadMyPayLinks]);
+  }, [backend, status, error, user, displayName, today, communes, snapshots, currentId, myPayLinks, payingAway, refresh, loadAll, reload, loadMyPayLinks, online, outbox, sending, keepOutbox, joins, keepJoin]);
 
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }

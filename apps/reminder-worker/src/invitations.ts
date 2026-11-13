@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import type { Pool } from "pg";
+import qrcode from "qrcode-generator";
 
 export class InvitationEmailError extends Error {
   status: number;
@@ -9,6 +10,15 @@ export class InvitationEmailError extends Error {
 type Config = { apiKey: string; from: string; appUrl: string };
 type Payload = { from: string; to: string[]; subject: string; html: string; text: string };
 const TOKEN_PLACEHOLDER = "COMMUNE_INVITATION_TOKEN";
+// The QR holds the token too, so like the link it is drawn only when the
+// email goes out and never stored with the payload.
+const QR_PLACEHOLDER = "COMMUNE_INVITATION_QR";
+/** The join link an invitation email carries, as a button and as a QR code. */
+export const invitationUrl = (appUrl: string, token: string) => `${new URL(appUrl).origin}/invite?token=${token}`;
+/** The email's HTML with its QR code and link filled in for this token. */
+export function completeInvitationHtml(body: string, appUrl: string, token: string): string {
+  return body.replace(QR_PLACEHOLDER, () => qrTable(invitationUrl(appUrl, token))).replaceAll(TOKEN_PLACEHOLDER, token);
+}
 const REPORT_ADDRESS = "support@ourcommune.io";
 const INVITER_FALLBACK = "A Commune member";
 // Names come from people. Keep each on one line, and drop the marks that
@@ -62,6 +72,47 @@ export const INVITATION_LIMITS_QUERY = `SELECT
   coalesce((SELECT min(m.joined_at) FROM public.commune_members m WHERE m.user_id=$1)
     > now()-interval '24 hours', true) AS new_sender`;
 
+/**
+ * A QR code drawn as an HTML table, for emails. Email apps block or strip
+ * embedded images (data: URLs and often remote ones), but every one of them
+ * draws table cells with a background colour, so the code shows straight
+ * away and a phone camera can read it from the screen. Each row joins runs
+ * of the same colour into one cell, which keeps the email well under the
+ * size where Gmail cuts it off.
+ */
+export function qrTable(text: string, size = 200): string {
+  const code = qrcode(0, "M");
+  code.addData(text, "Byte");
+  code.make();
+  const count = code.getModuleCount();
+  const quiet = 4;
+  const total = count + quiet * 2;
+  const cell = Math.max(2, Math.floor(size / total));
+  const width = cell * total;
+  const rows: string[] = [];
+  for (let y = -quiet; y < count + quiet; y++) {
+    let row = "";
+    let x = -quiet;
+    while (x < count + quiet) {
+      const dark = y >= 0 && y < count && x >= 0 && x < count && code.isDark(y, x);
+      let run = 1;
+      while (x + run < count + quiet) {
+        const next = y >= 0 && y < count && x + run >= 0 && x + run < count && code.isDark(y, x + run);
+        if (next !== dark) break;
+        run++;
+      }
+      row += `<td${run > 1 ? ` colspan="${run}"` : ""} height="${cell}" bgcolor="${dark ? "#111111" : "#ffffff"}"></td>`;
+      x += run;
+    }
+    rows.push(`<tr>${row}</tr>`);
+  }
+  // A first row of single cells fixes every column's width, so colspans line
+  // up. The cells carry no text, so the style keeps them from growing.
+  const ruler = `<tr>${`<td width="${cell}"></td>`.repeat(total)}</tr>`;
+  const style = `border-collapse:collapse;table-layout:fixed;width:${width}px;margin:0 auto;background:#ffffff;font-size:0;line-height:0`;
+  return `<table class="qr" role="img" aria-label="QR code to join" cellpadding="0" cellspacing="0" border="0" width="${width}" style="${style}">${ruler}${rows.join("")}</table>`;
+}
+
 export function renderInvitationEmail(input: { commune: string; inviter: string; role: string; expires: string; appUrl: string; inviteId: string }) {
   const origin = new URL(input.appUrl);
   if (origin.protocol !== "https:") throw new Error("Invitation app URL must use HTTPS");
@@ -69,17 +120,18 @@ export function renderInvitationEmail(input: { commune: string; inviter: string;
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input.inviteId)) throw new Error("Invalid invitation id");
   const commune = safe(input.commune);
   const inviter = inviterName(input.inviter);
-  const url = `${origin.origin}/invite?token=${TOKEN_PLACEHOLDER}`;
+  const url = invitationUrl(origin.origin, TOKEN_PLACEHOLDER);
   const report = `mailto:${REPORT_ADDRESS}?subject=${encodeURIComponent(`Report invitation ${input.inviteId}`)}`;
   const subject = Array.from(`${inviter} invited you to join “${commune}” on Commune`).slice(0, 180).join("");
   const summary = `${inviter} has invited you to join “${commune}” as ${input.role === "admin" ? "an admin" : "a member"}.`;
   const instructions = `Sign in or create an account with the email address that received this invitation. The link expires ${safe(input.expires)}.`;
   const unexpected = "If you weren't expecting this, you can ignore this email or";
+  const onComputer = "On a computer? Scan this with your phone’s camera to join there.";
   return {
     subject,
-    text: `${summary}\n\nJoin the commune: ${url}\n\n${instructions}\n\n${unexpected} report it: ${report}`,
-    html: `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${html(subject)}</title></head>
-<body style="margin:0;background:#f5f1ea;font-family:Inter,Arial,sans-serif;color:#1a1e2b"><table role="presentation" width="100%"><tr><td align="center" style="padding:32px 16px"><table role="presentation" width="100%" style="max-width:560px;background:#faf9f7;border:1px solid #e8e1d8;border-radius:18px"><tr><td style="padding:32px"><p style="font-weight:700;font-size:18px">Commune</p><p style="color:#2d6a4f">You're invited</p><h1 style="font-size:28px;line-height:1.2">Join “${html(commune)}”</h1><p style="font-size:16px;line-height:1.6">${html(summary)}</p><p style="margin:28px 0"><a href="${html(url)}" style="display:inline-block;padding:14px 24px;background:#2d6a4f;color:#fff;border-radius:999px;text-decoration:none;font-weight:700">Join the commune</a></p><p style="font-size:13px;line-height:1.6;color:#59645e">${html(instructions)}</p><p style="font-size:13px;line-height:1.6;color:#59645e">${html(unexpected)} <a href="${html(report)}" style="color:#2d6a4f;text-decoration:underline">report it</a>.</p></td></tr></table></td></tr></table></body></html>`,
+    text: `${summary}\n\nJoin the commune: ${url}\n\nOn a computer? Open this email on your phone and tap the link.\n\n${instructions}\n\n${unexpected} report it: ${report}`,
+    html: `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${html(subject)}</title><style>.qr td{padding:0;font-size:0;line-height:0;mso-line-height-rule:exactly}</style></head>
+<body style="margin:0;background:#f5f1ea;font-family:Inter,Arial,sans-serif;color:#1a1e2b"><table role="presentation" width="100%"><tr><td align="center" style="padding:32px 16px"><table role="presentation" width="100%" style="max-width:560px;background:#faf9f7;border:1px solid #e8e1d8;border-radius:18px"><tr><td style="padding:32px"><p style="font-weight:700;font-size:18px">Commune</p><p style="color:#2d6a4f">You're invited</p><h1 style="font-size:28px;line-height:1.2">Join “${html(commune)}”</h1><p style="font-size:16px;line-height:1.6">${html(summary)}</p><p style="margin:28px 0"><a href="${html(url)}" style="display:inline-block;padding:14px 24px;background:#2d6a4f;color:#fff;border-radius:999px;text-decoration:none;font-weight:700">Join the commune</a></p><table role="presentation" width="100%" style="margin:0 0 24px"><tr><td align="center" style="padding:20px 16px;background:#ffffff;border:1px solid #e8e1d8;border-radius:14px"><p style="margin:0 0 14px;font-size:14px;line-height:1.5;color:#59645e">${html(onComputer)}</p>${QR_PLACEHOLDER}</td></tr></table><p style="font-size:13px;line-height:1.6;color:#59645e">${html(instructions)}</p><p style="font-size:13px;line-height:1.6;color:#59645e">${html(unexpected)} <a href="${html(report)}" style="color:#2d6a4f;text-decoration:underline">report it</a>.</p></td></tr></table></td></tr></table></body></html>`,
   };
 }
 
@@ -180,7 +232,7 @@ export async function sendInvitationEmail(pool: Pool, actor: string, token: stri
       // Explicit key order also keeps serialized bytes stable after a JSONB
       // round trip (Postgres may reorder object keys).
       body: JSON.stringify({ from: payload.from, to: payload.to, subject: payload.subject,
-        text: payload.text.replaceAll(TOKEN_PLACEHOLDER, token), html: payload.html.replaceAll(TOKEN_PLACEHOLDER, token) }),
+        text: payload.text.replaceAll(TOKEN_PLACEHOLDER, token), html: completeInvitationHtml(payload.html, config.appUrl, token) }),
       signal: AbortSignal.timeout(15_000),
     });
     if (!response.ok) throw new Error("Email provider rejected the request");

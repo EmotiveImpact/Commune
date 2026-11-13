@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { useSearch } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { AuthLayout } from "./AuthLayout";
-import { useApp } from "../state";
+import { useApp, type JoinCodePreview, type JoinCodeResult } from "../state";
 import type { Hub } from "../data/household";
 import { LIMITS } from "../data/limits";
 import { CommuneLocationFields, EMPTY_COMMUNE_LOCATION } from "../ui/CommuneLocationFields";
@@ -101,6 +101,102 @@ export function InvitePage() {
                 <button className="a-btn ghost" type="button" onClick={() => signInFirst("login")}>Sign in</button>
               </>
             )}
+          </div>
+        ) : null}
+      </div>
+    </AuthLayout>
+  );
+}
+
+/** A join code's short link, /j/<code>, opens the join page with the code kept out of the path. */
+export function JoinShortLink({ code }: { code: string }) {
+  const [, setLocation] = useLocation();
+  useEffect(() => { setLocation(`/join?code=${encodeURIComponent(code)}`, { replace: true }); }, [code, setLocation]);
+  return null;
+}
+
+const KIND_WORD: Record<string, string> = { household: "A household", workspace: "A workspace", trip: "A trip" };
+
+/**
+ * Someone scanned a commune's QR code (0044). Signed in, they see only the
+ * commune's name, kind and head count, and ask to join. Whether an admin must
+ * approve is the commune's setting.
+ */
+export function JoinCodePage() {
+  const { go, session, authStatus, previewJoinCode, requestToJoin } = useApp();
+  const code = new URLSearchParams(useSearch()).get("code") ?? "";
+  const valid = /^[0-9a-f]{32}$/.test(code);
+  const [preview, setPreview] = useState<JoinCodePreview | null>(null);
+  const [result, setResult] = useState<JoinCodeResult | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [requestId] = useState(() => crypto.randomUUID());
+
+  useEffect(() => {
+    let active = true;
+    if (!valid || authStatus === "loading" || !session) {
+      if (authStatus !== "loading") setLoading(false);
+      return;
+    }
+    setLoading(true);
+    void previewJoinCode(code)
+      .then((found) => { if (active) setPreview(found); })
+      .catch((cause) => { if (active) setError(cause instanceof Error ? cause.message : "Could not load this code."); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [authStatus, code, previewJoinCode, session, valid]);
+
+  function signInFirst(target: "login" | "signup") {
+    rememberReturn(`/join?code=${encodeURIComponent(code)}`);
+    go(target);
+  }
+
+  async function ask() {
+    setBusy(true);
+    setError("");
+    try {
+      setResult(await requestToJoin(code, requestId));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not ask to join.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const waiting = result?.status === "pending" || (!result && preview?.waiting);
+  const title = !valid ? "This code doesn’t work"
+    : !session ? "Join a commune on Commune"
+      : loading ? "Loading…"
+        : waiting ? `Waiting for ${preview?.communeName ?? "an admin"}`
+          : preview ? `Join ${preview.communeName}` : "This code no longer works";
+  const lede = !valid ? "Check you scanned the whole code, or ask for a new one."
+    : !session ? "Sign in or create an account, then ask to join. Nothing about the group shows until you’re in."
+      : loading ? ""
+        : waiting ? "An admin has been asked. You’ll see the commune here once they approve."
+          : preview ? `${KIND_WORD[preview.communeKind] ?? "A commune"} with ${preview.memberCount} ${preview.memberCount === 1 ? "person" : "people"}. ${preview.joinMode === "instant" ? "You’ll join straight away." : "An admin approves new people before they see anything."}`
+            : "It may have been turned off or replaced. Ask someone in the commune for a new one.";
+
+  return (
+    <AuthLayout>
+      <div className="commune-auth-panel">
+        <h2>{title}</h2>
+        {lede ? <p className="commune-auth-lede">{lede}</p> : null}
+        {error ? <div className="commune-auth-alert" role="alert">{error}</div> : null}
+        {valid && !session && authStatus !== "loading" ? (
+          <div className="a-field-row">
+            <button className="a-btn" type="button" onClick={() => signInFirst("signup")}>Create account</button>
+            <button className="a-btn ghost" type="button" onClick={() => signInFirst("login")}>Sign in</button>
+          </div>
+        ) : session && !loading && preview && !waiting ? (
+          <div className="a-field-row">
+            <button className="a-btn" type="button" onClick={() => void ask()} disabled={busy}>
+              {busy ? "Asking…" : preview.alreadyMember ? "Open the commune" : "Ask to join"}
+            </button>
+          </div>
+        ) : session && !loading ? (
+          <div className="a-field-row">
+            <button className="a-btn ghost" type="button" onClick={() => go("home")}>Continue to Commune</button>
           </div>
         ) : null}
       </div>

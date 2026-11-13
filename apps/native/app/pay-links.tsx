@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
+import { Text, TextInput } from "../src/ui/text";
 import { Landmark, Star } from "lucide-react-native";
 import { formatSortCode, payLinkLabel, PAY_PROVIDER_NAME, PAY_PROVIDERS, type PayLink, type PayLinkInput, type PayProvider } from "../src/lib/payLinks";
 import { failure, useApp } from "../src/state";
@@ -55,7 +56,7 @@ export default function PayLinks() {
     } catch (cause) { setError(failure(cause, "Couldn’t change your favourite.")); } finally { setBusy(false); }
   }
 
-  const input = { height: 46, borderRadius: radius.control, borderWidth: 1, borderColor: c.outline, backgroundColor: c.surface, paddingHorizontal: 12, fontSize: 16, color: c.ink };
+  const input = { height: 48, borderRadius: radius.control, borderWidth: 1, borderColor: c.outline, backgroundColor: c.surface, paddingHorizontal: 14, fontSize: 16, color: c.ink };
   const field = (label: string, value: string, set: (text: string) => void, extra: object = {}) => <View style={{ gap: 6 }}>
     <T kind="label" style={{ fontWeight: "600" }}>{label}</T>
     <TextInput accessibilityLabel={label} value={value} onChangeText={set} editable={!busy} style={input} autoCapitalize="none" autoCorrect={false} {...extra} />

@@ -1,27 +1,35 @@
 import { useState } from "react";
-import { KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { PressScale } from "../../src/ui/motion";
+import { Linking, ScrollView, View } from "react-native";
+import { Text, TextInput } from "../../src/ui/text";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Clipboard from "expo-clipboard";
 import { Copy, ExternalLink, Landmark, X } from "lucide-react-native";
-import { memberName, outstanding, payLinksOf, pendingReport } from "../../src/lib/derive";
+import { handBackSoon } from "../../src/lib/settled";
+import { paidOutcome, memberName, outstanding, payLinksOf, pendingReport } from "../../src/lib/derive";
+import { SheetDone } from "../../src/ui/settled";
 import { addDays, firstName, money, parseAmount, shortDate } from "../../src/lib/format";
 import { bankDetailsText, payLinkHref, payLinkLabel, PAY_PROVIDER_NAME } from "../../src/lib/payLinks";
 import { failure, useApp } from "../../src/state";
-import { Button, ErrorText, Panel, Row, T, tap } from "../../src/ui/kit";
-import { useToast } from "../../src/ui/toast";
+import { Button, ErrorText, Panel, Row, T, tap, FITTED } from "../../src/ui/kit";
+import { Sheet } from "../../src/ui/sheet";
+import { BigAmount } from "../../src/ui/form";
+import { Segmented } from "../../src/ui/segmented";
+import { HOW_LABEL, joinReference, roomFor, type How } from "../../src/lib/reference";
 import { radius, useTheme } from "../../src/ui/theme";
+
+const HOWS: How[] = ["bank", "cash", "other"];
 
 /**
  * "I’ve sent it". The bill payer's own pay links come first, so you can pay
  * in your banking app with the amount filled in, then record it here. It is
  * a claim until they confirm it; Commune never moves money.
  */
-export default function Record() {
+function RecordBody({ close }: { close: () => void }) {
   const { c } = useTheme();
-  const router = useRouter();
-  const toast = useToast();
   const { shareId } = useLocalSearchParams<{ shareId: string }>();
-  const { snapshots, today, reportPayment } = useApp();
+  const { snapshots, today, reportPayment, user } = useApp();
+  const [finished, setFinished] = useState<{ title: string; body: string } | null>(null);
   const found = snapshots.flatMap((snapshot) => snapshot.expenses.flatMap((expense) => expense.shares
     .filter((share) => share.id === shareId).map((share) => ({ snapshot, expense, share }))))[0];
   const left = found ? outstanding(found.share) : 0;
@@ -29,13 +37,14 @@ export default function Record() {
   const [amount, setAmount] = useState(left ? (left / 100).toFixed(2) : "");
   const [sentOn, setSentOn] = useState(today);
   const [reference, setReference] = useState("");
+  const [how, setHow] = useState<How>("bank");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
 
-  const close = () => (router.canGoBack() ? router.back() : router.replace("/"));
+  if (finished) return <SheetDone title={finished.title} body={finished.body} onDone={close} />;
   if (!found || !left || pendingReport(found.share)) {
-    return <View style={{ flex: 1, padding: 24, gap: 14, backgroundColor: c.canvas }}>
+    return <View style={[FITTED, { padding: 24, gap: 14, backgroundColor: c.canvas }]}>
       <T kind="title">{found && pendingReport(found.share) ? "Already recorded" : "Nothing left to pay"}</T>
       <T kind="body" muted>{found && pendingReport(found.share) ? "You’ve told them you’ve paid this. They’ll confirm it." : "This share is settled or no longer here."}</T>
       <Button label="Close" variant="secondary" onPress={close} />
@@ -46,16 +55,20 @@ export default function Record() {
   const name = firstName(payer);
   const minor = parseAmount(amount);
   const links = payLinksOf(snapshot, expense.paidByUserId);
+  // How it went is saved at the front of the reference, with anything typed after it.
+  const saved = joinReference(how, reference);
 
   async function submit() {
     if (!minor) { setError("Enter the amount you sent, for example 16.00."); return; }
     if (minor > left) { setError(`That’s more than the ${money(left, currency)} left on your share.`); return; }
     setBusy(true); setError("");
     try {
-      await reportPayment(snapshot.commune.id, shareId, minor, sentOn, reference.trim() || null);
+      const result = await reportPayment(snapshot.commune.id, shareId, minor, sentOn, saved, name);
       tap("success");
-      toast(`Recorded. ${name} will confirm your ${money(minor, currency)}.`);
-      close();
+      const queued = result === "queued" ? ` It sends when you’re back online.` : "";
+      const end = paidOutcome(snapshot, user?.id ?? "", shareId, expense.paidByUserId, name, minor, left - minor);
+      const shown = { ...end, body: end.body + queued };
+      if (await handBackSoon({ id: shareId, ...shown })) close(); else setFinished(shown);
     } catch (cause) {
       setError(failure(cause, "Couldn’t record it. Try again."));
     } finally {
@@ -63,17 +76,24 @@ export default function Record() {
     }
   }
 
-  const input = { height: 46, borderRadius: radius.control, borderWidth: 1, borderColor: c.outline, backgroundColor: c.surface, paddingHorizontal: 12, fontSize: 16, color: c.ink };
-  return <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1, backgroundColor: c.canvas }}>
-    <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 22, gap: 18 }} keyboardShouldPersistTaps="handled">
+  const input = { height: 48, borderRadius: radius.control, borderWidth: 1, borderColor: c.outline, backgroundColor: c.surface, paddingHorizontal: 14, fontSize: 16, color: c.ink };
+  // The Sheet lifts itself above the keyboard and shrinks to the space left;
+  // this scroll view then scrolls the fields.
+  return <View style={[FITTED, { backgroundColor: c.canvas }]}>
+    <ScrollView style={{ flexGrow: 0 }} contentContainerStyle={{ padding: 20, paddingTop: 22, gap: 18 }} keyboardShouldPersistTaps="handled">
       <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
         <View style={{ flex: 1 }}>
           <T kind="title" accessibilityRole="header">Tell {name} you’ve paid</T>
           <T kind="body" muted>{expense.title} · {snapshot.commune.name}</T>
         </View>
-        <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={close} hitSlop={8} style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: c.recessed, alignItems: "center", justifyContent: "center" }}>
+        <PressScale scaleTo={0.9} accessibilityRole="button" accessibilityLabel="Close" onPress={close} hitSlop={8} style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: c.recessed, alignItems: "center", justifyContent: "center" }}>
           <X size={18} color={c.ink} />
-        </Pressable>
+        </PressScale>
+      </View>
+
+      <View style={{ gap: 2 }}>
+        <BigAmount text={money(minor ?? 0, currency)} empty={!minor} />
+        <T kind="label" muted style={{ textAlign: "center" }}>To {payer}</T>
       </View>
 
       <View style={{ gap: 8 }}>
@@ -105,22 +125,27 @@ export default function Record() {
         <T kind="note" muted>{money(left, currency)} is left on your share.</T>
       </View>
 
+      <View style={{ gap: 8 }}>
+        <T kind="label" style={{ fontWeight: "600" }}>How did you pay?</T>
+        <Segmented label="How did you pay?" options={HOWS.map((value) => ({ value, label: HOW_LABEL[value] }))} value={how} onChange={(value) => setHow(value as How)} />
+      </View>
+
       <View style={{ gap: 6 }}>
         <T kind="label" style={{ fontWeight: "600" }}>When you sent it</T>
         <View style={{ flexDirection: "row", gap: 8 }}>
           {[today, addDays(today, -1)].map((day, index) => {
             const on = sentOn === day;
-            return <Pressable key={day} accessibilityRole="radio" accessibilityState={{ selected: on }} onPress={() => setSentOn(day)}
+            return <PressScale key={day} accessibilityRole="radio" accessibilityState={{ selected: on }} onPress={() => setSentOn(day)}
               style={{ height: 36, paddingHorizontal: 14, borderRadius: 18, justifyContent: "center", backgroundColor: on ? c.frame : c.surface, borderWidth: 1, borderColor: on ? c.frame : c.outline }}>
               <Text style={{ fontSize: 13.5, fontWeight: "500", color: on ? c.onFrame : c.ink }}>{index === 0 ? "Today" : `Yesterday, ${shortDate(day)}`}</Text>
-            </Pressable>;
+            </PressScale>;
           })}
         </View>
       </View>
 
       <View style={{ gap: 6 }}>
         <T kind="label" style={{ fontWeight: "600" }}>Reference (optional)</T>
-        <TextInput accessibilityLabel="Reference" value={reference} onChangeText={setReference} maxLength={80} placeholder="What you put on the payment" placeholderTextColor={c.ink2} style={input} />
+        <TextInput accessibilityLabel="Reference" value={reference} onChangeText={setReference} maxLength={roomFor(how)} placeholder="What you put on the payment" placeholderTextColor={c.ink2} style={input} />
       </View>
 
       <ErrorText>{error}</ErrorText>
@@ -129,9 +154,16 @@ export default function Record() {
         <T kind="note" muted>{name} confirms it before anything changes. Commune never moves money.</T>
       </View>
     </ScrollView>
-  </KeyboardAvoidingView>;
+  </View>;
 }
 
 function Mark({ c, children }: { c: string; children: React.ReactNode }) {
   return <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: c, alignItems: "center", justifyContent: "center" }}>{children}</View>;
+}
+
+export default function Record() {
+  const router = useRouter();
+  const [closing, setClosing] = useState(false);
+  const leave = () => (router.canGoBack() ? router.back() : router.replace("/"));
+  return <Sheet closing={closing} onClosed={leave}><RecordBody close={() => setClosing(true)} /></Sheet>;
 }
