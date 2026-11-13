@@ -48,7 +48,7 @@ export function SiteMenu({ open, setOpen, scrolled, current, home = '#top', tone
       </div>
       <div className="site-menu__actions">
         <a className="l-button site-menu__login" href={login}>Log in</a>
-        <a className="l-button site-menu__trial" href={signup}>Start free trial</a>
+        <a className="l-button site-menu__trial" href={signup}>Get started</a>
       </div>
     </nav>
   </div>;

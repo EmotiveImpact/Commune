@@ -112,7 +112,7 @@ export function StorySheet() {
       </div>
       <div className="t-st-foot">
         <div className="t-st-actions">
-          <a className="l-button l-button--white" href={`${signup}?from=link-${story.id}`}>Start your free trial</a>
+          <a className="l-button l-button--white" href={`${signup}?from=link-${story.id}`}>Get started</a>
           <a className="t-st-watch" href={storyPage(story)}>Watch full screen</a>
           {reduced ? null : <button className="t-st-pause" type="button" aria-pressed={paused} onClick={() => setPaused(!paused)}>{paused ? 'Play' : 'Pause'}</button>}
         </div>

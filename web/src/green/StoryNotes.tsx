@@ -8,7 +8,7 @@ const focus = (key: ImageKey) => `${Math.round((FOCAL[key]?.[0] ?? 0.5) * 100)}%
 const signup = 'https://app.ourcommune.io/signup';
 
 /** A story played over the page, full height, until closed. */
-function StoryViewer({ at, setAt }: { at: number; setAt: (i: number | null) => void }) {
+export function StoryViewer({ at, setAt }: { at: number; setAt: (i: number | null) => void }) {
   const story = STORIES[at];
   const close = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -29,7 +29,7 @@ function StoryViewer({ at, setAt }: { at: number; setAt: (i: number | null) => v
     <button className="t-sv__step is-back" type="button" aria-label="Previous story" onClick={() => setAt((at - 1 + STORIES.length) % STORIES.length)}><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12 4l-6 6 6 6" /></svg></button>
     <div className="t-sv__stage">
       <StoryPlayer key={story.id} story={story} variant="page" onEnd={() => setAt((at + 1) % STORIES.length)} />
-      <div className="t-sv__below"><span><b>{story.title}</b> · {story.cat}</span><a className="l-button l-button--white" href={`${signup}?from=link-${story.id}`}>Start your free trial</a></div>
+      <div className="t-sv__below"><span><b>{story.title}</b> · {story.cat}</span><a className="l-button l-button--white" href={`${signup}?from=link-${story.id}`}>Get started</a></div>
     </div>
     <button className="t-sv__step is-next" type="button" aria-label="Next story" onClick={() => setAt((at + 1) % STORIES.length)}><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8 4l6 6-6 6" /></svg></button>
   </div>;

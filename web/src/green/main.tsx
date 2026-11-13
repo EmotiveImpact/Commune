@@ -5,3 +5,5 @@ import '../editorial.css';
 import './together.css';
 
 createRoot(document.getElementById('root')!).render(<StrictMode><TogetherMock /></StrictMode>);
+
+import './polish.css';

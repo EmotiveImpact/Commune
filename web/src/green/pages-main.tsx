@@ -8,3 +8,5 @@ import './pages.css';
 
 const root = document.getElementById('root')!;
 createRoot(root).render(<StrictMode><GreenPages page={root.dataset.page as GreenPage} /></StrictMode>);
+
+import './polish.css';

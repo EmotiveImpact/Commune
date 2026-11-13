@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { BrandWordmark } from '../BrandWordmark';
 import { SiteMenu, useSiteMenu } from './SiteMenu';
-import { StoryJournal } from './StoryNotes';
 import './story-notes.css';
 
 const heroScenes = [
@@ -36,7 +35,7 @@ export const questions = [
   ['Is Commune just for shared expenses?', 'Money is one part of it. Your group also has a place for chores and responsibilities, shared information and pinned updates, so everyone knows what needs doing and where to find the details.'],
   ['Does Commune move our money?', 'You pay each other using the method you already prefer. Commune keeps track: members mark their shares as paid, and a group admin can confirm them.'],
   ['Can we split costs differently?', 'Yes. Split an expense equally, by percentage, or with custom amounts. Include the people involved in that expense.'],
-  ['How does the free trial work?', 'You get 7 days to try Commune on the Standard plan. After the trial, choose a paid plan that fits your group. There is no free tier.'],
+  ['Are paid plans and trials live?', 'Not yet. These are proposed plans for review. Subscription billing is not connected, and trial duration, payment requirements and cancellation terms still need to be confirmed.'],
 ];
 const journal = [
   { category: 'Home', title: 'A shared home. A little less guesswork.', description: 'Simple agreements that make everyday costs easier to share.', image: '/unique-journal-home.jpg', alt: 'Housemates sharing the Saturday morning kitchen routine', paragraphs: ['Start with a quick conversation about what belongs to the household. Rent and utilities might be shared by everyone; groceries and subscriptions might not be. Agree on the people involved before adding a cost.', 'Choose the split together. Equal shares can suit some expenses, while percentages or custom amounts may fit others. Make the amount and due date visible so nobody has to piece things together from messages.', 'Check in when things change. A new housemate, a different bill or a few weeks away can be a good reason to revisit your arrangement.'] },
@@ -193,12 +192,6 @@ export function Faq({ items }: { items: string[][] }) {
     </div>;
   })}</div>;
 }
-const journalWay = typeof window === 'undefined' ? 'a' : (new URLSearchParams(window.location.search).get('v') ?? 'a');
-const ways: Array<[string, string]> = [['a', 'A · Photos play'], ['b', 'B · Stories as articles'], ['c', 'C · On the Journal page']];
-function ProtoSwitch() {
-  return <nav className="t-proto" aria-label="Journal options"><span>Journal</span>{ways.map(([k, label]) => <a key={k} href={`?v=${k}#journal`} aria-current={journalWay === k}>{label}</a>)}</nav>;
-}
-
 export default function TogetherMock() {
   const plansRef = useRef<HTMLDivElement>(null);
   const [planAt, setPlanAt] = useState(0);
@@ -274,14 +267,14 @@ export default function TogetherMock() {
           <a href="./journal.html" onClick={() => setMenu(false)}>Journal</a>
           <a href="/about.html" onClick={() => setMenu(false)}>About</a>
           <a className="l-login" href="https://app.ourcommune.io/login">Log in</a>
-          <LinkButton variant="white">Start free trial</LinkButton>
+          <LinkButton variant="white">Get started</LinkButton>
         </nav>
         <button className="l-menu" aria-expanded={menu} aria-controls="main-navigation" onClick={() => setMenu(!menu)}>{menu ? 'Close' : 'Menu'}</button>
       </header>
       <div className="l-hero__body l-container">
         <h1 id="hero-title">For people who<br />do life together.</h1>
         <p>Shared costs, everyday jobs and the details everyone needs. Bring it all together, so no one has to hold it all.</p>
-        <div className="l-hero__actions"><LinkButton variant="white">Start your free trial</LinkButton><a className="l-text-link" href="#features">See what's inside</a></div>
+        <div className="l-hero__actions"><LinkButton variant="white">Get started</LinkButton><a className="l-text-link" href="#features">See what's inside</a></div>
       </div>
     </section>
 
@@ -325,7 +318,7 @@ export default function TogetherMock() {
             <div className="t-note"><span className="l-card-number">01 / YOUR SHARE</span><h3>Before it's due.</h3><p>Rent, bills and the food shop add up to one number everyone can see.</p></div>
             <div className="t-note"><span className="l-card-number">02 / I'VE PAID</span><h3>Where to send it.</h3><p>Pay the way you already do, then tap "I've paid" so the house knows.</p></div>
           </div>
-          <div className="t-phone t-phone--nat" role="img" aria-label="The Commune phone app Home: you owe £33.05 in Maple House, next step Energy for October, I've paid Jordan £21.00, plants to water today">
+          <div className="t-phone t-phone--nat" role="img" aria-label="Illustrated Commune home screen: you owe £33.05 in Maple House, next step Energy for October, I've paid Jordan £21.00, plants to water today">
             <div className="t-phone__screen"><div className="t-nat">
               <div className="t-nat__frame">
                 <div className="t-nat__status"><span>9:41</span><i /><span className="t-nat__sig"><b /><b /><b /><b /></span></div>
@@ -360,32 +353,31 @@ export default function TogetherMock() {
             <div className="t-note"><span className="l-card-number">04 / DETAILS</span><h3>Find it without asking.</h3><p>Wi-Fi, bin day and the spare keys, without asking the group chat.</p></div>
           </div>
         </div>
-        <div className="t-meet__cta"><LinkButton>Start your free trial</LinkButton><span>Try Standard free for 7 days.</span></div>
+        <div className="t-meet__cta"><LinkButton>Get started</LinkButton><span>Illustrated interface, not a current app screenshot. Explore the proposed plans.</span></div>
       </div></section>
       </div>
 
       <section className="l-section t-pricing" id="plans" aria-labelledby="plans-title"><div className="l-container">
-        <div className="l-section-heading"><div><span className="l-eyebrow">A plan for your people</span><h2 id="plans-title">A little clarity. For every group.</h2></div><div className="l-billing" aria-label="Billing period"><button aria-pressed={!yearly} onClick={() => setYearly(false)}>Monthly</button><button aria-pressed={yearly} onClick={() => setYearly(true)}>Yearly</button></div></div>
+        <div className="l-section-heading"><div><span className="l-eyebrow">Proposed plans</span><h2 id="plans-title">A little clarity. For every group.</h2></div><div className="l-billing" aria-label="Billing period"><button aria-pressed={!yearly} onClick={() => setYearly(false)}>Monthly</button><button aria-pressed={yearly} onClick={() => setYearly(true)}>Yearly</button></div></div>
         <div className="t-plan-pick" role="tablist" aria-label="Choose a plan">{plans.map((plan, i) => <button key={plan.name} role="tab" aria-selected={planAt === i} onClick={() => planGo(i)}>{plan.name}</button>)}<span className="t-plan-pick__pill" style={{ transform: `translateX(${planAt * 100}%)` }} aria-hidden="true" /></div>
         <div className="t-plans" ref={plansRef} onScroll={planScroll}>{plans.map((plan, i) => <article className={`t-plan ${i === 1 ? 't-plan--navy' : ''} ${planAt === i ? 'is-at' : ''}`} key={plan.name}>
           <div className="t-plan__top"><h3>{plan.name}</h3><p>{plan.detail}</p></div>
           <div className="t-plan__price"><span>£{yearly ? plan.annual : plan.monthly}</span><small>/ {yearly ? 'year' : 'month'}</small></div>
-          <span className="t-plan__note">Billed {yearly ? 'yearly' : 'monthly'}</span>
+          <span className="t-plan__note">Proposed group price · {yearly ? 'yearly' : 'monthly'}</span>
           <ul><li><b>{plan.groups}</b></li><li><b>{plan.people}</b></li><li>Shared costs and who's paid</li><li>Jobs, turns and checklists</li><li>House details and pinned notes</li></ul>
-          <LinkButton variant={i === 1 ? 'white' : ''}>Start your free trial</LinkButton>
+          <LinkButton variant={i === 1 ? 'white' : ''}>Get started</LinkButton>
         </article>)}</div>
-        <p className="t-plans__line">Every plan starts with a 7-day free trial. Commune records what you pay each other and never moves your money.</p>
+        <p className="t-plans__line">Proposed pricing for review. Paid plans and trial terms are not live yet. Commune records repayments; it never moves your money.</p>
       </div></section>
 
-      <section className="l-journal l-section t-snotes" id="journal" aria-labelledby="journal-title"><div className="l-container"><div className="l-section-heading"><div><span className="l-eyebrow">The shared life journal</span><h2 id="journal-title">Notes on doing life together.</h2></div><p>Ideas for the homes, workspaces{' '}<br />and adventures we share.</p><a className="t-journal-btn" href={journalWay === 'c' ? './journal-g.html' : './journal.html'}>Explore the journal</a></div>{journalWay === 'c' ? <div className="l-journal__grid">{journal.map(article => <article className="l-journal__card" key={article.category}><img src={article.image} alt={article.alt} loading="lazy" /><span className="l-eyebrow">{article.category}</span><h3>{article.title}</h3><p>{article.description}</p><a className="l-journal__guide" href={`./journal.html#${article.category.toLowerCase()}`}>Read the guide</a></article>)}</div> : <StoryJournal still={journalWay === 'b'} />}</div></section>
+      <section className="l-journal l-section" id="journal" aria-labelledby="journal-title"><div className="l-container"><div className="l-section-heading"><div><span className="l-eyebrow">The shared life journal</span><h2 id="journal-title">Notes on doing life together.</h2></div><p>Ideas for the homes, workspaces{' '}<br />and adventures we share.</p><a className="t-journal-btn" href="/journal.html">Explore the journal</a></div><div className="l-journal__grid">{journal.map(article => <article className="l-journal__card" key={article.category}><img src={article.image} alt={article.alt} loading="lazy" /><span className="l-eyebrow">{article.category}</span><h3>{article.title}</h3><p>{article.description}</p><a className="l-journal__guide" href={`/journal.html?guide=${article.category.toLowerCase()}`}>Read the guide</a></article>)}</div></div></section>
 
       <section className="l-faq l-section" aria-labelledby="faq-title"><div className="l-container l-faq__layout"><div><span className="l-eyebrow">Good to know</span><h2 id="faq-title">A few things, made clear.</h2></div><Faq items={questions} /></div></section>
     </main>
 
     <div className="t-end"><div className="l-ending t-end__card"><img className="l-ending__photo" src="/unique-footer.jpg" alt="" loading="lazy" />
-      <section className="l-final-cta" aria-labelledby="closing-title"><div className="l-container"><span className="l-eyebrow">Less admin. More living.</span><h2 id="closing-title">Make space for the good stuff.</h2><p>The costs, the jobs, the little details. A shared place for it all.{' '}<br />Start with 7 days on Standard.</p><LinkButton variant="white">Start your 7-day free trial</LinkButton></div></section>
+      <section className="l-final-cta" aria-labelledby="closing-title"><div className="l-container"><span className="l-eyebrow">Less admin. More living.</span><h2 id="closing-title">Make space for the good stuff.</h2><p>The costs, the jobs, the little details. A shared place for it all.{' '}<br />See how shared life could work.</p><LinkButton variant="white">Get started</LinkButton></div></section>
       <footer className="l-footer"><div className="l-container l-footer__inner"><div className="l-footer__links"><div><BrandWordmark href="/" /><p>For people who do life together.</p></div><nav aria-label="Explore"><h3>Explore</h3><a href="/how-it-works.html">How it works</a><a href="/life-together.html">Life together</a><a href="/pricing.html">Pricing</a><a href="./journal.html">Journal</a><a href="/about.html">About</a></nav><nav aria-label="Get in touch"><h3>Your Commune</h3><a href="https://app.ourcommune.io/login">Log in</a><a href={signup}>Get started</a><a href="mailto:support@ourcommune.io">Contact us</a></nav></div><div className="l-footer__bottom"><span>© {new Date().getFullYear()} Commune</span><div><a href="https://app.ourcommune.io/privacy">Privacy policy</a><a href="https://app.ourcommune.io/terms">Terms of service</a></div></div></div></footer>
       </div></div>
-    <ProtoSwitch />
   </div>;
 }

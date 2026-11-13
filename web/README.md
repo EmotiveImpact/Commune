@@ -1,31 +1,48 @@
-# Commune website
+# Commune marketing website
 
-The marketing website: the editorial homepage, "For people who do life
-together.", and its company pages (How it works, Life together, Pricing,
-Journal, About). Moved here from `apps/landing-monzo-study` on 5 October 2026
-so it sits outside the product app. The web app itself stays in `apps/web`;
-the previous v2 site is kept in `web-backup/`.
+The production marketing website is built from editable React source in
+`src/green`. The app (`apps/web`), its database, and the separate game remain
+independent. Do not overwrite source with compiled review Site assets.
 
-React 19 + Vite, multi-page. The homepage is `editorial.html`. `index.html` and
-the other top-level pages are earlier studies kept for reference; `qa/` and
-`design-qa.md` record the design review. It is not part of the pnpm workspace;
-its `node_modules` links point into the repository's root pnpm store.
+## Build and check
+
+From `web`:
 
 ```
-node node_modules/vite/bin/vite.js --host 127.0.0.1 --port 3004
+npm install --no-audit --no-fund --no-package-lock
+npm run build:website
+npm run check:website
 ```
 
-Then open http://localhost:3004/editorial.html. Port 3004 keeps it clear of the
-local Commune API on 3002 and the app on 3000.
+`vite.website.config.ts` builds the canonical homepage, How it works, Life
+together, Pricing, About and Journal, plus the 12 existing `/s/<id>` story
+routes. It reuses the story generation from the older Vite configuration.
+Historical studies remain in source but are not production entrypoints.
+`vercel.json` publishes this build without copying the old `green-third`
+bundles over it. Images from the selected homepage now live in `public/t`.
 
-## Opening stories
+## Recovered review work
 
-The twelve opening stories (content, photos and maths) live once in
-`packages/core/src/stories` and `packages/core/assets/stories`, shared with
-the web app; `vite.config.ts` aliases them as `@commune/core/stories`. The
-homepage hero plays the story that fits the time of day, weekday, month and
-date (`?story=villa` pins one), and "Try it" under the hero splits its bill.
-Each story has a page for ads at `/s/<id>` (`story.html`): the build copies it
-to `s/<id>/index.html` with that story's title and photo, so a static host
-serves `/s/villa` as it is, and the dev server routes `/s/<id>` to it. Links
-into the app carry `?from=link-<id>`, so the app opens on the same story.
+This integrates the review Site's saved version 4, commit
+`ca655ec098c75b1cdf9b5fd93159b980a97d87b0`, into the editable PR #52 source.
+It retains the cinematic homepage, shorter company-page heroes, editorial
+Journal, full guide articles, all 12 stories, illustrated repayment walkthrough,
+mobile header spacing and narrow-screen overflow fixes.
+
+The walkthrough uses fictional fixed examples, makes no requests and changes
+no accounts or financial records. Prices and trial/cancellation terms remain
+explicitly proposed. The signup link still goes to the existing app; this
+website integration does not repair or certify production signup. Native app
+availability and current compiled-app screenshots remain unverified. QR/sticker
+joining is not presented as shipped.
+
+## Release scope
+
+Only website source, assets, build configuration, tests and this documentation
+are changed. No app, database, migrations, payment integration, permissions,
+production data or game routing is changed. PR #57's pending Bill Dodgers
+routing is separate and must not be silently included or overwritten.
+
+Source integration, passing local checks, a GitHub push, a preview deployment
+and live domain promotion are separate states. See the pull request for the
+verified current state; this README does not assert deployment.

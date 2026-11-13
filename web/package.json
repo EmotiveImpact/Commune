@@ -7,8 +7,19 @@
     "dev": "vite --port 3003 --host 0.0.0.0",
     "build": "tsc -b && vite build",
     "preview": "vite preview --port 3003 --host 0.0.0.0",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:website": "tsc -b && vite build --config vite.website.config.ts",
+    "check:website": "node scripts/check-website.mjs && node --test tests/green-source.test.mjs"
   },
-  "dependencies": {"react": "19.1.0", "react-dom": "19.1.0"},
-  "devDependencies": {"@types/react": "^19", "@types/react-dom": "^19", "@vitejs/plugin-react": "^4.3.4", "typescript": "^5.7", "vite": "^6.0.7"}
+  "dependencies": {
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.7",
+    "vite": "^6.0.7"
+  }
 }
