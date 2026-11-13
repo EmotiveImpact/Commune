@@ -44,3 +44,13 @@ test('Editorial journal retains featured story, guide routes and story rail',()=
  const html=render(JournalLayout,{guides,stories,asset:x=>`/${x}.jpg`,StoryViewer:()=>null,StoryRail:()=>React.createElement('div',null,'Story rail')});
  for(const text of ['Sunday dinner','Filter practical guides','journal-stories','Story rail','/journal.html?guide=home'])assert.ok(html.includes(text),text);
 });
+
+test('Mobile menu preserves the measured header origin and stable toggle width',async()=>{
+ const source=await readFile('src/green/SiteMenu.tsx','utf8');
+ const css=await readFile('src/green/site-menu.css','utf8');
+ assert.ok(source.includes('setOpenTop(bar.current.getBoundingClientRect().top)'));
+ assert.ok(source.includes("'--menu-open-top': `${openTop}px`"));
+ assert.ok(css.includes('top:var(--menu-open-top,0px)'));
+ assert.ok(css.includes('width:84px;flex:0 0 84px'));
+ assert.ok(!css.includes('animation:site-menu-in .25s'));
+});
