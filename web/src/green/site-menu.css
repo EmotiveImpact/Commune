@@ -8,12 +8,16 @@
   .site-menu.is-scrolled .site-menu__bar{background:#f9faf8f2;box-shadow:0 1px 0 #14243b14;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
   /* Over a photo hero the bar starts transparent, then pins to the top once the hero has scrolled away. */
   .site-menu--photo .site-menu__bar{position:absolute;top:0;left:0;right:0;background:transparent;color:white}
-  .site-menu--photo.is-scrolled .site-menu__bar{position:fixed;color:var(--navy);animation:site-menu-in .25s ease-out}
-  .site-menu--photo.is-open .site-menu__bar{position:fixed;background:#f9faf8;color:var(--navy);box-shadow:none;animation:none}
+  .site-menu--photo.is-scrolled .site-menu__bar{position:fixed;color:var(--navy);animation:none}
+  .site-menu--photo.is-open .site-menu__bar{position:fixed;top:var(--menu-open-top,0px);background:#f9faf8;color:var(--navy);box-shadow:none;animation:none}
+  .site-menu.is-open .site-menu__bar{position:fixed;top:var(--menu-open-top,0px);width:var(--menu-open-width);box-sizing:border-box}
+  .site-menu--light.is-open::before{content:"";display:block;height:var(--bar)}
   .site-menu__bar .l-wordmark{font-size:27px}
-  .site-menu__toggle{min-width:76px;min-height:42px;border-radius:99px;border:1px solid currentColor;background:transparent;color:inherit;font:inherit;font-size:14px;font-weight:500;padding:0 18px}
+  .site-menu__toggle{width:84px;flex:0 0 84px;min-height:42px;border-radius:99px;border:1px solid currentColor;background:transparent;color:inherit;font:inherit;font-size:14px;font-weight:500;padding:0 18px}
   .site-menu__panel[hidden]{display:none}
   .site-menu__panel{position:fixed;z-index:39;top:var(--bar);left:0;right:0;bottom:0;display:flex;flex-direction:column;background:#f9faf8;color:var(--navy);padding:18px var(--gutter) calc(24px + env(safe-area-inset-bottom));overflow-y:auto;animation:site-menu-fade .2s}
+  .site-menu--photo.is-open .site-menu__panel{top:calc(var(--menu-open-top,0px) + var(--bar))}
+  .site-menu--photo.is-open::before{content:"";position:fixed;inset:0 0 auto;height:calc(var(--menu-open-top,0px) + var(--bar));background:#f9faf8;z-index:39}
   .site-menu__links a{display:block;font-size:34px;letter-spacing:-1.2px;line-height:1.1;padding:13px 0}
   .site-menu__links a[aria-current=page]::after{content:'';display:inline-block;width:8px;height:8px;border-radius:50%;background:#83a174;margin-left:12px;vertical-align:middle}
   .site-menu__actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:auto;padding-top:28px}

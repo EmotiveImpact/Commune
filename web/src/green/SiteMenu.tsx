@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { BrandWordmark } from '../BrandWordmark';
 import './site-menu.css';
 
@@ -36,11 +36,21 @@ export function useSiteMenu() {
 
 /** The phone top bar and full-screen menu. Desktop keeps each page's own header. */
 export function SiteMenu({ open, setOpen, scrolled, current, home = '#top', tone = 'light' }: { open: boolean; setOpen: (open: boolean) => void; scrolled: boolean; current?: string; home?: string; tone?: 'light' | 'photo' }) {
+  const bar = useRef<HTMLDivElement>(null);
+  const [openTop, setOpenTop] = useState(0);
+  const [openWidth, setOpenWidth] = useState(0);
+  const toggle = () => {
+    if (!open && bar.current) {
+      setOpenTop(bar.current.getBoundingClientRect().top);
+      setOpenWidth(bar.current.getBoundingClientRect().width);
+    }
+    setOpen(!open);
+  };
   const close = () => setOpen(false);
-  return <div className={`site-menu site-menu--${tone}${open ? ' is-open' : ''}${scrolled ? ' is-scrolled' : ''}`}>
-    <div className="site-menu__bar">
+  return <div className={`site-menu site-menu--${tone}${open ? ' is-open' : ''}${scrolled ? ' is-scrolled' : ''}`} style={{ '--menu-open-top': `${openTop}px`, '--menu-open-width': `${openWidth}px` } as CSSProperties}>
+    <div className="site-menu__bar" ref={bar}>
       <BrandWordmark href={home} />
-      <button className="site-menu__toggle" type="button" aria-expanded={open} aria-controls="site-menu-panel" onClick={() => setOpen(!open)}>{open ? 'Close' : 'Menu'}</button>
+      <button className="site-menu__toggle" type="button" aria-expanded={open} aria-controls="site-menu-panel" onClick={toggle}>{open ? 'Close' : 'Menu'}</button>
     </div>
     <nav id="site-menu-panel" className="site-menu__panel" aria-label="Main navigation" hidden={!open}>
       <div className="site-menu__links">
