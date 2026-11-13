@@ -5,6 +5,31 @@ exist only in local databases; the hosted Neon project, Vercel and email are
 unchanged. Each step needs a fresh instruction from the owner. Passing local
 tests is not evidence of hosted behaviour or capacity.
 
+## Automatic migrations on production deploys (7 October 2026)
+
+The web app's `build` script now runs `apps/web/scripts/migrate.mjs` before
+`vite build`. On a Vercel **production** build it connects with
+`DATABASE_URL_UNPOOLED` (or `DATABASE_URL`), the variables the Neon
+integration provides, and applies every pending migration in numeric order.
+Preview and local builds skip it; `pnpm --filter @commune/web migrate` runs it
+by hand.
+
+- Each migration runs in its own transaction and is recorded in
+  `commune_release.schema_migrations` inside that transaction. A failure rolls
+  that migration back and fails the build, so Vercel keeps serving the
+  previous deployment.
+- On the first run there is no record yet. The runner checks one object each
+  of 0011 to 0025 creates, records everything up to the last contiguous one as
+  already applied, and refuses if the evidence has a gap. `--baseline NNNN`
+  overrides this.
+- The log prints the database time at the start. Neon's point-in-time
+  restore to that moment is the rollback.
+- If the Vercel project has no connection string, production builds stop with
+  a message saying so, rather than deploying a client ahead of its database.
+
+This does the migration part of step 8 below automatically. Rehearsing on a
+branch copy of production first (steps 2 to 4) is still the safer route.
+
 ## What would ship
 
 | Migration | What it adds | Notes for release |
