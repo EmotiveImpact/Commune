@@ -10,7 +10,8 @@
   .site-menu--photo .site-menu__bar{position:absolute;top:0;left:0;right:0;background:transparent;color:white}
   .site-menu--photo.is-scrolled .site-menu__bar{position:fixed;color:var(--navy);animation:none}
   .site-menu--photo.is-open .site-menu__bar{position:fixed;top:var(--menu-open-top,0px);background:#f9faf8;color:var(--navy);box-shadow:none;animation:none}
-  .site-menu.is-open .site-menu__bar{width:var(--menu-open-width);box-sizing:border-box}
+  .site-menu.is-open .site-menu__bar{position:fixed;top:var(--menu-open-top,0px);width:var(--menu-open-width);box-sizing:border-box}
+  .site-menu--light.is-open::before{content:"";display:block;height:var(--bar)}
   .site-menu__bar .l-wordmark{font-size:27px}
   .site-menu__toggle{width:84px;flex:0 0 84px;min-height:42px;border-radius:99px;border:1px solid currentColor;background:transparent;color:inherit;font:inherit;font-size:14px;font-weight:500;padding:0 18px}
   .site-menu__panel[hidden]{display:none}
