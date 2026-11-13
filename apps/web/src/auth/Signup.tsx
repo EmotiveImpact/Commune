@@ -5,11 +5,11 @@ import { visitStory } from "../stories/choose";
 import { useApp } from "../state";
 import { LIMITS } from "../data/limits";
 import { keepSearch } from "../nav";
-import { GoogleMark } from "../ui/Icon";
+import { AppleMark, GoogleMark } from "../ui/Icon";
 import { useFormError } from "../ui/components";
 
 export function SignupPage() {
-  const { signUpWithPassword, verifyEmailCode, signInWithPassword, signInWithGoogle } = useApp();
+  const { signUpWithPassword, verifyEmailCode, signInWithPassword, signInWithGoogle, signInWithApple } = useApp();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -71,6 +71,16 @@ export function SignupPage() {
       setBusy(false);
     }
   }
+  async function onAppleSignIn() {
+    setError("");
+    setBusy(true);
+    try {
+      await signInWithApple();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not sign up with Apple.");
+      setBusy(false);
+    }
+  }
 
   return (
     <AuthLayout story={story}>
@@ -110,11 +120,14 @@ export function SignupPage() {
             Read how Commune uses your information in our <Link href="/privacy" className="commune-auth-link">privacy notice</Link>.
           </p>
         </form>}
-        {!verificationPending && import.meta.env.VITE_GOOGLE_OAUTH_ENABLED === "true" ? <>
+        {!verificationPending && (import.meta.env.VITE_GOOGLE_OAUTH_ENABLED === "true" || import.meta.env.VITE_APPLE_OAUTH_ENABLED === "true") ? <>
           <div className="commune-auth-or">or</div>
-          <button className="commune-auth-btn commune-auth-btn-google" type="button" disabled={busy} onClick={() => void onGoogleSignIn()}>
+          {import.meta.env.VITE_APPLE_OAUTH_ENABLED === "true" ? <button className="commune-auth-btn commune-auth-btn-apple" type="button" disabled={busy} onClick={() => void onAppleSignIn()}>
+            <AppleMark /> Continue with Apple
+          </button> : null}
+          {import.meta.env.VITE_GOOGLE_OAUTH_ENABLED === "true" ? <button className="commune-auth-btn commune-auth-btn-google" type="button" disabled={busy} onClick={() => void onGoogleSignIn()}>
             <GoogleMark /> Continue with Google
-          </button>
+          </button> : null}
         </> : null}
         <p className="commune-auth-foot">
           Already have an account?{" "}

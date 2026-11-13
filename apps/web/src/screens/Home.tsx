@@ -18,6 +18,7 @@ import { showToast } from "../ui/Toast";
 import "./Home.css";
 import { seenStory } from "../stories/choose";
 import { FirstBillCard } from "../stories/StoryParts";
+import { FirstDayCard } from "../ui/FirstDayCard";
 
 // Home opens on where you stand, then the one thing to do next, then your
 // communes in order of need, then everything that needs you by when. The
@@ -814,6 +815,7 @@ function HomeWithCommunes() {
         <div className="c-home-split">
           <div className="c-home-col">
             {/* A commune with no bills yet: the bill from the opening story they saw. */}
+            <FirstDayCard />
             {emptyHub ? <FirstBillCard story={seenStory()} onAdd={() => go("add-expense")} /> : null}
             {comingUp}<Activity places={places} />
           </div>
@@ -828,6 +830,7 @@ function HomeWithCommunes() {
         <div className="c-home-col c-home-top">
           <Standing places={places} needs={needs} waiting={waiting} today={today} name={name} />
           {next ? <NextStep entry={next} total={needs.length} onAct={act} onPay={pay} onOpened={opened} busy={receipts.busy} /> : ready ? <Calm waiting={waiting} today={today} /> : null}
+          <FirstDayCard />
           {status}
         </div>
         <div className="c-home-col">{communeList}</div>

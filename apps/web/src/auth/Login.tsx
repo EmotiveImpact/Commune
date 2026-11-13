@@ -5,12 +5,12 @@ import { visitStory } from "../stories/choose";
 import { useApp } from "../state";
 import { LIMITS } from "../data/limits";
 import { keepSearch } from "../nav";
-import { GoogleMark } from "../ui/Icon";
+import { AppleMark, GoogleMark } from "../ui/Icon";
 import { useFormError } from "../ui/components";
 
 export function LoginPage() {
   const [story] = useState(() => visitStory());
-  const { signInWithPassword, signInWithGoogle, signOutUnconfirmed, retrySignOut, sessionNotice } = useApp();
+  const { signInWithPassword, signInWithGoogle, signInWithApple, signOutUnconfirmed, retrySignOut, sessionNotice } = useApp();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -50,6 +50,16 @@ export function LoginPage() {
       setBusy(false);
     }
   }
+  async function onAppleSignIn() {
+    setError("");
+    setBusy(true);
+    try {
+      await signInWithApple();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not sign in with Apple.");
+      setBusy(false);
+    }
+  }
 
   return (
     <AuthLayout story={story}>
@@ -67,7 +77,7 @@ export function LoginPage() {
           </div>
         ) : sessionNotice && !error ? <div className="commune-auth-alert" role="status">{sessionNotice}</div> : null}
         {error || new URLSearchParams(window.location.search).has("oauth")
-          ? <div className="commune-auth-alert" role="alert" {...messageProps}>{error || "Google sign-in did not complete. Please try again."}</div>
+          ? <div className="commune-auth-alert" role="alert" {...messageProps}>{error || "Sign-in with Google or Apple did not complete. Please try again."}</div>
           : null}
         <form onSubmit={onSubmit}>
           <div className="commune-auth-field">
@@ -83,11 +93,14 @@ export function LoginPage() {
             {busy ? "Signing in…" : "Sign in"}
           </button>
         </form>
-        {import.meta.env.VITE_GOOGLE_OAUTH_ENABLED === "true" ? <>
+        {(import.meta.env.VITE_GOOGLE_OAUTH_ENABLED === "true" || import.meta.env.VITE_APPLE_OAUTH_ENABLED === "true") ? <>
           <div className="commune-auth-or">or</div>
-          <button className="commune-auth-btn commune-auth-btn-google" type="button" disabled={busy} onClick={() => void onGoogleSignIn()}>
+          {import.meta.env.VITE_APPLE_OAUTH_ENABLED === "true" ? <button className="commune-auth-btn commune-auth-btn-apple" type="button" disabled={busy} onClick={() => void onAppleSignIn()}>
+            <AppleMark /> Continue with Apple
+          </button> : null}
+          {import.meta.env.VITE_GOOGLE_OAUTH_ENABLED === "true" ? <button className="commune-auth-btn commune-auth-btn-google" type="button" disabled={busy} onClick={() => void onGoogleSignIn()}>
             <GoogleMark /> Continue with Google
-          </button>
+          </button> : null}
         </> : null}
         <p className="commune-auth-foot">
           New to Commune?{" "}

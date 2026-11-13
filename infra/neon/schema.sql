@@ -2209,6 +2209,54 @@ $_$;
 
 
 --
+-- Name: invite_people(text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.invite_people(p_token text) RETURNS jsonb
+    LANGUAGE plpgsql STABLE SECURITY DEFINER
+    SET search_path TO 'public', 'pg_temp'
+    AS $_$
+DECLARE
+  v_email text;
+  v_commune uuid;
+  v_inviter text;
+BEGIN
+  SELECT lower(u.email) INTO v_email
+  FROM commune_private.accounts(ARRAY[commune_private.data_api_user_id()]) u
+  WHERE u."emailVerified" IS TRUE;
+  IF v_email IS NULL OR p_token IS NULL OR p_token !~ '^[0-9a-f]{64}$' THEN
+    RETURN NULL;
+  END IF;
+  SELECT i.commune_id, i.invited_by INTO v_commune, v_inviter
+  FROM public.commune_invites i
+  WHERE i.token_hash = digest(p_token, 'sha256')
+    AND i.email = v_email AND i.expires_at > now()
+    AND i.accepted_at IS NULL AND i.revoked_at IS NULL
+    AND EXISTS (SELECT 1 FROM public.commune_members m WHERE m.commune_id = i.commune_id
+      AND m.user_id = i.invited_by AND m.active AND m.role = 'admin');
+  IF v_commune IS NULL THEN
+    RETURN NULL;
+  END IF;
+  RETURN jsonb_build_object(
+    'inviter', (SELECT nullif(split_part(btrim(u.name), ' ', 1), '')
+      FROM commune_private.accounts(ARRAY[v_inviter]) u),
+    'members', coalesce((
+      SELECT jsonb_agg(p.first_name ORDER BY p.is_inviter DESC, p.joined_at, p.user_id)
+      FROM (
+        SELECT m.user_id, m.joined_at, m.user_id = v_inviter AS is_inviter,
+          coalesce(nullif(split_part(btrim(u.name), ' ', 1), ''), 'Member') AS first_name
+        FROM public.commune_members m
+        LEFT JOIN commune_private.accounts(ARRAY(SELECT x.user_id FROM public.commune_members x
+          WHERE x.commune_id = v_commune AND x.active)) u ON u.id = m.user_id
+        WHERE m.commune_id = v_commune AND m.active
+        ORDER BY m.user_id = v_inviter DESC, m.joined_at, m.user_id
+        LIMIT 12
+      ) p), '[]'::jsonb));
+END;
+$_$;
+
+
+--
 -- Name: is_commune_admin(uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -8020,6 +8068,14 @@ REVOKE ALL ON FUNCTION public.hmac(text, text, text) FROM PUBLIC;
 
 REVOKE ALL ON FUNCTION public.invite_address_hint(p_token text) FROM PUBLIC;
 GRANT ALL ON FUNCTION public.invite_address_hint(p_token text) TO authenticated;
+
+
+--
+-- Name: FUNCTION invite_people(p_token text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.invite_people(p_token text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.invite_people(p_token text) TO authenticated;
 
 
 --

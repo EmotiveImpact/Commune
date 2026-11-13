@@ -35,6 +35,7 @@ import {
   type OperationStore,
 } from "./data/operations";
 import { newRequestId } from "./data/requestId";
+import { withInviteHints } from "./data/inviteHints";
 import { parsePayLinks, type PayLink, type PayLinkInput, type PayProvider } from "./data/payLinks";
 import { COMMUNE_SCREENS, FORM_WINDOWS, addressOf, isNativeNow, keepSearch, readAddress, withCommune } from "./nav";
 import { api, post, loadCommunes, loadExpensePage, loadExpenseRecords, loadSnapshot, ApiError } from "./live/api";
@@ -181,6 +182,9 @@ export type InvitePreview = {
   communeName: string;
   role: "admin" | "member";
   expiresAt: string;
+  /** The inviter's first name and the members' first names (0047); absent before it. */
+  inviterName?: string | null;
+  members?: string[];
 };
 export type GoTarget =
   | ScreenId
@@ -246,6 +250,8 @@ export type AppState = {
   refresh: () => Promise<void>;
   signInWithPassword: (email: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
+  /** Shown only when the build sets VITE_APPLE_OAUTH_ENABLED (Apple must be set up in Neon Auth first). */
+  signInWithApple: () => Promise<void>;
   signUpWithPassword: (name: string, email: string, password: string) => Promise<"ready" | "verify">;
   verifyEmailCode: (email: string, code: string) => Promise<void>;
   session: Session | null;
@@ -440,7 +446,7 @@ export type AppState = {
   previewInvite: (token: string) => Promise<InvitePreview | null>;
   /** The address an invitation this account cannot see was sent to, masked, when it is another one. */
   inviteAddressHint: (token: string) => Promise<string | null>;
-  acceptInvite: (token: string) => Promise<string>;
+  acceptInvite: (token: string, options?: { stay?: boolean }) => Promise<string>;
   /** requestId stays the same across retries of one open form. */
   createFund: (name: string, targetMinor: number | null, requestId: string) => Promise<string>;
   pledgeFund: (fundId: string, amountMinor: number, dueOn: string, requestId: string) => Promise<string>;
@@ -1186,6 +1192,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const signInWithGoogle = useCallback(() => mutate(async () => {
     await post("/auth/google", {});
   }), [mutate]);
+  const signInWithApple = useCallback(() => mutate(async () => {
+    await post("/auth/apple", {});
+  }), [mutate]);
   const signUpWithPassword = useCallback((name: string, email: string, password: string) => mutate(async () => {
     const result = await post<{ verificationRequired?: boolean }>("/auth/signup", { name, email, password });
     if (result.verificationRequired) return "verify" as const;
@@ -1706,10 +1715,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const createInvite = useCallback((email: string, role: "admin" | "member") => mutate(async () => {
     if (!activeId) throw new Error("Choose a commune first");
     const result = await post<{ token: string; url?: string }>(`/communes/${encodeURIComponent(activeId)}/invites`, { email, role });
-    const url = result.url ?? new URL(`/invite?token=${encodeURIComponent(result.token)}`, window.location.origin).href;
+    const base = new URL(result.url ?? `/invite?token=${encodeURIComponent(result.token)}`, window.location.origin);
     await refresh();
-    return { token: result.token, url };
-  }), [activeId, mutate, refresh]);
+    return { token: result.token, url: withInviteHints(base, hub.name, you.name).href };
+  }), [activeId, hub.name, mutate, refresh, you.name]);
   const revokeInvite = useCallback((id: string) => mutate(async () => {
     await post(`/invites/${encodeURIComponent(id)}/revoke`, {});
     await refresh();
@@ -1726,11 +1735,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const result = await api<{ hint: string | null }>(`/invites/${encodeURIComponent(token)}/hint`);
     return result.hint;
   }, []);
-  const acceptInvite = useCallback((token: string) => mutate(async () => {
+  // stay: the joining flow carries on from the invitation page, so it is not left.
+  const acceptInvite = useCallback((token: string, options?: { stay?: boolean }) => mutate(async () => {
     const result = await post<{ communeId: string }>(`/invites/${encodeURIComponent(token)}/accept`, {});
     await refresh();
     setHubId(result.communeId);
-    navigate(addressOf("hub", { commune: result.communeId }), { fallback: "replace" });
+    if (!options?.stay) navigate(addressOf("hub", { commune: result.communeId }), { fallback: "replace" });
     return result.communeId;
   }), [mutate, navigate, refresh]);
 
@@ -2033,7 +2043,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const state: AppState = {
     authStatus, apiError, mutationPending: mutationCount > 0, clearApiError, refresh: fullRefresh,
-    signInWithPassword, signInWithGoogle, signUpWithPassword, verifyEmailCode, session, screen, hubId: activeId,
+    signInWithPassword, signInWithGoogle, signInWithApple, signUpWithPassword, verifyEmailCode, session, screen, hubId: activeId,
     hub, places, snapshots: data?.snapshots ?? NO_SNAPSHOTS, contentLoading, contentError, emptyHub: empty, unknownCommune, window: windowId, moreOpen,
     navMode: device.navMode, noteKey, notes, operationKey, operationDate,
     operationTime, operationsByHub, operations, selectedOperation, fundKey,

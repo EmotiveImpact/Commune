@@ -1,0 +1,48 @@
+/* In the screens layer (see styles/index.css). Home's first-day card for
+   someone who has just joined a house. */
+@layer screens {
+  .c-first-day {
+    display: grid;
+    gap: 4px;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-surface);
+    padding: 16px 18px 10px;
+  }
+  .c-first-day header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  .c-first-day h2 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 18px; letter-spacing: -0.02em; }
+  .c-first-day-count { font-size: 11.5px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: var(--ink-soft); white-space: nowrap; }
+  .c-first-day ul { list-style: none; margin: 4px 0 0; padding: 0; }
+  .c-first-day li { display: flex; align-items: center; gap: 12px; padding: 10px 0; }
+  .c-first-day li + li { border-top: 1px solid var(--border); }
+  .c-first-day-tick {
+    width: 24px;
+    height: 24px;
+    flex: none;
+    border-radius: 50%;
+    border: 1.5px solid var(--border-strong);
+    display: grid;
+    place-items: center;
+  }
+  .c-first-day li.is-done .c-first-day-tick { background: var(--sage); border-color: var(--sage); color: #fff; }
+  .c-first-day-text { flex: 1; min-width: 0; display: grid; gap: 1px; }
+  .c-first-day-text strong { font-weight: 500; font-size: 14.5px; }
+  .c-first-day li.is-done .c-first-day-text strong { color: var(--ink-soft); }
+  .c-first-day-text span { font-size: 12.5px; color: var(--ink-soft); }
+  .c-first-day-btn {
+    flex: none;
+    min-height: 34px;
+    padding: 0 14px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--sage);
+    color: #fff;
+    font: 600 13px/1 var(--font);
+    cursor: pointer;
+  }
+  .c-first-day-btn:disabled { opacity: 0.55; }
+  .c-first-day-hide { justify-self: center; background: none; border: 0; padding: 8px; color: var(--text-green); font: 600 13.5px/1.2 var(--font); cursor: pointer; }
+  .c-first-day-btn:focus-visible, .c-first-day-hide:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+  .c-first-day-error { margin: 0; color: var(--danger); font-size: 13px; }
+  .a-body.is-dark .c-first-day { background: var(--paper-3); }
+}

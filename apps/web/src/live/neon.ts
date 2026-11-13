@@ -401,6 +401,18 @@ async function route<T>(path: string, init: RequestInit): Promise<T> {
     if (result.error) message(result.error);
     forgetReturn();
     response = { ok: true };
+  } else if (path === "/auth/apple" && method === "POST") {
+    if (import.meta.env.VITE_APPLE_OAUTH_ENABLED !== "true") throw new ApiError("Apple sign-in is not configured", 503);
+    // As Google: back to the page that asked for a sign-in, only ever on this site.
+    const callbackURL = new URL(readReturn() ?? "/", window.location.origin).href;
+    const result = await db().auth.signIn.social({
+      provider: "apple",
+      callbackURL,
+      errorCallbackURL: new URL("/login?oauth=error", window.location.origin).href,
+    });
+    if (result.error) message(result.error);
+    forgetReturn();
+    response = { ok: true };
   } else if (path === "/auth/signup" && method === "POST") {
     const result = await db().auth.signUp.email({ name: inputString(body.name, "name"), email: inputString(body.email, "email"), password: inputString(body.password, "password") });
     if (result.error) message(result.error);
@@ -641,8 +653,16 @@ async function route<T>(path: string, init: RequestInit): Promise<T> {
       p_invite_id: pathId(path, /^\/invites\/([^/]+)\/revoke$/),
     });
   } else if (method === "GET" && pathId(path, /^\/invites\/([0-9a-f]{64})$/)) {
-    const result = rows(unwrap(await db().rpc("preview_commune_invite", { p_token: pathId(path, /^\/invites\/([0-9a-f]{64})$/) })))[0];
-    response = { invite: result ? { communeName: str(result.commune_name), role: str(result.role), expiresAt: str(result.expires_at) } : null };
+    const token = pathId(path, /^\/invites\/([0-9a-f]{64})$/);
+    const result = rows(unwrap(await db().rpc("preview_commune_invite", { p_token: token })))[0];
+    // Who lives there (0047). A branch without it still shows the invitation.
+    const people = result ? await db().rpc("invite_people", { p_token: token })
+      .then((reply) => (reply.error ? null : reply.data) as { inviter?: unknown; members?: unknown } | null, () => null) : null;
+    response = { invite: result ? {
+      communeName: str(result.commune_name), role: str(result.role), expiresAt: str(result.expires_at),
+      inviterName: typeof people?.inviter === "string" ? people.inviter : null,
+      members: Array.isArray(people?.members) ? people.members.filter((name): name is string => typeof name === "string") : [],
+    } : null };
   } else if (method === "GET" && pathId(path, /^\/invites\/([0-9a-f]{64})\/hint$/)) {
     const hint = unwrap(await db().rpc("invite_address_hint", { p_token: pathId(path, /^\/invites\/([0-9a-f]{64})\/hint$/) }));
     response = { hint: typeof hint === "string" && hint ? hint : null };
