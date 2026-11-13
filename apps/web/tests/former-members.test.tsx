@@ -126,7 +126,7 @@ describe("naming people", () => {
     await screen.findByRole("heading", { name: "Expenses" });
     await act(async () => app.go("expense", { expense: "expense-2" }));
     const paint = await screen.findByRole("dialog", { name: "Paint" });
-    expect(within(paint).getByText(/^Lee Lane \(left\) paid £20\.00\./)).toBeTruthy();
+    expect(within(paint).getByText(/^Lee Lane \(left\) paid £20\.00/)).toBeTruthy();
     await act(async () => app.go("expense", { expense: "expense-1" }));
     const cleaner = await screen.findByRole("dialog", { name: "Cleaner" });
     expect(within(cleaner).getByText("Lee Lane (left)")).toBeTruthy();

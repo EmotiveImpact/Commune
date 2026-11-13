@@ -241,4 +241,48 @@
   .c-hub-link::before { content: ""; position: absolute; inset: -9px 0; }
   .c-hub-check { align-items: center; justify-content: center; width: 44px; height: 44px; margin: -11px -8px -11px 0; }
 }
+
+  /* The Hub's tabs under the photo, as in the phone app: one rounded track,
+     the chosen tab on a white pill. */
+  .c-hub-tabs { display: flex; gap: 4px; width: 100%; max-width: 560px; padding: 4px; border: 1px solid var(--hub-line); border-radius: var(--radius-pill); background: var(--hub-quiet); }
+  .c-hub-tab { flex: 1; min-height: 40px; padding: 0 12px; border: 0; border-radius: var(--radius-pill); background: none; color: var(--hub-muted); font: inherit; font-size: 15px !important; font-weight: 500; cursor: pointer; }
+  .c-hub-tab.is-on { background: var(--hub-panel); color: var(--hub-ink); box-shadow: 0 1px 3px rgba(26, 30, 43, 0.12); }
+  @media (hover: hover) { .c-hub-tab:not(.is-on):hover { color: var(--hub-ink); } }
+  .c-hub-tab-panel { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; min-width: 0; }
+  .c-hub-tab-panel > .c-hub-part-actions { padding: 0 4px; }
+  .c-hub-count { color: var(--hub-muted); font-size: 13px; }
+  .c-hub-add-wide { justify-content: center; width: 100%; }
+
+  /* Change sits at the top left of the photo on a phone only; larger screens switch in the sidebar. */
+  .c-hub-change { display: none; position: absolute; left: 16px; top: 16px; z-index: 1; }
+  .c-hub-identity:not(.has-photo) .c-hub-change { background: var(--hub-panel); color: var(--hub-ink); border-color: var(--hub-line); }
+
+  /* Money tab rows. */
+  .c-hub-money-row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 0; border: 0; border-top: 1px solid var(--hub-line); background: none; color: var(--hub-ink); font: inherit; text-align: left; }
+  .c-hub-section-head + .c-hub-money-row { border-top: 0; padding-top: 0; }
+  button.c-hub-money-row { cursor: pointer; }
+  .c-hub-money-date { flex-shrink: 0; }
+  .c-hub-money-date.is-none { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 10px; background: var(--hub-quiet); color: var(--hub-heading-icon); }
+  .c-hub-money-copy { display: grid; flex: 1; min-width: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+  .c-hub-money-copy strong { font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+  .c-hub-money-copy small { color: var(--hub-muted); font-size: 13px; }
+  .c-hub-money-amount { font-size: 15px; font-weight: 600; white-space: nowrap; }
+  .c-hub-more { padding-top: 6px; padding-bottom: 6px; }
+  .c-hub-more-row:first-child { border-top: 0; }
+  .c-hub-more-row > span:nth-child(2) { flex: 1; }
+  .c-hub-more-row small { color: var(--hub-muted); }
+  .c-hub-more-icon { display: grid !important; place-items: center; flex-shrink: 0; width: 34px; height: 34px; border-radius: 9px; background: var(--hub-quiet); }
+
+  @media (max-width: 560px) {
+    /* The photo runs edge to edge under the bar, as in the phone app. */
+    .c-hub-identity { margin: -16px -16px 0; border-radius: 0; min-height: 270px; padding: 64px 18px 18px; }
+    .c-hub-change { display: flex; }
+    .c-hub-gear { display: none !important; }
+    .c-hub-hero-actions { top: 16px; right: 16px; }
+    .c-hub-tab-panel { gap: 16px; }
+    .c-hub-tab { font-size: 14.5px !important; padding: 0 6px; }
+    /* The foot stacks in a column here, so the pay buttons keep their own height. */
+    .c-hub-next-foot.is-pay :is(.c-pay-primary, .c-pay-more, .c-pay-tell) { flex: 0 0 auto; }
+    .c-hub-next-foot.is-pay .c-pay-primary { height: 50px; }
+  }
 }

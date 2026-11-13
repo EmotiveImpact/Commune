@@ -125,7 +125,7 @@ describe("an address for every window", () => {
     cleanup();
     mount("/expenses/expense-1?commune=home-1");
     const dialog = await screen.findByRole("dialog", { name: "Rent" });
-    expect(within(dialog).getByText(/Test Person paid £1,200.00/)).toBeTruthy();
+    expect(within(dialog).getByText("£1,200.00", { selector: ".c-expense-yours-amount" })).toBeTruthy();
   });
 
   it.each([

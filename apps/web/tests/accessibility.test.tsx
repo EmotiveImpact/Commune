@@ -173,7 +173,7 @@ describe("page structure and focus after moving", () => {
     }
   });
 
-  it("opens the phone menu as the sidebar in a drawer, and gives focus back when it closes", async () => {
+  it("opens the phone menu, the phone app's push menu, and gives focus back when it closes", async () => {
     mount("/hub");
     await screen.findByRole("heading", { name: "This Hub", level: 1 });
     const menu = screen.getByRole("button", { name: "Menu" });
@@ -187,9 +187,11 @@ describe("page structure and focus after moving", () => {
     // The page and the tabs behind it are out of reach while it is open.
     expect(document.querySelector(".a-app")?.hasAttribute("inert")).toBe(true);
     expect(screen.getByRole("navigation", { name: "Phone", hidden: true }).hasAttribute("inert")).toBe(true);
-    // Members and Templates have no other way in on a phone.
-    const basic = drawer.querySelector<HTMLElement>(".a-nav-basic")!;
-    for (const name of ["Expenses", "Notes", "Operations", "Members", "Templates"]) within(basic).getByRole("button", { name });
+    // Your communes first, then this commune's own pages: the ones the tabs do not reach.
+    within(drawer).getByRole("heading", { name: "Your communes" });
+    for (const name of ["Chores and tasks", "Notes", "Members", "Recurring", "Funds", "Templates", "Activity", "Settings"]) {
+      within(drawer).getByRole("button", { name: new RegExp(`^${name}`) });
+    }
 
     fireEvent.keyDown(document, { key: "Escape" });
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Menu" })).toBeNull());
@@ -198,7 +200,7 @@ describe("page structure and focus after moving", () => {
 
     // Choosing a page closes it and moves focus to that page's heading.
     fireEvent.click(menu);
-    fireEvent.click(within(screen.getByRole("dialog", { name: "Menu" })).getAllByRole("button", { name: "Notes" })[0]);
+    fireEvent.click(within(screen.getByRole("dialog", { name: "Menu" })).getByRole("button", { name: /^Notes/ }));
     const heading = await screen.findByRole("heading", { name: "Notes", level: 1 });
     expect(screen.queryByRole("dialog", { name: "Menu" })).toBeNull();
     await waitFor(() => expect(document.activeElement).toBe(heading));

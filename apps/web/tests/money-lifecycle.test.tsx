@@ -406,7 +406,7 @@ describe("partial repayment receipts and reversals", () => {
     current.notifications = [{ id: "notice-1", kind: "receipt-reversed", sourceId: "expense-1", amountMinor: 2500, communeId: commune.id,
       senderUserId: "user-2", expenseId: "expense-1", title: "House supplies", detail: "Transfer bounced", createdAt: "2026-01-07T09:00:00Z", readAt: null }];
     mount("/hub");
-    await screen.findByRole("heading", { name: "Shared essentials" });
+    await screen.findByRole("heading", { name: "People" });
     act(() => app.go("notices"));
     const notice = within(await screen.findByRole("dialog", { name: "Notices" })).getByRole("button", { name: /House supplies/ });
     expect(notice.textContent).toContain("Reversed");
